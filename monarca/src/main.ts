@@ -13,16 +13,26 @@ async function bootstrap() {
   // Read SSL certificate and key files if they exist
   const keyPath = 'certs/backend-key.pem';
   const certPath = 'certs/backend.pem';
+<<<<<<< Updated upstream
   
   const options: any = {};
   
+=======
+
+  const options: any = {};
+
+>>>>>>> Stashed changes
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     options.httpsOptions = {
       key: fs.readFileSync(keyPath),
       cert: fs.readFileSync(certPath),
     };
   }
+<<<<<<< Updated upstream
   
+=======
+
+>>>>>>> Stashed changes
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
     options,
