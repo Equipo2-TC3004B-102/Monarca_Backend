@@ -458,3 +458,210 @@ Para más información sobre cómo contribuir al proyecto, consulta [CONTRIBUTIN
 ## 📄 **Licencia**
 
 Este proyecto es privado y confidencial de 02 Solutions.
+
+---
+
+## 🔐 **10. Configuración de Git en WSL**
+
+> ⚠️ **Importante:** Si planeas hacer commits y push desde WSL, necesitas configurar Git correctamente para evitar problemas con line endings (CRLF vs LF) y SSH keys.
+
+### 10.1 Configurar Git para Line Endings
+
+**Desde WSL:**
+```bash
+# Backend
+cd ~/Monarca/Monarca_Backend
+git config core.autocrlf input
+git config core.fileMode false
+
+# Frontend
+cd ~/Monarca/Monarca_Frontend
+git config core.autocrlf input
+git config core.fileMode false
+```
+
+**¿Qué hace esto?**
+- `autocrlf input`: Convierte CRLF (Windows) a LF (Linux) automáticamente al hacer commit
+- `fileMode false`: Ignora cambios de permisos de archivos (que difieren entre Windows y Linux)
+
+### 10.2 Sincronizar Repositorios con Remoto
+
+Si copiaste los archivos desde Windows y Git muestra cambios falsos:
+
+```bash
+# Backend
+cd ~/Monarca/Monarca_Backend
+git fetch origin
+git reset --hard origin/main
+
+# Frontend
+cd ~/Monarca/Monarca_Frontend
+git fetch origin
+git reset --hard origin/main
+```
+
+> ⚠️ **Advertencia:** `git reset --hard` eliminará cualquier cambio local no commiteado. Asegúrate de haber guardado todo lo que necesitas.
+
+### 10.3 Configurar SSH Key para GitHub
+
+**Opción A: Copiar tu SSH key existente de Windows (Recomendado)**
+
+```bash
+# Verificar qué keys tienes en Windows (reemplaza TU_USUARIO por tu nombre de usuario)
+ls /mnt/c/Users/TU_USUARIO/.ssh/
+
+# Copiar key de Windows a WSL
+mkdir -p ~/.ssh
+cp /mnt/c/Users/TU_USUARIO/.ssh/id_ed25519 ~/.ssh/
+cp /mnt/c/Users/TU_USUARIO/.ssh/id_ed25519.pub ~/.ssh/
+
+# Configurar permisos correctos
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_ed25519
+chmod 644 ~/.ssh/id_ed25519.pub
+
+# Agregar GitHub a known_hosts
+ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+# Probar conexión
+ssh -T git@github.com
+```
+
+**Opción B: Crear una nueva SSH key en WSL**
+
+```bash
+# Generar nueva key
+ssh-keygen -t ed25519 -C "tu_email@example.com"
+
+# Copiar la clave pública
+cat ~/.ssh/id_ed25519.pub
+
+# Agregar GitHub a known_hosts
+ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+```
+
+Luego agregar la clave pública a GitHub:
+1. Ir a https://github.com/settings/keys
+2. Click "New SSH key"
+3. Pegar el contenido de `id_ed25519.pub`
+4. Guardar
+
+### 10.4 Flujo de Trabajo con Git desde WSL
+
+```bash
+# Ejemplo de workflow completo
+cd ~/Monarca/Monarca_Backend
+
+# Ver estado
+git status
+
+# Crear rama
+git checkout -b feature/mi-nueva-funcionalidad
+
+# ... hacer cambios en archivos ...
+
+# Agregar cambios
+git add .
+
+# Commit
+git commit -m "feat: descripción del cambio"
+
+# Push
+git push origin feature/mi-nueva-funcionalidad
+```
+
+### 10.5 Mantener Sincronización entre Windows y WSL
+
+**Recomendación:** Elige UNO de los siguientes enfoques:
+
+**Enfoque A: Trabajar SOLO en WSL** ✅ **(Recomendado)**
+- Todos los cambios y commits desde `~/Monarca/`
+- No necesitas sincronizar con Windows
+- Sin problemas de line endings
+
+**Enfoque B: Trabajar en ambos sistemas** ⚠️ **(No recomendado)**
+- Requiere sincronización manual constante
+- Propenso a conflictos de line endings
+- Si debes hacerlo, siempre haz `git pull` antes de cambiar de sistema
+
+---
+
+## 🔄 **11. Comandos Git Útiles**
+
+```bash
+# Ver diferencias sin considerar line endings
+git diff --ignore-cr-at-eol
+
+# Ver ramas
+git branch -a
+
+# Actualizar desde remoto
+git pull origin main
+
+# Ver historial
+git log --oneline
+
+# Cambiar de rama
+git checkout nombre-rama
+
+# Ver remotes configurados
+git remote -v
+
+# Verificar configuración de Git
+git config --list
+```
+
+---
+
+## 🚨 **Solución de Problemas - Git**
+
+### Problema: Git muestra archivos modificados pero no lo están
+
+**Causa:** Diferencia in line endings (CRLF vs LF)
+
+**Solución:**
+```bash
+cd ~/Monarca/Monarca_Backend
+git config core.autocrlf input
+git reset --hard HEAD
+```
+
+### Problema: Permission denied al hacer push
+
+**Causa:** SSH key no configurada o no agregada a GitHub
+
+**Solución:**
+```bash
+# Verificar que la key existe
+ls ~/.ssh/id_ed25519
+
+# Probar conexión
+ssh -T git@github.com
+
+# Si falla, verifica que la key esté en GitHub
+cat ~/.ssh/id_ed25519.pub
+```
+
+### Problema: Agent admitted failure to sign al hacer push
+
+**Causa:** SSH key con passphrase pero sin agente SSH
+
+**Solución:**
+```bash
+# Iniciar agente SSH (temporal, válido hasta cerrar terminal)
+eval $(ssh-agent -s)
+ssh-add ~/.ssh/id_ed25519
+
+# Ahora hacer push
+git push
+```
+
+### Problema: Repositorio en Windows está más actualizado que WSL
+
+**Solución:**
+```bash
+cd ~/Monarca/Monarca_Backend
+git fetch origin
+git pull origin main
+```
+
