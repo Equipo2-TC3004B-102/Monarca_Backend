@@ -1,55 +1,56 @@
-# 🚀 Guía Completa de Instalación - Proyecto Monarca en Windows con WSL
+# 🚀 Complete Installation Guide - Proyecto Monarca in Windows with WSL
 
-Esta guía está diseñada específicamente para configurar y ejecutar el proyecto Monarca en **Windows usando WSL2 (Ubuntu)**.
-
----
-
-## 📍 **Adaptando las Rutas a Tu Sistema**
-
-> ⚠️ **IMPORTANTE:** Esta guía utiliza rutas de ejemplo. Debes reemplazarlas con la ubicación real donde clonaste el proyecto.
-
-### Ejemplos de rutas:
-
-**En Windows (PowerShell):**
-- Si tu proyecto está en: `C:\Proyectos\Monarca_Backend`
-- Si tu proyecto está en: `D:\Dev\Monarca_Backend`
-- Si tu proyecto está en: `E:\GitHub\Monarca_Backend`
-
-**En WSL (Ubuntu):**
-- Unidad C: `/mnt/c/Proyectos/Monarca_Backend`
-- Unidad D: `/mnt/d/Dev/Monarca_Backend`
-- Unidad E: `/mnt/e/GitHub/Monarca_Backend`
-
-### En esta guía usaremos:
-- `<TU_RUTA_WINDOWS>` = La ruta completa en Windows donde está tu proyecto
-- `<UNIDAD>` = La letra de tu unidad (c, d, e, etc.)
-- `<TU_RUTA>` = La ruta dentro de la unidad (sin la letra)
-
-**Ejemplo real:**
-- Si tu proyecto está en `D:\MisProyectos\Monarca\Monarca_Backend`
-- Entonces `<TU_RUTA_WINDOWS>` = `D:\MisProyectos\Monarca`
-- Y en WSL sería: `/mnt/d/MisProyectos/Monarca`
+This guide is designed specifically for the configuration and the execution of the “Proyecto Monarca” in **Windows using WSL2 (Ubuntu)**.
 
 ---
 
-## 📋 **1. Requisitos Previos**
+## 📍 **Adapting the Routes to your System**
 
-### Instalaciones necesarias:
+> ⚠️ **IMPORTANT**: This guide uses example routes. You need to replace them to the location where you cloned the project.
+
+### Examples of Routes:
+
+**In Windows (PowerShell):**
+- If your project is in: `C:\Proyectos\Monarca_Backend`
+- If your project is in: `D:\Dev\Monarca_Backend`
+- If your project is in: `E:\GitHub\Monarca_Backend`
+
+
+**In WSL (Ubuntu):**
+- Unit C: `/mnt/c/Proyectos/Monarca_Backend`
+- Unit D: `/mnt/d/Dev/Monarca_Backend`
+- Unit E: `/mnt/e/GitHub/Monarca_Backend`
+
+### In this guide, we will use:
+- `<YOUR_WINDOWS_ROUTE> `= The complete route in windows where your project is located
+- `<UNIT>` = The letter of your unit(c, d, e, etc.)
+- `<YOUR_ROUTE>` = The route inside the unit (without the letter)
+
+**Real Examples**
+- If your project is in D:\MisProyectos\Monarca\Monarca_Backend
+- Then <YOUR_WINDOWS_ROUTE> = D:\MisProyectos\Monarca
+- And the WSL would be: /mnt/d/MisProyectos/Monarca
+
+---
+
+## 📋 **1. Prerequisites**
+
+### Necessary downloads:
 - ✅ **Docker Desktop** - [Descargar](https://www.docker.com/products/docker-desktop)
-- ✅ **WSL2 (Ubuntu)** instalado en Windows
-- ✅ **VS Code** con extensión de WSL
+- ✅ **WSL2 (Ubuntu)** Installed in Windows
+- ✅ **VS Code** with WSL extension
 
 ---
 
-## 🔧 **2. Configuración de WSL/Ubuntu**
+## 🔧 **2. Configuration of WSL/Ubuntu**
 
-### 2.1 Instalar herramientas básicas
+### 2.1 Install basic tools
 ```bash
 sudo apt update
 sudo apt install direnv
 ```
 
-### 2.2 Instalar NVM (Node Version Manager)
+### 2.2 Install NVM (node version manager)
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
@@ -60,13 +61,13 @@ echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc
 echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.bashrc
 ```
 
-### 2.3 Configurar direnv
+### 2.3 Configure direnv
 ```bash
 echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 2.4 Instalar Node.js v20
+### 2.4 Install Node.js v20
 ```bash
 nvm install 20
 nvm use 20
@@ -74,81 +75,81 @@ nvm use 20
 
 ---
 
-## 🐳 **3. Configuración de Docker**
+## 🐳 **3. Docker Configuration**
 
-### 3.1 Habilitar integración de Docker con WSL
-1. Abrir **Docker Desktop**
-2. Ir a **Settings** → **Resources** → **WSL Integration**
-3. Activar integración con **Ubuntu**
-4. Aplicar y reiniciar Docker Desktop
+### 3.1 Enable Docker integration with WSL
+1. Open **Docker Desktop**
+2. Go to **Settings** → **Resources** → **WSL Integration**
+3. Activate integration with **Ubuntu**
+4. Apply and restart docker desktop
 
-### 3.2 Construir imagen de PostgreSQL (desde PowerShell)
+### 3.2 Build and Image with PostgreSQL (Powershell)
 ```powershell
-cd <TU_RUTA_WINDOWS>\Monarca_Backend\DB
+cd <YOUR_WINDOWS_ROUTE>\Monarca_Backend\DB
 docker build -t monarca-v1 .
 ```
 
-**Ejemplo:** Si tu proyecto está en `C:\Proyectos`, entonces:
+**Example**: If your project is in `“C:/Proyectos”`, then:
 ```powershell
 cd C:\Proyectos\Monarca_Backend\DB
 ```
 
-### 3.3 Modificar compose.yaml
+### 3.3 Modifying compose.yaml
 **Archivo:** `Monarca_Backend/compose.yaml`
 
-**Cambiar:**
+**Change:**
 ```yaml
 volumes:
   - ./DB/postgres:/var/lib/postgresql/data
 ```
 
-**Por:**
+**To:**
 ```yaml
 volumes:
   - ./DB/postgres:/var/lib/postgresql
 ```
 
-> ⚠️ **Nota:** Este cambio es necesario para compatibilidad con PostgreSQL 18+
+> ⚠️ **Note**: This change is necessary for PostgreSQL 18+ compatibility
 
-### 3.4 Iniciar contenedor (desde PowerShell)
+### 3.4 Starting a Container (PowerShell)
 ```powershell
-cd <TU_RUTA_WINDOWS>\Monarca_Backend
+cd <YOUR_WINDOWS_ROUTE>\Monarca_Backend
 docker compose up -d
 docker start monarca_database
 ```
 
-**Ejemplo:** Si tu proyecto está en `D:\Dev`:
+**Example**: If your project is located in `D:/Dev`:
 ```powershell
 cd D:\Dev\Monarca_Backend
 ```
 
 ---
 
-## 📁 **4. Copiar Proyecto al Sistema de Archivos de Linux**
+## 📁 **4. Copy the Project to the Archive System of Linux**
 
-> ⚠️ **Importante:** No trabajes directamente en `/mnt/<unidad>/` ya que causa problemas de permisos. Debes copiar el proyecto al sistema de archivos nativo de Linux (`/home/usuario/`).
+> ⚠️ **Important**: Don’t work directly in “/mnt/<unit>” since this causes permission problems. You need to copy the project into the native archive system of linux `“/home/user”`.
 
-**Desde WSL:**
+**In WSL:**
 ```bash
-# Crear directorio
+# Create directory
 mkdir -p ~/Monarca
 
-# Copiar Frontend (AJUSTA LA RUTA A TU PROYECTO)
-rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='coverage' /mnt/<unidad>/<tu_ruta>/Monarca_Frontend/ ~/Monarca/Monarca_Frontend/
+# Copy Frontend (ADJUST THE ROUTE TO YOUR PROJECT) 
+rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='coverage' /mnt/<unit>/<your_route>/Monarca_Frontend/ ~/Monarca/Monarca_Frontend/
 
-# Copiar Backend (AJUSTA LA RUTA A TU PROYECTO)
-rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='postgres' /mnt/<unidad>/<tu_ruta>/Monarca_Backend/ ~/Monarca/Monarca_Backend/
+# Copy Backend (ADJUST THE ROUTE TO YOUR PROJECT)
+rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='postgres' /mnt/<unit>/<your_route>/Monarca_Backend/ ~/Monarca/Monarca_Backend/
 ```
 
-**Ejemplos reales:**
+**Real Examples:**
 
-Si tu proyecto en Windows está en `C:\Proyectos\`:
+If your project in Windows is in `“C:/Proyectos/”`:
 ```bash
 rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='coverage' /mnt/c/Proyectos/Monarca_Frontend/ ~/Monarca/Monarca_Frontend/
 rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='postgres' /mnt/c/Proyectos/Monarca_Backend/ ~/Monarca/Monarca_Backend/
 ```
 
-Si tu proyecto en Windows está en `D:\Dev\MisProyectos\`:
+If your project in Windows is in `“D:\Dev\MisProyectos\”`:
 ```bash
 rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='coverage' /mnt/d/Dev/MisProyectos/Monarca_Frontend/ ~/Monarca/Monarca_Frontend/
 rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='postgres' /mnt/d/Dev/MisProyectos/Monarca_Backend/ ~/Monarca/Monarca_Backend/
@@ -156,12 +157,12 @@ rsync -av --exclude='node_modules' --exclude='package-lock.json' --exclude='post
 
 ---
 
-## ⚙️ **5. Modificaciones de Archivos de Configuración**
+## ⚙️ **5. Modifications of Configuration Files**
 
 ### 5.1 Frontend - vite.config.ts
-**Archivo:** `Monarca_Frontend/vite.config.ts`
+**File:** `Monarca_Frontend/vite.config.ts`
 
-**Modificar para hacer HTTPS opcional:**
+**Modify to make the HTTPS optional:**
 ```typescript
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -184,9 +185,9 @@ export default defineConfig({
 ```
 
 ### 5.2 Backend - main.ts
-**Archivo:** `Monarca_Backend/monarca/src/main.ts`
+**File:** `Monarca_Backend/monarca/src/main.ts`
 
-**Modificar la función `bootstrap` para hacer HTTPS opcional:**
+**Modify the function `“bootstrap”` to make HTTPS optional:**
 ```typescript
 async function bootstrap() {
   // Read SSL certificate and key files if they exist
@@ -207,14 +208,14 @@ async function bootstrap() {
     options,
   );
   
-  // ... resto del código sin cambios
+  // ... rest of code without changes
 }
 ```
 
 ### 5.3 Backend - app.module.ts
-**Archivo:** `Monarca_Backend/monarca/src/app.module.ts`
+**File:** `Monarca_Backend/monarca/src/app.module.ts`
 
-**Cambiar `synchronize: false` por `synchronize: true`:**
+**Change `“synchronize: false” for “synchronize: true”`:**
 ```typescript
 TypeOrmModule.forRoot({
   type: 'postgres',
@@ -226,65 +227,65 @@ TypeOrmModule.forRoot({
   entities: [
     // ... entidades
   ],
-  synchronize: true,  // ← Cambiar de false a true
+  synchronize: true,  // ← Change the false to true
 }),
 ```
 
-> ⚠️ **Nota:** `synchronize: true` crea automáticamente las tablas de la base de datos. **NO usar en producción.**
+> ⚠️ **Note: `synchronize: true` automatically creates the tables in the database. DO NOT use in production**
 
 ---
 
-## 🎯 **6. Configuración del Frontend**
+## 🎯 **6. Frontend Configuration**
 
-**Desde WSL:**
+**In WSL:**
 ```bash
 cd ~/Monarca/Monarca_Frontend
 
-# Crear archivo .envrc
+# Create .envrc file
 cat > .envrc << 'EOF'
 source $HOME/.nvm/nvm.sh
 nvm use
 EOF
 
-# Permitir direnv
+# Allow direnv
 direnv allow
 
-# Crear .nvmrc
+# Create .nvmrc
 echo "20" > .nvmrc
 
-# Crear archivo .env
+# Create .env file
 echo 'VITE_API_URL=http://localhost:3000' > .env
 
-# Instalar dependencias
+# Install dependencies
 npm install
 
-# Iniciar servidor de desarrollo
+# Start a development server
 npm run dev
 ```
 
-**Frontend corriendo en:** http://localhost:5173
+**Frontend running in:** http://localhost:5173
 
 ---
 
-## 🎯 **7. Configuración del Backend**
+## 🎯 **7. Backend Configuration**
 
-**Desde otra terminal WSL:**
+**In another WSL terminal:**
 ```bash
 cd ~/Monarca/Monarca_Backend/monarca
 
-# Crear archivo .envrc
+# Create .envrc file
 cat > .envrc << 'EOF'
 source $HOME/.nvm/nvm.sh
 nvm use
 EOF
 
-# Permitir direnv
+# Allow direnv
 direnv allow
 
-# Crear .nvmrc
+# Create .nvmrc
 echo "20" > .nvmrc
 
-# Crear archivo .env
+# Create .env file
 cat > .env << 'EOF'
 JWT_SECRET=tu_secreto_jwt_super_seguro_aqui
 POSTGRES_HOST=localhost
@@ -296,57 +297,57 @@ DOWNLOAD_LINK=http://localhost:3000
 FRONTEND_URL=http://localhost:5173
 EOF
 
-# Instalar dependencias
+# Install dependencies 
 npm install
 
-# Iniciar backend (creará las tablas automáticamente)
+# Start backend (creates the tables automatically)
 npm run start:dev
 ```
 
-**Backend corriendo en:** http://localhost:3000
+**Backend running in:** http://localhost:3000
 
 ---
 
-## 🌱 **8. Poblar la Base de Datos**
+## 🌱 **8. Populate the Database**
 
-**Desde otra terminal WSL (esperar a que el backend termine de iniciar):**
+**In another WSL terminal (this should be done AFTER the backend is up and running):**
 ```bash
 cd ~/Monarca/Monarca_Backend/monarca
 npm run db:seed
 ```
 
-> ⏱️ Espera unos 10-15 segundos después de iniciar el backend antes de ejecutar el seed.
+> ⏱️ Wait in between 10 to 15 seconds after starting up the backend before running the seed command.
 
 ---
 
-## ✅ **9. Credenciales de Acceso**
+## ✅ **9. Access Credentials**
 
-**Usuarios disponibles (todos con contraseña: `password`):**
+**Available users (all with the password: `password`):**
 
-| Rol | Email | Contraseña |
+| Role | Email | Password |
 |-----|-------|------------|
 | Requester (Solicitante) | `requester1@monarca.com` | `password` |
 | Requester (Solicitante) | `requester2@monarca.com` | `password` |
 | Approver (Aprobador) | `approver1@monarca.com` | `password` |
-| SOI (Coordinador) | `soi1@monarca.com` | `password` |
-| Travel Agent (Agente) | `travelagent1@monarca.com` | `password` |
+| SOI (Coordinator) | `soi1@monarca.com` | `password` |
+| Travel Agent (Agent) | `travelagent1@monarca.com` | `password` |
 
 ---
 
-## 📝 **Resumen de Servicios Corriendo**
+## 📝 **Summary of Services Running**
 
-| Servicio | URL | Descripción |
+| Service | URL | Description |
 |----------|-----|-------------|
-| **Frontend** | http://localhost:5173 | Aplicación React |
+| **Frontend** | http://localhost:5173 | React App |
 | **Backend** | http://localhost:3000 | API NestJS |
-| **API Docs** | http://localhost:3000/api | Documentación Swagger |
+| **API Docs** | http://localhost:3000/api | Swagger Documentation|
 | **Database** | localhost:25000 | PostgreSQL |
 
 ---
 
-## 🔄 **Comandos Útiles**
+## 🔄 **Useful Commands**
 
-### Reiniciar servicios:
+### Restarting services:
 ```bash
 # Frontend
 cd ~/Monarca/Monarca_Frontend
@@ -357,52 +358,52 @@ cd ~/Monarca/Monarca_Backend/monarca
 npm run start:dev
 ```
 
-### Docker (desde PowerShell):
+### Docker (through PowerShell):
 ```powershell
-# Ver contenedores corriendo
+# See running containers
 docker ps
 
-# Ver todos los contenedores
+# See all containers
 docker ps -a
 
-# Detener contenedor
+# Stop containers
 docker stop monarca_database
 
-# Iniciar contenedor
+# Start containers
 docker start monarca_database
 
-# Ver logs del contenedor
+# See container logs
 docker logs monarca_database
 
-# Reiniciar con compose
-cd <TU_RUTA_WINDOWS>\Monarca_Backend
+# Restart with compose
+cd <YOUR_WINDOWS_ROUTE>\Monarca_Backend
 docker compose restart
 
-# Eliminar contenedor y volúmenes
+# Eliminate container and volumes
 docker compose down -v
 ```
 
-### Resetear base de datos:
+### Restarting Database:
 ```bash
 cd ~/Monarca/Monarca_Backend/monarca
 
-# Eliminar todos los datos
+# Eliminate all data
 npm run db:drop
 
-# Vaciar tablas (mantiene estructura)
+# Empty tables (structure is maintained)
 npm run db:truncate
 
-# Volver a poblar
+# To populate again
 npm run db:seed
 ```
 
 ---
 
-## 🐛 **Solución de Problemas Comunes**
+## 🐛 **Solutions to Common Problems**
 
 ### Error: "Cannot find module @rollup/rollup-linux-x64-gnu"
-**Causa:** Dependencias instaladas en Windows no son compatibles con WSL.  
-**Solución:**
+**Cause**: The dependencies installed in windows are not compatible with WSL 
+**Solution:**
 ```bash
 cd ~/Monarca/Monarca_Frontend
 rm -rf node_modules package-lock.json
@@ -410,64 +411,64 @@ npm install
 ```
 
 ### Error: "EPERM: operation not permitted"
-**Causa:** Estás trabajando en `/mnt/<unidad>/` (sistema de archivos de Windows montado) en lugar del sistema de archivos de Linux.  
-**Solución:** Asegúrate de estar en `~/Monarca/` ejecutando `pwd`. Debe mostrar `/home/<tu_usuario>/Monarca/...` y **NO** `/mnt/...`
+**Cause**: You're working in `“/mnt/<unit>/”` (mounted windows file system) instead of the file system of linux.
+**Solution:** Make sure you're in `~/Monarca/` executing `pwd`. It should show `/home/<tu_usuario>/Monarca/`... and NOT `/mnt/…`
 
 ### Error: "relation 'users' does not exist"
-**Causa:** Las tablas no se crearon o `synchronize` está en `false`.  
-**Solución:**
-1. Verificar que `synchronize: true` en `app.module.ts`
-2. Reiniciar el backend (`Ctrl+C` y `npm run start:dev`)
-3. Esperar a que inicie completamente
-4. Ejecutar `npm run db:seed`
+**Causa:** Cause: The tables did not get created or `“synchronize”` is set to `false`. 
+**Solution:**
+1. Verify that synchronize is set to `true` in `app.module.ts`
+2. Restart the backend (`CTRL + C` and `npm run start:dev`)
+3. Wait for a full start
+4. Execute `npm run db:seed`
 
 ### Error: "Unable to connect to the database"
-**Causa:** Docker no está corriendo o no es accesible desde WSL.  
-**Solución:**
+**Cause**: Docker is not running or not accessible by WSL.
+**Solution:**
 ```powershell
-# Desde PowerShell
+# In PowerShell
 docker ps
 docker start monarca_database
 
-# Esperar 10 segundos y desde WSL
+# Wait 10 second and from WSL
 cd ~/Monarca/Monarca_Backend/monarca
 npm run start:dev
 ```
 
-### Backend se reinicia constantemente
-**Causa:** Error de TypeScript en los archivos modificados.  
-**Solución:** Verificar que los cambios en `main.ts` y `app.module.ts` se copiaron correctamente desde Windows a la carpeta de Linux.
+### Backend Constantly Restarts
+**Cause**: TypeScript error in the modified files.
+**Solution:** Verify that the changes done in `main.ts` and `app.module.ts` are copied correctly from windows to the linux folder.
 
 ---
 
-## 📚 **Referencias Adicionales**
+## 📚 **Additional References**
 
-- [Documentación oficial NestJS](https://docs.nestjs.com/)
-- [Documentación oficial Vite](https://vitejs.dev/)
+- [Official NestJS Documentation](https://docs.nestjs.com/)
+- [Official Vite Documentation](https://vitejs.dev/)
 - [TypeORM Documentation](https://typeorm.io/)
 - [Docker Desktop WSL 2 backend](https://docs.docker.com/desktop/wsl/)
 
 ---
 
-## 🤝 **Contribuciones**
+## 🤝 **Contributions**
 
-Para más información sobre cómo contribuir al proyecto, consulta [CONTRIBUTING.md](./monarca/CONTRIBUTING.md)
-
----
-
-## 📄 **Licencia**
-
-Este proyecto es privado y confidencial de 02 Solutions.
+For more information about how you can contribute to the project, please direct yourself to [CONTRIBUTING.md](./monarca/CONTRIBUTING.md)
 
 ---
 
-## 🔐 **10. Configuración de Git en WSL**
+## 📄 **License**
 
-> ⚠️ **Importante:** Si planeas hacer commits y push desde WSL, necesitas configurar Git correctamente para evitar problemas con line endings (CRLF vs LF) y SSH keys.
+This project is private and confidential to 02 Solutions.
 
-### 10.1 Configurar Git para Line Endings
+---
 
-**Desde WSL:**
+## 🔐 **10. GIT Configuration in WSL**
+
+> ⚠️ **Important**: If you plan to make commits and push through WSL, you need to configure git correctly to avoid line problems (CLRF vs LF) and SSH keys
+
+### 10.1 GIT Configuration for Line Endings
+
+**In WSL:**
 ```bash
 # Backend
 cd ~/Monarca/Monarca_Backend
@@ -480,13 +481,13 @@ git config core.autocrlf input
 git config core.fileMode false
 ```
 
-**¿Qué hace esto?**
-- `autocrlf input`: Convierte CRLF (Windows) a LF (Linux) automáticamente al hacer commit
-- `fileMode false`: Ignora cambios de permisos de archivos (que difieren entre Windows y Linux)
+**What does this do?**
+- `autocrlf input`: Converts CRLF (windows) into LF (linux) automatically when a commit is done
+- `fileMode false`: Ignores changes for file permissions (which differs in Windows and Linux)
 
-### 10.2 Sincronizar Repositorios con Remoto
+### 10.2 Syncing Repositories with Remote
 
-Si copiaste los archivos desde Windows y Git muestra cambios falsos:
+If you copied the files from windows and GIT shows false changes:
 
 ```bash
 # Backend
@@ -500,165 +501,165 @@ git fetch origin
 git reset --hard origin/main
 ```
 
-> ⚠️ **Advertencia:** `git reset --hard` eliminará cualquier cambio local no commiteado. Asegúrate de haber guardado todo lo que necesitas.
+> ⚠️ **Warning**: `“git reset —hard”` will eliminate any changes in local that have not been committed. Please make sure to have saved everything that you need.
 
-### 10.3 Configurar SSH Key para GitHub
+### 10.3 Setting up SSH Key for Github
 
-**Opción A: Copiar tu SSH key existente de Windows (Recomendado)**
+**Option A: Copy your existent SSH key from Windows (Recommended)**
 
 ```bash
-# Verificar qué keys tienes en Windows (reemplaza TU_USUARIO por tu nombre de usuario)
-ls /mnt/c/Users/TU_USUARIO/.ssh/
+# Verify what keys you have in windows (replace YOUR_USER with your github usernamer)
+ls /mnt/c/Users/YOUR_USER/.ssh/
 
-# Copiar key de Windows a WSL
+# Copy windows key to WSL
 mkdir -p ~/.ssh
-cp /mnt/c/Users/TU_USUARIO/.ssh/id_ed25519 ~/.ssh/
-cp /mnt/c/Users/TU_USUARIO/.ssh/id_ed25519.pub ~/.ssh/
+cp /mnt/c/Users/YOUR_USER/.ssh/id_ed25519 ~/.ssh/
+cp /mnt/c/Users/YOUR_USER/.ssh/id_ed25519.pub ~/.ssh/
 
-# Configurar permisos correctos
+# Setting up correct permissions
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/id_ed25519
 chmod 644 ~/.ssh/id_ed25519.pub
 
-# Agregar GitHub a known_hosts
+# Add GitHub to known_hosts
 ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
-# Probar conexión
+# Test connection
 ssh -T git@github.com
 ```
 
-**Opción B: Crear una nueva SSH key en WSL**
+**Option B: Create a new SSH key in WSL**
 
 ```bash
-# Generar nueva key
-ssh-keygen -t ed25519 -C "tu_email@example.com"
+# Generates new key
+ssh-keygen -t ed25519 -C "your_email@example.com"
 
-# Copiar la clave pública
+# Copy the public key
 cat ~/.ssh/id_ed25519.pub
 
-# Agregar GitHub a known_hosts
+# Add GitHub to known_hosts
 ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 ```
 
-Luego agregar la clave pública a GitHub:
-1. Ir a https://github.com/settings/keys
+After adding the public key to GitHub:
+1. Go to https://github.com/settings/keys
 2. Click "New SSH key"
-3. Pegar el contenido de `id_ed25519.pub`
-4. Guardar
+3. Paste the content from `id_ed25519.pub`
+4. Save
 
-### 10.4 Flujo de Trabajo con Git desde WSL
+### 10.4 Workflow with GIT through WSL
 
 ```bash
-# Ejemplo de workflow completo
+# Example of a complete workflow
 cd ~/Monarca/Monarca_Backend
 
-# Ver estado
+# View status
 git status
 
-# Crear rama
-git checkout -b feature/mi-nueva-funcionalidad
+# Create branch
+git checkout -b feature/my-new-functionality
 
-# ... hacer cambios en archivos ...
+# ... make changes in files...
 
-# Agregar cambios
+# Add changes
 git add .
 
 # Commit
-git commit -m "feat: descripción del cambio"
+git commit -m "feat: description of changes"
 
 # Push
-git push origin feature/mi-nueva-funcionalidad
+git push origin feature/my-new-functionality
 ```
 
-### 10.5 Mantener Sincronización entre Windows y WSL
+### 10.5 Maintaining synchronization between windows and WSL
 
-**Recomendación:** Elige UNO de los siguientes enfoques:
+**Recommendation**: Choose ONE of the following:
 
-**Enfoque A: Trabajar SOLO en WSL** ✅ **(Recomendado)**
-- Todos los cambios y commits desde `~/Monarca/`
-- No necesitas sincronizar con Windows
-- Sin problemas de line endings
+**Point A: Work ONLY in WSL** ✅ **(Recommended)**
+- All changes and commits through `~/Monarca/`
+- No need for synchronization with Windows
+- No problems of line endings
 
-**Enfoque B: Trabajar en ambos sistemas** ⚠️ **(No recomendado)**
-- Requiere sincronización manual constante
-- Propenso a conflictos de line endings
-- Si debes hacerlo, siempre haz `git pull` antes de cambiar de sistema
+**Point B: Work on both systems** ⚠️ **(AT YOUR OWN RISK)**
+- Requires constant manual synchronization
+- Prone to line ending conflicts 
+- If you need to, always do git pull before changing systems
 
 ---
 
-## 🔄 **11. Comandos Git Útiles**
+## 🔄 **11. Useful GIT Commands**
 
 ```bash
-# Ver diferencias sin considerar line endings
+# See differences without considering line endings
 git diff --ignore-cr-at-eol
 
-# Ver ramas
+# View branches
 git branch -a
 
-# Actualizar desde remoto
+# Update through remote
 git pull origin main
 
-# Ver historial
+# View history
 git log --oneline
 
-# Cambiar de rama
+# Change branch
 git checkout nombre-rama
 
-# Ver remotes configurados
+# View remote configurations
 git remote -v
 
-# Verificar configuración de Git
+# Verify GIT configuration
 git config --list
 ```
 
 ---
 
-## 🚨 **Solución de Problemas - Git**
+## 🚨 **Solution to problems - GIT**
 
-### Problema: Git muestra archivos modificados pero no lo están
+### Problem: GIT shows modified files but they are not
 
-**Causa:** Diferencia in line endings (CRLF vs LF)
+**Cause:** Difference in line endings (CRLF vs LF)
 
-**Solución:**
+**Solution:**
 ```bash
 cd ~/Monarca/Monarca_Backend
 git config core.autocrlf input
 git reset --hard HEAD
 ```
 
-### Problema: Permission denied al hacer push
+### Problem: Permission denied when git push is done
 
-**Causa:** SSH key no configurada o no agregada a GitHub
+**Cause:** SSH key is not configured or not added in GitHub
 
-**Solución:**
+**Solution:**
 ```bash
-# Verificar que la key existe
+# Verify that the key exists
 ls ~/.ssh/id_ed25519
 
-# Probar conexión
+# Test connection
 ssh -T git@github.com
 
-# Si falla, verifica que la key esté en GitHub
+# If it fails, verify that the key is in Github
 cat ~/.ssh/id_ed25519.pub
 ```
 
-### Problema: Agent admitted failure to sign al hacer push
+### Problem: Agent admitted failure to sign when push is done
 
-**Causa:** SSH key con passphrase pero sin agente SSH
+**Cause**: SSH key has passphrase but without an SSH agent
 
-**Solución:**
+**Solution:**
 ```bash
-# Iniciar agente SSH (temporal, válido hasta cerrar terminal)
+# Start SSH agent (temporary valid until terminal is closed)
 eval $(ssh-agent -s)
 ssh-add ~/.ssh/id_ed25519
 
-# Ahora hacer push
+# Now push
 git push
 ```
 
-### Problema: Repositorio en Windows está más actualizado que WSL
+### Problem: Windows repository is more up-to-date than the WSL one
 
-**Solución:**
+**Solution:**
 ```bash
 cd ~/Monarca/Monarca_Backend
 git fetch origin
