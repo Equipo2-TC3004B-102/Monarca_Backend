@@ -131,3 +131,4 @@ Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 - [ ] El código sigue los estándares de formato y estilo
 - [ ] El commit sigue la convención (`feat:`, `fix:`, etc.)
 - [ ] Se ha actualizado la documentación (si aplica)
+fñalsdjkfa
