@@ -1,3 +1,13 @@
+/**
+ * FileName: vouchers.controller
+ * Description: REST controller for Voucher operations. Exposes endpoints for
+ *              uploading, retrieving, updating, approving, and denying vouchers.
+ *              All routes are protected by AuthGuard and PermissionsGuard.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Get,
@@ -27,7 +37,13 @@ import { PermissionsGuard } from 'src/guards/permissions.guard';
 export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 
-  // Create a new voucher
+  /**
+   * uploadVoucher - Handles PDF/XML file upload and creates a new voucher record.
+   * Input: req (RequestInterface) - session info used to extract the authenticated user ID;
+   *        files - uploaded PDF and/or XML files via multipart form data;
+   *        dto (CreateVoucherDto) - voucher metadata (class, amount, currency, tax type, date, status).
+   * Output: Promise<Voucher> - the newly created and persisted voucher record.
+   */
   @UseInterceptors(UploadPdfInterceptor())
   @Post('upload')
   async uploadVoucher(
@@ -70,13 +86,21 @@ export class VouchersController {
     );
   }
 
-  // Get all vouchers
+  /**
+   * findAll - Retrieves all vouchers stored in the database.
+   * Input: None
+   * Output: Promise<Voucher[]> - array of all voucher records.
+   */
   @Get()
   async findAll(): Promise<Voucher[]> {
     return this.vouchersService.findAll();
   }
 
-  // Get a single voucher by its ID
+  /**
+   * findByRequest - Retrieves all vouchers linked to a specific travel request.
+   * Input: requestId (string) - UUID of the travel request to filter vouchers by.
+   * Output: Promise<Voucher[]> - array of vouchers associated with the given request ID.
+   */
   @Get(':requestId')
   async findByRequest(
     @Param('requestId') requestId: string
@@ -85,7 +109,12 @@ export class VouchersController {
   }
   
 
-  // Update an existing voucher
+  /**
+   * update - Partially updates an existing voucher's fields by its UUID.
+   * Input: id (string) - UUID of the voucher to update;
+   *        updateVoucherDto (UpdateVoucherDto) - optional fields to apply (all fields are optional).
+   * Output: Promise<Voucher> - the updated voucher record.
+   */
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -95,6 +124,11 @@ export class VouchersController {
   }
 
 
+  /**
+   * approve - Marks a voucher as approved by updating its status field.
+   * Input: id (string) - UUID of the voucher to approve.
+   * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
+   */
   @Patch(':id/approve')
   async approve(
     @Param('id') id: string,
@@ -102,6 +136,11 @@ export class VouchersController {
     return this.vouchersService.approve(id);
   }
 
+  /**
+   * deny - Marks a voucher as denied by updating its status field.
+   * Input: id (string) - UUID of the voucher to deny.
+   * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
+   */
   @Patch(':id/deny')
   async deny(
     @Param('id') id: string,

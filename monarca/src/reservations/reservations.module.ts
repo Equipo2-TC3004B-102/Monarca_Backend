@@ -1,3 +1,13 @@
+/**
+ * FileName: reservations.module
+ * Description: NestJS module that registers ReservationsController and ReservationsService,
+ *              imports the TypeORM repository for the Reservation entity, and includes
+ *              RequestsModule and GuardsModule for business-logic checks and route protection.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Module } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { ReservationsController } from './reservations.controller';
