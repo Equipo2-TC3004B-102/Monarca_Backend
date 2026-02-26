@@ -1,3 +1,12 @@
+/**
+ * FileName: create-revision.dto
+ * Description: Data Transfer Object for creating a new revision. Defines and validates
+ *              the fields required when an admin submits feedback comments on a travel request.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
