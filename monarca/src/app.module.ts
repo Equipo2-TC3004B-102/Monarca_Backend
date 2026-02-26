@@ -1,5 +1,14 @@
-import { Module } from '@nestjs/common';
+/**
+ * FileName: app.module.ts
+ * Description: Root module of the Monarca application. Imports and registers all
+ *              feature modules, configures TypeORM with PostgreSQL, and sets up
+ *              static file serving for uploaded files.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
 
+import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -58,9 +67,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
-      port: process.env.POSTGRES_PORT
-        ? parseInt(process.env.POSTGRES_PORT, 10)
-        : 5433,
+      port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT, 10) : 5433,
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DATABASE,

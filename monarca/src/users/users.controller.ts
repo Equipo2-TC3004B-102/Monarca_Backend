@@ -1,3 +1,13 @@
+/**
+ * FileName: users.controller.ts
+ * Description: Controller for user endpoints. Handles read and write operations:
+ *              findAll (GET /users), findOne (GET /users/:id),
+ *              update (PATCH /users/:id) and remove (DELETE /users/:id).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Body,
   Controller,

@@ -1,3 +1,13 @@
+/**
+ * FileName: main.ts
+ * Description: Entry point of the Monarca NestJS application. Bootstraps the app,
+ *              configures CORS, cookie parser, validation pipes, HTTPS (if certificates
+ *              are present), and sets up Swagger API documentation.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -13,7 +23,7 @@ async function bootstrap() {
   // Read SSL certificate and key files if they exist
   const keyPath = 'certs/backend-key.pem';
   const certPath = 'certs/backend.pem';
-  
+
   const options: any = {};
 
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
@@ -22,14 +32,13 @@ async function bootstrap() {
       cert: fs.readFileSync(certPath),
     };
   }
-  
 
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
     options,
   );
 
-  // Habilitar CORS para permitir peticiones desde el origen del frontend
+  // Enable CORS to allow requests from the frontend origin
   app.enableCors({
     origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
