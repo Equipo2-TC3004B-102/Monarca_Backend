@@ -10,16 +10,23 @@ import * as https from 'https';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  // Read SSL certificate and key files
-  const httpsOptions = {
-    key: fs.readFileSync('certs/backend-key.pem'),
-    cert: fs.readFileSync('certs/backend.pem'),
-  };
+  // Read SSL certificate and key files if they exist
+  const keyPath = 'certs/backend-key.pem';
+  const certPath = 'certs/backend.pem';
+  
+  const options: any = {};
+
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    options.httpsOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+  }
+  
+
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
-    {
-      httpsOptions,
-    },
+    options,
   );
 
   // Habilitar CORS para permitir peticiones desde el origen del frontend

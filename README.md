@@ -4,70 +4,71 @@ _Innovación en Tecnologías de la Información para Soluciones Empresariales Av
 
 <img src="./Contenido%2002%20Solutions/logo.jpeg" alt="Logo de 02 Solutions" width="300" height="300"/>
 
-## 📚 Tabla de Contenido
+## 📚 Table of contents
 
-- [Introducción](#-introducción)
-- [Visión](#-visión)
-- [Misión](#-misión)
-- [Valores](#-valores)
-- [📌 Proyecto Monarca](#proyecto-monarca-sistema-integral-de-gestión-de-viajes-empresariales)
-- [🚀 Guía de Inicialización](#-guía-de-inicialización)
-  - [🛠️ Requisitos y Herramientas](#️-instalación-del-entorno-de-desarrollo)
-  - [📥 Instalación del Proyecto](#-instalación-del-proyecto)
-  - [🐳 Inicio y gestión de los servicios Docker (PostgreSQL)](#-inicio-y-gestión-de-los-servicios-docker-postgresql)
-  - [🔁 Reinicializar la Base de Datos](#-reinicializar-la-base-de-datos)
-- [🧪 Pruebas](#-ejecutar-pruebas-end-to-end)
-- [📑 Documentación API](#-documentación-de-los-endpoints-con-openapi)
+- [Introduction]
+- [Vision]
+- [Mission]
+- [Values]
+- [📌 Proyecto Monarca]
+- [🚀 Installation guides]
+  - [🛠️ Requisitos y Herramientas]
+  - [📥 Installation of the project]
+  - [🐳 Starting and managing Docker services (PostgreSQL)]
+  - [🔁 How to restart the Database]
+- [🧪 Tests]
+- [📑 API documentation]
 
 
-## 📌 Introducción
+## 📌 Introduction
 
-Bienvenido al repositorio oficial de **02 Solutions**, una compañía especializada en el desarrollo de **soluciones avanzadas de tecnologías de la información**, dedicada a impulsar la transformación digital de las empresas a través de herramientas innovadoras, escalables y personalizables.
-
-Este repositorio forma parte de **Proyecto Monarca**, una iniciativa estratégica diseñada para revolucionar la gestión de viajes empresariales mediante una plataforma integral, segura y altamente adaptable.
+Welcome to the official repository of 02 Solutions, a company that specializes in the development of advanced informational technologies solutions, dedicated to impulsing a digital transformation to companies through innovative tools, which are personalized and scalable.
 
 ---
 
-## 🎯 Visión
+## 🎯 Vision
 
-**“Convertirnos en líderes globales en el desarrollo de soluciones tecnológicas innovadoras, flexibles y escalables, que impulsen la transformación digital y la eficiencia operativa de empresas en diversas industrias.”**
+**“To convert us in global leaders in the development of innovative, flexible and scalable technological solutions, that impulse the digital transformation and the operative efficiency of companies in diverse industries.”**
 
-Esta visión guía nuestro crecimiento y nos motiva a innovar continuamente en la creación de herramientas tecnológicas que aporten valor real a nuestros clientes.
-
----
-
-## 💼 Misión
-
-**“Diseñar e implementar soluciones avanzadas de tecnologías de la información que optimicen procesos empresariales, fomenten la innovación y generen un impacto positivo y sostenible en las organizaciones.”**
-
-Nuestra misión impulsa el desarrollo de plataformas personalizables y escalables, orientadas a resolver desafíos empresariales complejos a través de la tecnología.
+This vision will guide us in our growth and motivates us to continue innovating the creation of technological tools that give real value to our clients
 
 ---
 
-## 💎 Valores
+## 💼 Mission
 
-En **02 Solutions**, nuestros valores son el cimiento de cada decisión y desarrollo que llevamos a cabo:
+**“Design and implement advanced solutions in information technology that optimize corporate processes, fortify the innovation and generate a positive impact which is sustainable in the organizations.”**
 
-1. **Innovación:** Buscamos soluciones disruptivas y creativas que resuelvan desafíos reales.
-2. **Flexibilidad:** Nos adaptamos a las necesidades específicas de cada cliente, sin restricciones rígidas.
-3. **Transparencia:** Fomentamos una comunicación clara y abierta, tanto interna como externamente.
-4. **Colaboración:** Creemos en el trabajo en equipo como motor clave para lograr grandes resultados.
-5. **Calidad:** Nos comprometemos a ofrecer productos y servicios con los más altos estándares.
-6. **Seguridad:** Protegemos la información y los datos con protocolos sólidos y actualizados.
-7. **Compromiso:** Trabajamos con dedicación y responsabilidad para alcanzar nuestros objetivos comunes.
+Our mission impulses the development of personalized and scalable solutions, which are oriented towards solving complex corporate challenges through technology
 
 ---
 
-## **Proyecto Monarca:** Sistema integral de gestión de viajes empresariales
+## 💎 Values
 
-**¿Por qué "Monarca"?**  
-El nombre hace referencia a las icónicas migraciones de las mariposas monarca, que recorren miles de kilómetros en un viaje complejo y perfectamente coordinado. Este paralelismo representa la esencia del proyecto: facilitar, optimizar y coordinar los viajes empresariales con la misma precisión y fluidez que las migraciones de estas mariposas.
+In **02 Solutions**, our values are in the back-bone of each decision and development process we go through:
 
-**Monarca** refleja nuestro compromiso por crear soluciones que no solo optimicen procesos, sino que también brinden experiencias fluidas y eficientes para todos los usuarios involucrados.
+1. Innovation: We look for disruptive and creative solutions that solves real life challenges
+2. Flexibility: We adapt to the specific necessities of each client, without rigid restrictions 
+3. Transparency: We build a clear and open communication with ourselves as well as our clients
+4. Collaborating: We believe in team work like a car engine to achieve great results
+5. Quality: We commit to offer products and services to the highest standards
+6. Security: We protect the information and data with solid updated protocols 
+7. Compromise: We work with dedication and responsibility to reach our common goals
 
-Esta plataforma actuará como nuestro **"Single Repository of Truth"**, garantizando que toda la información oficial y decisiones relevantes estén centralizadas y accesibles para todos los miembros del equipo.
 
-La gestión de viajes corporativos suele estar limitada por sistemas costosos, inflexibles y difíciles de personalizar. Nuestra misión con **Monarca** es cambiar esa narrativa, creando una solución tecnológica libre de estas barreras, capaz de adaptarse a las necesidades específicas de cada organización.
+---
+
+## **Proyecto Monarca**: Comprehensive business travel management system
+
+Why **Monarca**?
+
+The name makes reference to the iconic migrations of the monarch butterflies, which travel thousands of kilometers in a perfectly coordinated trip. This parallelism represents the essence of the project: facilitating, optimizing and coordinating corporate flights with the same precision and fluidness as the migrations of these butterflies. 
+
+“Monarca” reflects our commitment to create solutions that not only optimize processes, but also provide seamless and efficient experiences for all involved users.
+
+This platform will act as our “Single Repository of Truth”, guaranteeing that all official information and relevant decisions will be centralized and accessible to all group members
+
+Corporate travel management can be limited due to high system costs, difficult to personalize and inflexibility. Our mission here at “Monarca” is to change that narrative, by creating a technological solution that is free of these constraints and capable of adapting to the needs specified from each company.
+
 
 ---
 
@@ -75,240 +76,247 @@ La gestión de viajes corporativos suele estar limitada por sistemas costosos, i
 
 Framework: NestJS
 
-Base de datos: PostgreSQL
+DataBase: PostreSQL
 
 ORM: TypeORM
 
-Autenticación: JWT
+Authentication: JWT
 
-Estructura de carpetas: modular (cada dominio en su propio módulo)
+
+File structure
 
 ```md
 src/
-├─ auth/               # Login, registro, refresh tokens
-├─ jwt/                # Estrategias y guards de JWT
-├─ guards/             # Guards genéricos (RolesGuard, etc.)
-├─ users/              # CRUD de usuarios
-├─ roles/              # Gestión de roles y permisos
-├─ departments/        # Unidades organizacionales
-├─ cost-centers/       # Centros de costo, asignaciones presupuestales
-├─ travel-agencies/    # Agencias de viaje externas
-├─ destinations/       # Ciudades y destinos disponibles
-├─ requests/           # Solicitudes de viaje
-├─ revisions/          # Flujos de aprobación y revisiones
-├─ reservations/       # Reservaciones (hoteles, vuelos)
-├─ vouchers/           # Vales / comprobantes
-├─ request-logs/       # Historial de acciones sobre solicitudes
-├─ user-logs/          # Historial de actividad de usuarios
-├─ utils/              # Helpers, filtros, pipes
-├─ app.module.ts       # Módulo raíz
-└─ main.ts             # Punto de entrada
+├─ auth/               # Login, register, refresh tokens
+├─ jwt/                # JWT strategies and guards
+├─ guards/             # Generic guards (RolesGuard, etc.)
+├─ users/              # User CRUD
+├─ roles/              # Role and permission management
+├─ departments/        # Organizational units
+├─ cost-centers/       # Cost centers, budget allocations
+├─ travel-agencies/    # External travel agencies
+├─ destinations/       # Available city destinations
+├─ requests/           # Travel requests
+├─ revisions/          # Approval and review workflows
+├─ reservations/       # Reservations (hotels, flights)
+├─ vouchers/           # Vouchers/Receipts 
+├─ request-logs/       # History of actions on requests
+├─ user-logs/          # HIstory of user activity
+├─ utils/              # Helpers, filters, pipes
+├─ app.module.ts       # Root module
+└─ main.ts             # Entry point
 ```
 
 ---
 # 🚀 **Guía de Inicialización**
 
 ## 🛠️ Instalación del Entorno de Desarrollo
-### Requisitos
+### Requirements
 
-- Node.js (usamos `nvm` para manejar versiones)
-- `npm` (Node Package Manager)
-- `direnv`
+- Node.js (we use NVM to manage versions)
+- npm (Node Package Manager)
+- direnv
+When you enter the repository, run “direnv allow” if it’s the first time
 
-## Instalación de herramientas
-Instalar **direnv**
+**How to Install**
+In MacOS: brew install direnv
 
-- macOS: `brew install direnv`
+Add the following hook to your shell/terminal
 
-Agrega el siguiente hook a tu shell:
-```bash
-# Bash
+**If in Bash**
+
+```
 echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+```
 
-# Zsh
+**If in Zsh**
+
+```
 echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
 ```
 
-Habilitar **direnv** para este repositorio (desde `Monarca_Backend/monarca`):
-```bash
+Enable direnv in this repository by using:
+```
 direnv allow
 ```
-> Al entrar al repositorio, corre `direnv allow` si es la primera vez despues de la descarga.
 
-Instalar **nvm** y **Node.js** (solo si no están instalados previamente)
-```bash
+Install nvm and node.js
+For NVM:
+```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-source ~/.bashrc # o ~/.zshrc según tu shell
 ```
 
-## 📥 Instalación del Proyecto
+source ~/.bashrc # or ~/.zshrc (depending on your shell)
 
-Dentro de la carpeta `Monarca_Backend/monarca` corre el siguiente comando para descargar las dependencias necesarias:
-
-```bash
-npm install
+```
+nvm install
 ```
 
-### Levantar en local
-
-Para iniciar el proyecto en modo desarrollo, corre:
-
-```bash
-npm run start:dev
+**Installing the Project**
+```
+npm Install
 ```
 
-### Variables de entorno
-Crear un archivo `.env` con el contenido especificado en el `.env.example`:
+After that we want to activate a local host by doing the following:
+```
+npm run dev
+```
 
-> Son credenciales necesarias que la base de datos utiliza
+**Environment Variables**
+Create an “.env” file with the content specified in the “.env.example” file
 
-## 🐳 Inicio y gestión de los servicios Docker (PostgreSQL)
+VITE_API_URL=
 
-**Construir la imagen Docker (solo una vez si no existe):**
 
-Desde la terminal, navega al directorio `Monarca_Backend/DB` y ejecuta el siguiente comando:
+> These are credentials the database uses
+
+## 🐳 Starting and managing Docker services (PostgreSQL)
+
+**Building the docker image (only if it doesn’t exist):**
+
+Through the terminal, go to “Monarca_Backend/DB”, if you are at that level, execute the following command:
 
 ```bash
 docker build -t monarca-v1 .
 ```
 
-> Esto construirá una imagen de Docker llamada monarca-v1, la cual debería aparecer en la sección de Images en Docker Desktop.
+> This build a Docker image called “monarca-v1”, which should appear in the image section in the Docker Desktop.
 
 ---
-**Levantar los servicios con Docker Compose:**
+**Starting the services with Docker Compose:**
 
-Desde el root del proyecto `Monarca_Backend`, ejecuta:
+From the root of the project “Monarca Backend”, execute:
 
 ```bash
 docker compose up -d
 ```
 
-> Esto iniciará los contenedores definidos en el archivo docker-compose.yaml y generará automáticamente una carpeta llamada `postgres` dentro de `Monarca_Backend/BD`, la cual contendrá los datos de la base de datos
+> This starts up the containers defined in the folder “docker-compose.yaml” and will automatically generate a folder called “postgres” inside the “Monarca_Backend/DB” path, which will contain all of the data for the database
 
-Alternativa: también se puede iniciar el contenedor desde Docker Desktop, desde la pestaña Containers y haciendo clic en Start sobre el contenedor correspondiente.
+Alternatively you can boot up the container through the Docker desktop, through the containers window and pressing click in Start over the corresponding button
 
 ---
-**Detener los contenedores**
+**Stopping the containers**
 
-Para detener los contenedores desde la terminal ejecuta:
+To stop the containers through the terminal, run the following command:
 
 ```bash
-# Detiene todos los contenedores
+# Stops all containers
 docker compose stop
 
-# Alternativa: detener un contenedor específico por su nombre
-docker stop <nombre_del_contenedor> # monarca_database
+# Stops a specific container
+docker stop <name_of_the_container>
 ```
-> Esto detiene los contenedores, pero no los elimina ni borra los datos.
+> This stops the containers, but doesn’t delete and erase its data.
 
-También se puede apagar desde Docker Desktop haciendo clic en Stop en la interfaz.
+You can also stop the system by pressing in the “Stop” button in the docker desktop.
 
 ---
-**Reiniciar los contenedores detenidos**
+**Restarting stopped containers**
 
-Para volver a inicializar los contenedores ya creados desde la terminal ejecuta:
+To restart the containers already created, execute the following:
 
 ```bash
-# Inicializa todos los contenedores
+# Starts everything back up
 docker compose start
 
-# Alternativa: inicializar un contenedor específico por su nombre
-docker start <nombre_del_contenedor> # monarca_database
+# Starts a specific container
+docker start <name_of_the_container>
 ```
-> Reiniciará todos los contenedores previamente creados por Docker Compose.
+> This restarts all containers that were already created by the docker compose.
 
-También se puede realizar desde Docker Desktop con el botón Start.
+You can also start them by pressing the “Start” button in the desktop.
 
 
-## Opciones para el acceso hacia la base de datos
+## Access options to enter the database
 
-### Opción A: Usando pgAdmin
+### Option A: Using pgAdmin
 
-Desde la aplicacion de pgAdmin, configura un nuevo servidor con los siguientes parametros:
-   - **Nombre del servidor:** `MonarcaDB` - (puede ser cualquier otro nombre)
-   - **Host:** `localhost`
-   - **Puerto:** `25000` - (verificar el puerto en `compose.yaml` si este no funciona)
-   - **Usuario:** `postgres` - (por defecto, a menos que se indique lo contrario)
-   - **Contraseña:** `test123` - (verificar `POSTGRES_PASSWORD` en `compose.yaml` si este no funciona)
+Through the pgAdmin app, we need to configure a new server using the following parameters:
+- Name of server: MonarcaDB - (can be whatever name you want)
+- Host: localhost
+- Port: 25000 - (To verify the port, go to compose.yaml)
+- User: postgres - (by default, unless indicated otherwise)
+- Password: test123 - (if it doesn’t work, verify through “POSTGRES_PASSWORD” in compose.yaml)
 
-### Opción B: Solo desde la Terminal (sin pgAdmin)
 
-**Acceder directamente a la base de datos desde la terminal de docker:**
+### Option B: Through the terminal (no pgAdmin)
+
+**Direct access to the database through the docker terminal:**
 
 ```bash
-# docker exec -it <nombre del contenedor> psql -U <usuario DB> -d <nombre de la DB>
+# docker exec -it <name of container> psql -U <DB user> -d <DB name>
 
 docker exec -it monarca_database psql -U postgres -d Monarca
 ```
-> Este comando te da acceso directo a la consola interactiva de PostgreSQL dentro del contenedor de Docker, conectado a la base de datos Monarca como el usuario postgres.
+> This command gives u direct access to the interactive PostgreSQL console inside the docker container, connecting to the Monarca database as the user “postgres”.
 
 
-## Insertar Datos
-Dentro de la terminal en la carpeta `Monarca_Backend/monarca` corre el siguiente comando:
-
-```bash
-npm run db:seed
-```
-
-> Este comando inserta los dummy data asignados en la carpeta de seed en la base de datos
-
-
-## 🔁 Reinicializar la Base de Datos
-
-
-
-### Opción A: Reinicio sin eliminar el contenedor
-
-1. **Ejecutar la eliminación del contenido actual:**
-
-```bash
-# Si se necesita eliminar todos los datos
-npm run db:drop
-
-# si solo se requiere vaciar las tablas
-npm run db:truncate
-```
-2. **Volver a insertar los datos de prueba (dummy data):**
+## Inserting data
+Inside the terminal in the folder “Monarca_Backend/monarca”, run the following command:
 
 ```bash
 npm run db:seed
 ```
-> Estos comandos deben ejecutarse desde la carpeta `Monarca_Backend/monarca`.
 
-### Opción B: Reinicio completo (contenedor y base de datos)
+> This command inserts dummy data in the seed folder into the database
+
+
+## 🔁 Restarting the database
+
+
+
+### Option A: Restart without eliminating the container
+
+1. **Eliminate the current content:**
+
+```bash
+if you need to eliminate all of the data 
+- npm run db:drop
+if you only need to erase the tables
+- npm run db:truncate
+
+```
+2. **Insert the dummy data again:**
+
+```bash
+npm run db:seed
+```
+> These commands need to be executed in the folder `Monarca_Backend/monarca`.
+
+### Option B: Full restart 
 
 1. **Eliminar la carpeta de datos:**
 
-Elimina manualmente o desde la terminal la carpeta postgres ubicada en Monarca_Backend/BD
+Eliminate the database folder manually through the terminal, the folder you want deleted is the folder “postgres” located in Monarca_Backend/DB
 
 ```bash
 rm -rf Monarca_Backend/BD/postgres
 ```
 
-2. **Levantar nuevamente los contenedores:**
+2. **Reactivate the containers again by executing:**
 
-Desde el root de Monarca_Backend, ejecuta nuevamente
+In the Monarca_Backend root, execute again
 
 ```bash
 docker compose up -d
 ```
-> Esto recreará la base de datos desde cero, incluyendo una nueva carpeta postgres.
+> This recreate the database from 0, this also includes a new postgres folder.
 
-3. **Ejecutar los datos de prueba (dummy data):**
+3. **Reupload the dummy data :**
 
-Desde la carpeta de `Monarca_Backend/monarca`, ejecuta:
+In the folder `Monarca_Backend/monarca`, execute:
 
 ```bash
 npm run db:seed
 ```
-Inserta nuevamente el dummy data
+This inserts the dummy data again
 
 
 
-## 🧪 Ejecutar Pruebas End-to-End
+## 🧪 End-to-End tests
 
-Para ejecutar las pruebas end-to-end, navega a la carpeta `Monarca_Backend/monarca` y corre el siguiente comando:
+To run end-to-end tests, go to the folder “Monarca_Backend/monarca” and run the following command:
 
 ```bash
 npm run test:e2e
@@ -316,15 +324,15 @@ npm run test:e2e
 
 
 
-## 📑 Documentación de los endpoints con OpenAPI
+## 📑 Endpoint documentation with OpenAI
 
-La documentación de los endpoints está disponible en Swagger/OpenAPI.
+All of the documentation for the endpoints is located and available in Swagger/OpenAI.
 
-Para acceder, simplemente visita la URL base donde corre el backend y añade `/api` al final. Por ejemplo:
+To access, visit the URL where the backend is running on and add “/api” at the end of the URL, for example:
 
 http://localhost:3000/api
 
-### 📦 Ejemplo de Endpoint: Crear Usuario:
+### 📦 Endpoint Example: Creating users:
 
 ```ts
 // src/users/dto/create-user.dto.ts

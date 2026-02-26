@@ -96,9 +96,9 @@ Seguimos el modelo [GitFlow](https://nvie.com/posts/a-successful-git-branching-m
 | `release/*`   | Preparación para una nueva versión  |
 
 ### 💡 Ejemplos:
-- `feature/login-form`
-- `bugfix/date-validation`
-- `release/v1.0.0`
+- `feature/name/login-form`
+- `bugfix/area/date-validation`
+- `release/name/v1.0.0`
 
 ---
 
