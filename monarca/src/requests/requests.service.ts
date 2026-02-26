@@ -1,3 +1,14 @@
+/**
+ * requests.service.ts
+ * Description: Core service for managing travel requests. Provides CRUD operations including
+ * creating requests with auto-assigned approver/SOI, querying requests by user/admin/SOI/travel
+ * agency, updating request details within allowed statuses, and updating request status with
+ * logging and email notifications.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Injectable,
   NotFoundException,
@@ -30,10 +41,26 @@ export class RequestsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * getCityName, retrieves the city name for a given destination ID.
+   * Input: id (string) - the UUID of the destination.
+   * Output: string - the city name.
+   */
   private async getCityName(id: string): Promise<string> {
     return await this.destinationChecks.getCityNameById(id);
   }
 
+  /**
+   * logRequestAction, creates a log entry for a request action (create, update, or status change)
+   * within a transactional entity manager.
+   * Input: manager (EntityManager) - the transactional entity manager,
+   *        id_request (string) - UUID of the request,
+   *        id_user (string) - UUID of the user performing the action,
+   *        action ('create' | 'update' | 'status_change') - the type of action,
+   *        new_status (string) - the new status of the request,
+   *        extraData (Record<string, any>) - optional additional data (originCity, numDestinations, fromStatus).
+   * Output: void - saves the log entry to the database.
+   */
   private async logRequestAction(
     manager: EntityManager,
     id_request: string,
@@ -66,6 +93,14 @@ export class RequestsService {
     });
   }
 
+  /**
+   * create, creates a new travel request. Validates destination cities, auto-assigns an
+   * approver from the same department, auto-assigns an SOI, saves the request with its
+   * destinations, logs the creation, and sends an email notification to the assigned admin.
+   * Input: req (RequestInterface) - the authenticated request with session/user info,
+   *        data (CreateRequestDto) - the request payload with origin city, destinations, motive, etc.
+   * Output: the saved Request entity with all its destinations.
+   */
   async create(req: RequestInterface, data: CreateRequestDto) {
     const userId = req.sessionInfo.id;
     //VALIDAR VALIDEZ DE CIUDADES
@@ -148,6 +183,12 @@ export class RequestsService {
     return saved;
   }
 
+  /**
+   * findAll, retrieves all travel requests with their related entities (destinations,
+   * revisions, users, admin, SOI, travel agency).
+   * Input: none.
+   * Output: array of all Request entities with full relations loaded.
+   */
   async findAll(): Promise<RequestEntity[]> {
     return this.requestsRepo.find({
       relations: [
@@ -164,6 +205,14 @@ export class RequestsService {
     });
   }
 
+  /**
+   * findOne, retrieves a single travel request by ID. Validates that the authenticated
+   * user is the request owner, assigned admin, assigned SOI, or belongs to the assigned
+   * travel agency before returning the request.
+   * Input: req (RequestInterface) - the authenticated request with session/user info,
+   *        id (string) - UUID of the request.
+   * Output: the Request entity if found and the user has access.
+   */
   async findOne(req: RequestInterface, id: string): Promise<RequestEntity> {
     const userId = req.sessionInfo.id;
 
@@ -197,6 +246,11 @@ export class RequestsService {
     return request;
   }
 
+  /**
+   * findByUser, retrieves all travel requests owned by the authenticated user.
+   * Input: req (RequestInterface) - the authenticated request with session info.
+   * Output: array of Request entities belonging to the user, with full relations loaded.
+   */
   async findByUser(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
@@ -214,6 +268,12 @@ export class RequestsService {
     return list;
   }
 
+/**
+   * findByAdmin, retrieves all requests assigned to the authenticated admin that are
+   * in "Pending Review" status. Results are ordered by priority (alta > media > baja).
+   * Input: req (RequestInterface) - the authenticated request with session info.
+   * Output: array of Request entities pending admin review, sorted by priority.
+   */
 async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
   const userId = req.sessionInfo.id;
 
@@ -241,6 +301,11 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
 }
 
 
+  /**
+   * findBySOI, retrieves all requests assigned to the authenticated SOI user.
+   * Input: req (RequestInterface) - the authenticated request with session info.
+   * Output: array of Request entities assigned to the SOI, with full relations loaded.
+   */
   async findBySOI(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
@@ -258,7 +323,12 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     return list;
   }
 
-  // Para jalar todos los requests en estatus de Pending Refund Approval asignados a un SOI
+  /**
+   * findPendingRefundApproval, retrieves all requests in "Pending Refund Approval" status
+   * assigned to the authenticated SOI user.
+   * Input: req (RequestInterface) - the authenticated request with session info.
+   * Output: array of Request entities pending refund approval for the SOI.
+   */
   async findPendingRefundApproval(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
@@ -279,6 +349,12 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     return list;
   }
 
+  /**
+   * findByTA, retrieves all requests assigned to the authenticated travel agency user
+   * that are in "Pending Reservations" status.
+   * Input: req (RequestInterface) - the authenticated request with session/user info.
+   * Output: array of Request entities pending reservations for the travel agency.
+   */
   async findByTA(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const travelAgencyId = req.userInfo.id_travel_agency;
@@ -304,6 +380,16 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     return list;
   }
 
+  /**
+   * updateRequest, updates an existing travel request within a database transaction.
+   * Validates that the user owns the request, that the status allows editing ("Pending Review"
+   * or "Changes Needed"), validates destination cities, overwrites request destinations,
+   * resets status to "Pending Review", logs the update, and notifies the assigned admin.
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id (string) - UUID of the request to update,
+   *        data (UpdateRequestDto) - the updated request fields.
+   * Output: the updated Request entity.
+   */
   async updateRequest(
     req: RequestInterface,
     id: string,
@@ -388,6 +474,11 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     });
   }
 
+  /**
+   * getRequestById, retrieves a single request entity by its ID.
+   * Input: id (string) - UUID of the request.
+   * Output: the Request entity if found; throws NotFoundException otherwise.
+   */
   async getRequestById(id: string): Promise<RequestEntity> {
     const request = await this.requestsRepo.findOne({
       where: { id },
@@ -398,6 +489,12 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     return request;
   }
 
+  /**
+   * updateStatus, updates the status of a request and logs the status change.
+   * Input: id (string) - UUID of the request,
+   *        newStatus (string) - the new status to set on the request.
+   * Output: the updated Request entity with the new status.
+   */
   async updateStatus(id: string, newStatus: string): Promise<RequestEntity> {
     const request = await this.requestsRepo.findOne({ where: { id } });
 

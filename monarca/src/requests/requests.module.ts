@@ -1,3 +1,14 @@
+/**
+ * requests.module.ts
+ * Description: NestJS module that bundles all request-related components including
+ * controllers (RequestsController, RequestsStatusController), services (RequestsService,
+ * RequestsChecks, RequestsStatusService), entity repositories, and imported modules
+ * (Guards, Users, Destinations, TravelAgencies, RequestLogs, Notifications).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Request } from './entities/request.entity';
@@ -24,7 +35,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     DestinationsModule,
     TravelAgenciesModule,
     RequestLogsModule,
-    NotificationsModule, // Assuming this is a controller that handles notifications related to requests
+    NotificationsModule,
   ],
   controllers: [RequestsController, RequestsStatusController],
   providers: [RequestsService, RequestsChecks, RequestsStatusService, NotificationsService],

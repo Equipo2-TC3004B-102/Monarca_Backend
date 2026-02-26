@@ -1,3 +1,14 @@
+/**
+ * create-request.dto.ts
+ * Description: Data Transfer Objects for creating a travel request. Contains
+ * RequestDestinationtDto (destination details: city, order, dates, hotel/plane requirements)
+ * and CreateRequestDto (full request payload: origin city, title, motive, advance money,
+ * requirements, priority, and array of destinations).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {

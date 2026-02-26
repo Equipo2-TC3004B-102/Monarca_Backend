@@ -1,3 +1,17 @@
+/**
+ * requests.status.service.ts
+ * Description: Service that manages the status lifecycle transitions of travel requests.
+ * Handles approving, denying, cancelling, finishing reservations, SOI accounting approval,
+ * voucher upload completion, voucher approval, and final request completion. Each transition
+ * validates authorization, current status, and sends email notifications to relevant parties.
+ * Possible statuses: 'Pending Review', 'Changes Needed', 'Denied', 'Cancelled',
+ * 'Pending Reservations', 'Pending Accounting Approval', 'In Progress',
+ * 'Pending Vouchers Approval', 'Pending Refund Approval', 'Completed'.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Injectable,
   NotFoundException,
@@ -14,9 +28,6 @@ import { ApproveRequestDTO } from './dto/approve-request.dto';
 import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
-// STATUSES:
-// ['Pending Review', 'Changes Needed', 'Denied', 'Cancelled', 'Pending Reservations',  'Pending Accounting Approval', 'In Progress',  'Pending Vouchers Approval', 'Completed]
-
 @Injectable()
 export class RequestsStatusService {
   constructor(
@@ -27,6 +38,16 @@ export class RequestsStatusService {
     private readonly travelAgenciesChecks: TravelAgenciesChecks,
   ) {}
 
+  /**
+   * approve, approves a travel request by the assigned admin. Validates the travel agency ID,
+   * checks that the user is the assigned admin, and that the request is in "Pending Review" status.
+   * Assigns the travel agency, notifies the request owner and the travel agency agents, then
+   * transitions the status to "Pending Reservations".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request to approve,
+   *        data (ApproveRequestDTO) - contains id_travel_agency to assign.
+   * Output: the updated Request entity with status "Pending Reservations".
+   */
   async approve(
     req: RequestInterface,
     id_request: string,
@@ -91,6 +112,14 @@ export class RequestsStatusService {
     );
   }
 
+  /**
+   * deny, denies a travel request by the assigned admin. Validates that the user is
+   * the assigned admin and that the request is in "Pending Review" status. Notifies
+   * the request owner and transitions the status to "Denied".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request to deny.
+   * Output: the updated Request entity with status "Denied".
+   */
   async deny(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
@@ -122,6 +151,14 @@ export class RequestsStatusService {
     return await this.requestsService.updateStatus(id_request, 'Denied');
   }
 
+  /**
+   * cancel, cancels a travel request by the request owner. Validates that the user
+   * owns the request and that the status is "Pending Review" or "Changes Needed".
+   * Notifies the user and transitions the status to "Cancelled".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request to cancel.
+   * Output: the updated Request entity with status "Cancelled".
+   */
   async cancel(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
@@ -156,6 +193,15 @@ export class RequestsStatusService {
     return await this.requestsService.updateStatus(id_request, 'Cancelled');
   }
 
+  /**
+   * finishedReservations, marks that the travel agency has completed all reservations
+   * for the request. Validates that the user belongs to the assigned travel agency and
+   * that the request is in "Pending Reservations" status. Notifies the SOI and transitions
+   * the status to "Pending Accounting Approval".
+   * Input: req (RequestInterface) - the authenticated request with session/user info,
+   *        id_request (string) - UUID of the request.
+   * Output: the updated Request entity with status "Pending Accounting Approval".
+   */
   async finishedReservations(req: RequestInterface, id_request: string) {
     const id_travel_agency = req.userInfo.id_travel_agency;
 
@@ -199,6 +245,14 @@ export class RequestsStatusService {
     );
   }
 
+  /**
+   * SOIApproval, SOI approves the accounting for a request. Validates that the user
+   * is the assigned SOI and that the request is in "Pending Accounting Approval" status.
+   * Notifies the request owner and transitions the status to "In Progress".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request.
+   * Output: the updated Request entity with status "In Progress".
+   */
   async SOIApproval(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
@@ -233,6 +287,15 @@ export class RequestsStatusService {
     return await this.requestsService.updateStatus(id_request, 'In Progress');
   }
 
+  /**
+   * finishedUploadingVouchers, marks that the request owner has finished uploading
+   * expense vouchers. Validates that the user owns the request and that the status is
+   * "In Progress". Notifies the assigned admin and transitions the status to
+   * "Pending Vouchers Approval".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request.
+   * Output: the updated Request entity with status "Pending Vouchers Approval".
+   */
   async finishedUploadingVouchers(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
@@ -268,7 +331,15 @@ export class RequestsStatusService {
     );
   }
 
-  // Se cambia el estatus final de Completed a Pending Refund Approval
+  /**
+   * finishedApprovingVouchers, marks that the admin has finished approving expense
+   * vouchers. Validates that the user is the assigned admin and that the status is
+   * "Pending Vouchers Approval". Notifies the request owner and the SOI, then
+   * transitions the status to "Pending Refund Approval".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request.
+   * Output: the updated Request entity with status "Pending Refund Approval".
+   */
   async finishedApprovingVouchers(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
@@ -313,7 +384,14 @@ export class RequestsStatusService {
     return await this.requestsService.updateStatus(id_request, 'Pending Refund Approval');
   }
 
-  //finsihedRegisteringRequest
+  /**
+   * finsihedRegisteringRequest, marks the request as fully completed by the SOI.
+   * Validates that the user is the assigned SOI and that the status is "Pending Refund
+   * Approval". Notifies the request owner and transitions the status to "Completed".
+   * Input: req (RequestInterface) - the authenticated request with session info,
+   *        id_request (string) - UUID of the request.
+   * Output: the updated Request entity with status "Completed".
+   */
   async finsihedRegisteringRequest(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({

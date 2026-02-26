@@ -1,3 +1,15 @@
+/**
+ * request.entity.ts
+ * Description: TypeORM entity representing the 'requests' table. Defines the schema for
+ * travel requests including user, admin (approver), SOI (accounting officer), travel agency,
+ * origin city, title, motive, advance money, status, requirements, priority, and creation date.
+ * Establishes relationships with RequestsDestination, RequestLog, Revision, Destination,
+ * User, TravelAgency, and Voucher entities.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

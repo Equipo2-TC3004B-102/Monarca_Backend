@@ -1,3 +1,16 @@
+/**
+ * permissions.guard.ts
+ * Description: NestJS guard that implements permission-based authorization. After
+ * authentication (AuthGuard), this guard loads the full user from the database including
+ * their role and permissions. It attaches userInfo and userPermissions to the request
+ * object, then checks whether the user has all permissions required by the route handler
+ * (declared via the @Permissions decorator). Throws ForbiddenException if the user
+ * lacks required permissions.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Injectable,
   CanActivate,
@@ -21,6 +34,13 @@ export class PermissionsGuard implements CanActivate {
     private userRepository123: Repository<User>,
   ) {}
 
+  /**
+   * canActivate, loads the user with their role and permissions from the database,
+   * attaches user info to the request, and verifies that the user has all required
+   * permissions for the route handler.
+   * Input: context (ExecutionContext) - the NestJS execution context containing the HTTP request.
+   * Output: boolean - true if the user has all required permissions, throws ForbiddenException otherwise.
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestInterface>();
 
@@ -68,6 +88,11 @@ export class PermissionsGuard implements CanActivate {
     return true;
   }
 
+  /**
+   * findById, retrieves a user by their ID including their role and permissions relations.
+   * Input: id (string) - the UUID of the user.
+   * Output: User entity with role and permissions loaded; throws ForbiddenException if not found.
+   */
   async findById(id: string): Promise<User> {
     const user = await this.userRepository123.findOne({
       where: { id },

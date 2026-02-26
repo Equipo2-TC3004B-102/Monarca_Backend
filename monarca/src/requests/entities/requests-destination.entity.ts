@@ -1,3 +1,14 @@
+/**
+ * requests-destination.entity.ts
+ * Description: TypeORM entity representing the 'requests_destinations' table. Defines
+ * the schema for individual destinations within a travel request, including destination
+ * city reference, ordering, stay duration, arrival/departure dates, hotel/plane requirements,
+ * and additional details. Establishes relationships with Request, Reservation, and Destination entities.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

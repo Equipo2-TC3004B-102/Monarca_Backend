@@ -1,24 +1,28 @@
 /**
- * ===========================================
- * Funciones auxiliares para gestión de permisos
- * ===========================================
- *
- * Este archivo centraliza la lógica para verificar
- * si un usuario tiene permisos específicos.
- *
- * Esto ayuda a mantener el código limpio, reutilizable
- * y escalable conforme crece el número de rutas y permisos.
+ * permissions.helper.ts
+ * Description: Utility functions for checking user permissions on request objects.
+ * Centralizes permission verification logic to keep code clean, reusable, and scalable
+ * as the number of routes and permissions grows.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Juan Pablo Narchi Capote] Added detailed comments and documentation for clarity and maintainability.
  */
 
 /**
- * Verifica si el usuario tiene un permiso específico.
+ * hasPermission, checks if the user has a specific permission.
+ * Input: req (any) - the request object with userPermissions array,
+ *        permissionName (string) - the name of the permission to check.
+ * Output: boolean - true if the user has the specified permission, false otherwise.
  */
 export function hasPermission(req: any, permissionName: string): boolean {
   return req.userPermissions?.includes(permissionName) || false;
 }
 
 /**
- * Verifica si el usuario tiene al menos uno de los permisos proporcionados.
+ * hasAnyPermission, checks if the user has at least one of the provided permissions.
+ * Input: req (any) - the request object with userPermissions array,
+ *        permissionNames (string[]) - array of permission names to check.
+ * Output: boolean - true if the user has at least one of the specified permissions, false otherwise.
  */
 export function hasAnyPermission(req: any, permissionNames: string[]): boolean {
   if (!req.userPermissions) return false;
@@ -26,7 +30,10 @@ export function hasAnyPermission(req: any, permissionNames: string[]): boolean {
 }
 
 /**
- * Verifica si el usuario tiene todos los permisos proporcionados.
+ * hasAllPermissions, checks if the user has all of the provided permissions.
+ * Input: req (any) - the request object with userPermissions array,
+ *        permissionNames (string[]) - array of permission names to check.
+ * Output: boolean - true if the user has all of the specified permissions, false otherwise.
  */
 export function hasAllPermissions(
   req: any,
@@ -37,7 +44,10 @@ export function hasAllPermissions(
 }
 
 /**
- * Verifica si el usuario no tiene un permiso específico.
+ * lacksPermission, checks if the user does NOT have a specific permission.
+ * Input: req (any) - the request object with userPermissions array,
+ *        permissionName (string) - the name of the permission to check.
+ * Output: boolean - true if the user lacks the specified permission, false if they have it.
  */
 export function lacksPermission(req: any, permissionName: string): boolean {
   return !hasPermission(req, permissionName);
