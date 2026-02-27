@@ -1,3 +1,13 @@
+/**
+ * FileName: user.entity.ts
+ * Description: TypeORM entity representing the users table. A user belongs to a
+ *              department, role and optionally a travel agency. Can have many
+ *              requests, assigned requests, revisions and SOI assigned requests.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { Department } from 'src/departments/entity/department.entity';
 import { Request } from 'src/requests/entities/request.entity';
@@ -67,7 +77,7 @@ export class User {
   @JoinColumn({ name: 'id_travel_agency' })
   travel_agency?: TravelAgency;
 
-  // Hacer conexion despues
+  // TODO: add relationship later
   @OneToMany(() => Revision, (log) => log.request, {})
   revisions: Revision[];
 

@@ -1,3 +1,13 @@
+/**
+ * FileName: logging.middleware.ts
+ * Description: NestJS middleware for HTTP request logging. Logs the HTTP method,
+ *              URL, status code, content length and response time for every
+ *              incoming request.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 

@@ -1,3 +1,13 @@
+/**
+ * FileName: request-logs.service.ts
+ * Description: Service handling request log business logic. Provides read operations
+ *              against the request_logs table. Throws NotFoundException when a
+ *              log entry is not found by ID.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

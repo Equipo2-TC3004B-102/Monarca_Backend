@@ -1,3 +1,13 @@
+/**
+ * FileName: user-logs.entity.ts
+ * Description: TypeORM entity representing the user_logs table. Stores user activity
+ *              logs including the user, date, IP address and a report description.
+ *              Belongs to a User via id_user.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -15,7 +25,7 @@ export class UserLogs {
   @Column()
   id_user: number;
 
-  // Se tiene que cambiar cuando tengamos el archivo de user
+  // TODO: update relationship once user entity is finalized
   @ManyToOne(() => User, (user) => user.id)
   @JoinColumn({ name: 'id_user' })
   user: User;
