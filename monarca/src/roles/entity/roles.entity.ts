@@ -1,3 +1,13 @@
+/**
+ * FileName: roles.entity.ts
+ * Description: TypeORM entity representing the roles table. A role has a name and
+ *              can have many permissions associated through a ManyToMany relationship
+ *              via the roles_permissions join table.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

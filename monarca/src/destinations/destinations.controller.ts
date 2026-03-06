@@ -1,3 +1,14 @@
+/**
+ * FileName: destinations.controller.ts
+ * Description: Controller for destination endpoints. Handles CRUD operations:
+ *              create (POST /destinations), findAll (GET /destinations),
+ *              findOne (GET /destinations/:id), update (PATCH /destinations/:id)
+ *              and remove (DELETE /destinations/:id).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Get,

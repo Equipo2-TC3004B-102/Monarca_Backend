@@ -1,3 +1,13 @@
+/**
+ * FileName: login.controller.ts
+ * Description: Controller for authentication endpoints. Handles user login (POST /login),
+ *              logout (POST /login/logout), and profile retrieval (GET /login/profile).
+ *              Profile route is protected by AuthGuard.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Post,
@@ -27,7 +37,7 @@ export class LoginController {
     return this.loginService.logOut(res);
   }
 
-  // Prueba de envio de cookies y el usuario que ingreso
+  // Test for cookie sending and the logged in user
   @UseGuards(AuthGuard)
   @Get('profile')
   getProfile(@Req() req: any, @Res({ passthrough: true }) res: Response) {

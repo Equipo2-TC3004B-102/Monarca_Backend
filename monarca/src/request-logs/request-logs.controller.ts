@@ -1,3 +1,12 @@
+/**
+ * FileName: request-logs.controller.ts
+ * Description: Controller for request log endpoints. Handles read operations:
+ *              findAll (GET /request-logs) and findOne (GET /request-logs/:id).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Get,

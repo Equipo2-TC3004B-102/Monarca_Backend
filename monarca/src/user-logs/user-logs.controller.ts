@@ -1,3 +1,14 @@
+/**
+ * FileName: user-logs.controller.ts
+ * Description: Controller for user log endpoints. Handles CRUD operations:
+ *              create (POST /user-logs), findAll (GET /user-logs),
+ *              findOne (GET /user-logs/:id), update (PATCH /user-logs/:id)
+ *              and remove (DELETE /user-logs/:id).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Post,

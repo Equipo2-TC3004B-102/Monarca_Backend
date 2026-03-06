@@ -1,3 +1,12 @@
+/**
+ * FileName: travel-agency.entity.ts
+ * Description: TypeORM entity representing the travel_agencies table. A travel agency
+ *              has a name and can be associated to multiple users and requests.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { Request } from 'src/requests/entities/request.entity';

@@ -1,3 +1,14 @@
+/**
+ * FileName: revisions.service
+ * Description: Business logic layer for Revision operations. Validates request existence,
+ *              admin ownership, and request status before persisting a revision. Sends
+ *              an email notification to the requester and updates the request status
+ *              to 'Changes Needed'.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Injectable,
   NotFoundException,
@@ -25,6 +36,18 @@ export class RevisionsService {
     private readonly userChecks: UserChecks,
   ) {}
 
+  /**
+   * create - Creates and persists a new revision after validating that the request exists,
+   *          the caller is the assigned admin, and the request is in 'Pending Review' or
+   *          'Changes Needed' status. Sends a notification email to the request owner
+   *          and updates the request status to 'Changes Needed'.
+   * Input: req (RequestInterface) - session info containing the authenticated user ID;
+   *        data (CreateRevisionDto) - revision fields: id_request and comment.
+   * Output: Promise<Revision> - the newly saved revision entity.
+   * Throws NotFoundException if the request or user does not exist.
+   * Throws UnauthorizedException if the caller is not the request admin or
+   *        the request is not in a revisable status.
+   */
   async create(req: RequestInterface, data: CreateRevisionDto) {
     const userId = req.sessionInfo.id;
 

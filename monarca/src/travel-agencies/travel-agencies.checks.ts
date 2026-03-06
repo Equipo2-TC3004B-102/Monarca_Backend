@@ -1,3 +1,13 @@
+/**
+ * FileName: travel-agencies.checks.ts
+ * Description: Service providing travel agency validation utilities. Includes methods
+ *              to check if a travel agency exists by ID and to retrieve all users
+ *              belonging to a travel agency.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CreateTravelAgencyDto,
@@ -15,7 +25,7 @@ export class TravelAgenciesChecks {
     private readonly repo: Repository<TravelAgency>,
   ) {}
 
-  async Exists(id_travel_agency: string) {
+  async exists(id_travel_agency: string) {
     const travel_agency = await this.repo.findOne({
       where: { id: id_travel_agency },
     });

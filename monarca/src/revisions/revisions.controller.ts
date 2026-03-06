@@ -1,3 +1,13 @@
+/**
+ * FileName: revisions.controller
+ * Description: REST controller for Revision operations. Exposes the endpoint for
+ *              creating a revision on a travel request. All routes are protected
+ *              by AuthGuard and PermissionsGuard.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Body,
   Controller,
@@ -19,6 +29,12 @@ import { PermissionsGuard } from 'src/guards/permissions.guard';
 export class RevisionsController {
   constructor(private readonly revisionsService: RevisionsService) {}
 
+  /**
+   * postRevision - Creates a new revision entry for a travel request.
+   * Input: req (RequestInterface) - session info used to extract the authenticated admin user ID;
+   *        dto (CreateRevisionDto) - revision fields: id_request and comment.
+   * Output: Promise<Revision> - the newly created and persisted revision record.
+   */
   @Post()
   postRevision(
     @Request() req: RequestInterface,

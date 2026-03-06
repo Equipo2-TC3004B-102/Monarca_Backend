@@ -1,3 +1,14 @@
+/**
+ * FileName: user.dtos.ts
+ * Description: Data Transfer Objects for user operations. Includes CreateUserDto
+ *              with all required user fields, UpdateUserDto extending Create with
+ *              all fields optional, and UserDto which omits the password field
+ *              for safe responses.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { OmitType } from '@nestjs/swagger';
 import { User } from '../entities/user.entity';

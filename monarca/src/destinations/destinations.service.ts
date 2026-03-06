@@ -1,3 +1,13 @@
+/**
+ * FileName: destinations.service.ts
+ * Description: Service handling destination business logic. Provides CRUD operations
+ *              against the destinations table. Throws NotFoundException when a
+ *              destination is not found by ID.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

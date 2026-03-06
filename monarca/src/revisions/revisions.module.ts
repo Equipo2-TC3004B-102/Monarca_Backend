@@ -1,3 +1,14 @@
+/**
+ * FileName: revisions.module
+ * Description: NestJS module that registers RevisionsController and RevisionsService,
+ *              imports the TypeORM repository for the Revision entity, and includes
+ *              RequestsModule, NotificationsModule, UsersModule, and GuardsModule
+ *              required by the revision business logic.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Module } from '@nestjs/common';
 import { RevisionsController } from './revisions.controller';
 import { RevisionsService } from './revisions.service';

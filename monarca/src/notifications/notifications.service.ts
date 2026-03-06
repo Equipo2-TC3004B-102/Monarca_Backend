@@ -1,3 +1,13 @@
+/**
+ * FileName: notifications.service
+ * Description: Service responsible for sending transactional emails via Nodemailer.
+ *              Configures the SMTP transporter from environment variables and exposes
+ *              methods for raw mail sending, structured notifications, and HTML-wrapped notifications.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import * as fs from 'fs';
@@ -19,6 +29,14 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * sendMail - Sends a raw email using the configured Nodemailer transporter.
+   * Input: to (string) - recipient email address;
+   *        subject (string) - email subject line;
+   *        text (string) - plain-text body;
+   *        html (string, optional) - HTML body to override plain text in capable clients.
+   * Output: Promise<SentMessageInfo> - Nodemailer send result with message ID and response.
+   */
   async sendMail(to: string, subject: string, text: string, html?: string) {
     const fromAddress = `"Sistema Monarca" <${process.env.EMAIL_USER}>`;
     const mailOptions: nodemailer.SendMailOptions = {
@@ -31,6 +49,14 @@ export class NotificationsService {
     return this.transporter.sendMail(mailOptions);
   }
 
+  /**
+   * sendNotification - Convenience wrapper around sendMail for structured notification calls.
+   * Input: to (string) - recipient email address;
+   *        subject (string) - email subject line;
+   *        text (string) - plain-text body;
+   *        html (string, optional) - HTML body.
+   * Output: Promise<SentMessageInfo> - Nodemailer send result.
+   */
   async sendNotification(
     to: string,
     subject: string,
@@ -46,6 +72,16 @@ export class NotificationsService {
   }
 
 
+  /**
+   * notify - Sends an HTML-wrapped email notification. Escapes the message text to prevent
+   *          XSS, then wraps the optional HTML partial inside a full HTML document before
+   *          delegating to sendMail.
+   * Input: to (string) - recipient email address;
+   *        subject (string) - email subject line;
+   *        message (string) - plain-text version of the notification body;
+   *        html (string, optional) - inner HTML partial to embed in the full HTML wrapper.
+   * Output: Promise<SentMessageInfo> - Nodemailer send result.
+   */
   async notify(
   to: string,
   subject: string,

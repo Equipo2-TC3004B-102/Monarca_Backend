@@ -1,3 +1,12 @@
+/**
+ * FileName: revision.entity
+ * Description: TypeORM entity representing the 'revisions' database table. Defines
+ *              all columns and the ManyToOne relationship to the Request entity.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

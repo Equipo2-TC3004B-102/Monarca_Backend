@@ -1,3 +1,13 @@
+/**
+ * FileName: reservations.service
+ * Description: Business logic layer for Reservation operations. Handles creation with
+ *              travel-agency ownership and request-status validation, as well as retrieval,
+ *              update, and deletion of reservations.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NotFoundException, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,6 +31,17 @@ export class ReservationsService {
 
   ) {}
 
+  /**
+   * createReservation - Creates and persists a new reservation after validating that
+   *                      the travel agency owns the request destination and the request
+   *                      is in 'Pending Reservations' status.
+   * Input: req (RequestInterface) - session info containing the travel agency ID;
+   *        reservation (CreateReservationDto) - fields: title, comments, price,
+   *        id_request_destination, and optional file link.
+   * Output: Promise<Reservation> - the newly saved reservation entity.
+   * Throws UnauthorizedException if the agency does not own the destination or
+   *        the request is not in the correct status.
+   */
   async createReservation(req: RequestInterface,reservation: CreateReservationDto) {
     
     // //VALIDAR USER Y id_request_destination
@@ -39,10 +60,21 @@ export class ReservationsService {
     return this.reservationsRepository.save(newReservation);
   }
 
+  /**
+   * findAll - Retrieves all reservation records from the database without filters.
+   * Input: None
+   * Output: Promise<Reservation[]> - array of all persisted reservation entities.
+   */
   async findAll(): Promise<Reservation[]> {
     return this.reservationsRepository.find();
   }
 
+  /**
+   * findOne - Retrieves a single reservation by its UUID.
+   * Input: id (string) - UUID of the reservation to retrieve.
+   * Output: Promise<Reservation> - the matching reservation entity.
+   * Throws NotFoundException if no reservation with the given ID exists.
+   */
   async findOne(id: string): Promise<Reservation> {
     const reservation = await this.reservationsRepository.findOneBy({ id });
     if (!reservation) {
@@ -51,10 +83,22 @@ export class ReservationsService {
     return reservation;
   }
 
+  /**
+   * update - Partially updates a reservation's fields by its UUID.
+   * Input: id (string) - UUID of the reservation to update;
+   *        Body (UpdateReservationDto) - optional fields to overwrite (title, comments, price,
+   *        id_request_destination, file).
+   * Output: Promise<UpdateResult> - TypeORM result indicating affected rows.
+   */
   async update(id: string, Body: UpdateReservationDto) {
     return await this.reservationsRepository.update(id, Body);
   }
 
+  /**
+   * remove - Deletes a reservation record from the database by its UUID.
+   * Input: id (string) - UUID of the reservation to delete.
+   * Output: Promise<{ message: string; status: boolean }> - confirmation message and success flag.
+   */
   async remove(id: string): Promise<{ message: string; status: boolean }> {
     const reservation = await this.reservationsRepository.findOneBy({ id });
     await this.reservationsRepository.delete(id);

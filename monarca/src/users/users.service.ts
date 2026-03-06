@@ -1,3 +1,14 @@
+/**
+ * FileName: users.service.ts
+ * Description: Service handling user business logic. Provides CRUD operations
+ *              against the users table. Throws NotFoundException when a user
+ *              is not found by ID, and ForbiddenException in findById when
+ *              used for internal lookups with role and permission relations.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   ForbiddenException,
   Injectable,
