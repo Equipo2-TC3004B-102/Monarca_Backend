@@ -46,7 +46,12 @@ export class NotificationsService {
       text,
       html,
     };
-    return this.transporter.sendMail(mailOptions);
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log('Correo enviado correctamente');
+    } catch (error) {
+      console.error('Error enviando correo:', error.message);
+    }
   }
 
   /**
