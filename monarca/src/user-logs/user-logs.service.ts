@@ -1,3 +1,12 @@
+/**
+ * FileName: user-logs.service.ts
+ * Description: Service handling user log business logic. Provides CRUD operations
+ *              against the user_logs table.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

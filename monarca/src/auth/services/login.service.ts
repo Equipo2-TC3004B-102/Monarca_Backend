@@ -1,3 +1,14 @@
+/**
+ * FileName: login.service.ts
+ * Description: Service handling login, logout and profile logic. On login, validates
+ *              credentials via UserChecks, signs a JWT and sets it as an httpOnly cookie
+ *              (sessionInfo). On logout, clears the cookie. On profile, retrieves the
+ *              current user by ID from the JWT payload.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable } from '@nestjs/common';
 import { Response } from 'express';
 import { LogInDTO } from '../dto/login.dto';
@@ -20,7 +31,7 @@ export class LoginService {
       return { status: false, message: 'Email or password incorrect' };
     }
 
-    // Verificar la contraseña
+    // Verify the password
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
 
     if (!isPasswordValid) {
@@ -30,7 +41,7 @@ export class LoginService {
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
 
-    // Cambios para la conexion con el front
+    // Cookie configuration for frontend connection
     res.cookie('sessionInfo', token, {
       httpOnly: true,
       secure: true,

@@ -1,3 +1,12 @@
+/**
+ * FileName: user-logs.module.ts
+ * Description: User Logs module. Registers the UserLogs entity with TypeORM
+ *              and sets up the controller and service.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserLogs } from './entity/user-logs.entity';

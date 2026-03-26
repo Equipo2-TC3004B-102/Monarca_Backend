@@ -1,3 +1,14 @@
+/**
+ * FileName: travel-agencies.controller.ts
+ * Description: Controller for travel agency endpoints. Handles CRUD operations:
+ *              create (POST /travel-agencies), findAll (GET /travel-agencies),
+ *              findOne (GET /travel-agencies/:id), update (PATCH /travel-agencies/:id)
+ *              and remove (DELETE /travel-agencies/:id).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Controller,
   Get,

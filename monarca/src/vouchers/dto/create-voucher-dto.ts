@@ -1,3 +1,13 @@
+/**
+ * FileName: create-voucher-dto
+ * Description: Data Transfer Object for creating a new voucher. Defines and
+ *              validates all required and optional fields sent in the request body,
+ *              including file URLs injected by the upload interceptor.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsUUID,

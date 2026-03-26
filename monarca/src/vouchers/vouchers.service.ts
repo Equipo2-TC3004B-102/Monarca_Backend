@@ -1,3 +1,13 @@
+/**
+ * FileName: vouchers.service
+ * Description: Business logic layer for Voucher operations. Handles creation,
+ *              retrieval, update, deletion, approval, and denial of vouchers.
+ *              Enforces ownership rules and validates referenced request existence.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable, NotFoundException,ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, UpdateResult } from 'typeorm';
@@ -15,6 +25,16 @@ export class VouchersService {
     private readonly rRepo: Repository<Request>,
   ) {}
 
+  /**
+   * create - Creates and persists a new voucher. Validates that the referenced
+   *          request exists and that the caller is the owner of that request.
+   * Input: id_user (string) - UUID of the authenticated user creating the voucher;
+   *        data (CreateVoucherDto) - voucher fields: id_request, class, amount,
+   *        currency, tax_type, date, file_url_pdf, file_url_xml, status.
+   * Output: Promise<Voucher> - the newly saved voucher entity.
+   * Throws NotFoundException if the referenced request does not exist.
+   * Throws ForbiddenException if the caller is not the request owner.
+   */
   async create(id_user:string, data: CreateVoucherDto): Promise<Voucher> {
     const request = await this.rRepo.findOne({
       where: { id: data.id_request },
@@ -46,10 +66,21 @@ export class VouchersService {
     return await this.voucherRepo.save(voucher);
   }
 
+  /**
+   * findAll - Retrieves all vouchers from the database without filters.
+   * Input: None
+   * Output: Promise<Voucher[]> - array of all persisted voucher entities.
+   */
   async findAll(): Promise<Voucher[]> {
     return this.voucherRepo.find();
   }
 
+  /**
+   * findOne - Retrieves a single voucher by its UUID.
+   * Input: id (string) - UUID of the voucher to retrieve.
+   * Output: Promise<Voucher> - the matching voucher entity.
+   * Throws NotFoundException if no voucher with the given ID exists.
+   */
   async findOne(id: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.findOne({ where: { id } });
     if (!voucher) {
@@ -58,6 +89,14 @@ export class VouchersService {
     return voucher;
   }
 
+  /**
+   * update - Partially updates a voucher's fields. Only fields present in the
+   *          DTO overwrite existing values; omitted fields keep their current values.
+   * Input: id (string) - UUID of the voucher to update;
+   *        data (UpdateVoucherDto) - optional fields to apply (class, amount, currency,
+   *        tax_type, date, file_url_pdf, file_url_xml, status, id_request).
+   * Output: Promise<Voucher> - the voucher entity after applying the updates.
+   */
   async update(id: string, data: UpdateVoucherDto): Promise<Voucher> {
     const existingVoucher = await this.findOne(id); // Ensure we find the voucher first
 
@@ -79,6 +118,12 @@ export class VouchersService {
     return this.findOne(id); // Return the updated entity
   }
 
+  /**
+   * remove - Deletes a voucher record from the database by its UUID.
+   * Input: id (string) - UUID of the voucher to delete.
+   * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
+   * Throws NotFoundException if no voucher with the given ID exists.
+   */
   async remove(id: string): Promise<{ status: boolean; message: string }> {
     const result = await this.voucherRepo.delete(id);
     if (!result.affected) {
@@ -86,7 +131,12 @@ export class VouchersService {
     }
     return { status: true, message: `Voucher with ID ${id} removed` };
   }
-
+  /**
+   * approve - Sets a voucher's status to 'Voucher Approved'.
+   * Input: id (string) - UUID of the voucher to approve.
+   * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
+   * Throws NotFoundException if no voucher with the given ID exists.
+   */  
   async approve(id: string): Promise<{ status: boolean; message: string }> {
     // 1) run the update
     const result: UpdateResult = await this.voucherRepo.update(id, {
@@ -104,7 +154,12 @@ export class VouchersService {
       message: `Voucher ${id} approved`,
     };
   }
-
+  /**
+   * deny - Sets a voucher's status to 'Voucher Denied'.
+   * Input: id (string) - UUID of the voucher to deny.
+   * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
+   * Throws NotFoundException if no voucher with the given ID exists.
+   */  
   async deny(id: string): Promise<{ status: boolean; message: string }> {
     // 1) run the update
     const result: UpdateResult = await this.voucherRepo.update(id, {
@@ -123,6 +178,12 @@ export class VouchersService {
     };
   }
 
+  /**
+   * findByRequest - Retrieves all vouchers linked to a specific travel request.
+   * Input: requestId (string) - UUID of the travel request to filter vouchers by.
+   * Output: Promise<Voucher[]> - array of vouchers associated with the given request.
+   * Throws NotFoundException if no vouchers exist for the given request ID.
+   */
   async findByRequest(requestId: string): Promise<Voucher[]> {
     const vouchers = await this.voucherRepo.find({
       where: { id_request: requestId},

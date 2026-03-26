@@ -1,3 +1,13 @@
+/**
+ * FileName: request-log.entity.ts
+ * Description: TypeORM entity representing the request_logs table. Stores a history
+ *              of status changes for requests, including who made the change, when,
+ *              and what the new status was. Belongs to a Request via id_request.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

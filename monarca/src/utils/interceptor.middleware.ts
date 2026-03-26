@@ -1,3 +1,13 @@
+/**
+ * FileName: interceptor.middleware.ts
+ * Description: Multer interceptor for handling voucher file uploads. Accepts PDF
+ *              and XML files up to 5MB, stores them in the uploads/vouchers directory
+ *              with a unique UUID-based filename.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';

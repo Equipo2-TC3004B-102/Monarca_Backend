@@ -1,3 +1,13 @@
+/**
+ * FileName: user.checks.service.ts
+ * Description: Service providing user validation and lookup utilities. Includes
+ *              methods for login validation, retrieving a user by ID with relations,
+ *              and randomly selecting an approver or SOI user for request assignment.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';

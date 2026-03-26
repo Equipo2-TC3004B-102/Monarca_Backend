@@ -1,3 +1,13 @@
+/**
+ * FileName: create-request-log.dto.ts
+ * Description: Data Transfer Object for creating a request log entry. Validates
+ *              id_request and id_user as UUIDs, new_status as a string, and
+ *              optionally report as a string and change_date as a date string.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID, IsString, IsDateString, IsOptional } from 'class-validator';
 

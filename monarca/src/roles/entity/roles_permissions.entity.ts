@@ -1,3 +1,13 @@
+/**
+ * FileName: roles_permissions.entity.ts
+ * Description: TypeORM entity representing the roles_permissions join table.
+ *              Defines the ManyToMany relationship between Roles and Permissions
+ *              using a composite primary key of id_role and id_permission.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Entity, ManyToOne, JoinColumn, PrimaryColumn } from 'typeorm';
 import { Roles } from './roles.entity';
 import { Permission } from './permissions.entity';

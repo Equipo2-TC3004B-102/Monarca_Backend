@@ -1,3 +1,12 @@
+/**
+ * FileName: travel-agencies.e2e-spec
+ * Description: End-to-end tests for the Travel Agencies feature. Boots the full NestJS
+ *              application and verifies CRUD operations on the /travel-agencies endpoint.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
@@ -9,6 +18,11 @@ dotenv.config();
 describe('TravelAgencies e2e', () => {
   let app: INestApplication;
 
+  /**
+   * beforeAll - Bootstraps the full NestJS application before any test runs.
+   * Input: None
+   * Output: Initializes the app instance with global ValidationPipe used across all e2e tests.
+   */
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -25,10 +39,20 @@ describe('TravelAgencies e2e', () => {
     await app.init();
   });
 
+  /**
+   * afterAll - Closes the NestJS application after all tests have run.
+   * Input: None
+   * Output: Releases all app resources and connections.
+   */
   afterAll(async () => {
     await app.close();
   });
 
+  /**
+   * POST /travel-agencies - Verifies that a new travel agency is created with a valid name.
+   * Input: name field in request body.
+   * Output: Passes if status is 201, body has an id, and name matches. Cleans up afterwards.
+   */
   it('/travel-agencies (POST) debe crear una agencia', async () => {
     const dto = { name: 'Agencia E2E' };
     const res = await request(app.getHttpServer())
@@ -47,6 +71,11 @@ describe('TravelAgencies e2e', () => {
       .expect(200);
   });
 
+  /**
+   * GET /travel-agencies - Verifies that the endpoint returns an array of all travel agencies.
+   * Input: None
+   * Output: Passes if status is 200 and response body is an array.
+   */
   it('/travel-agencies (GET) debe retornar todas', async () => {
     const res = await request(app.getHttpServer())
       .get('/travel-agencies')
@@ -55,6 +84,12 @@ describe('TravelAgencies e2e', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
+  /**
+   * GET /travel-agencies/:id - Verifies that a travel agency can be retrieved by its UUID.
+   * Input: UUID of a freshly created travel agency.
+   * Output: Passes if status is 200 and response body id matches the created record.
+   *         Cleans up by deleting the created record.
+   */
   it('/travel-agencies/:id (GET) debe retornar una por ID', async () => {
     // 1) Creamos primero para obtener su ID dinámico
     const createRes = await request(app.getHttpServer())

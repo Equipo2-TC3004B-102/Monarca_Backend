@@ -1,3 +1,13 @@
+/**
+ * FileName: reservation.dtos
+ * Description: Data Transfer Objects for Reservation operations. Defines and validates
+ *              fields for creating (CreateReservationDto) and updating (UpdateReservationDto)
+ *              reservations, and exposes the entity shape as ReservationDto.
+ * Authors: Original Moncarca team
+ * Last Modification made:
+ * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
 import {
   IsNotEmpty,

@@ -1,3 +1,12 @@
+/**
+ * FileName: destinations.controller.spec.ts
+ * Description: Unit tests for DestinationsController. Verifies that the controller
+ *              is correctly instantiated within a NestJS testing module.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ */
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { DestinationsController } from './destinations.controller';
 import { DestinationsService } from './destinations.service';
