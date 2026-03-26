@@ -42,7 +42,7 @@ export class RequestsStatusService {
     if (!request) throw new NotFoundException('Invalid request id');
 
     //CHECAR SI ES VALIDO EL TRAVEL AGENCY ID
-    if (!(await this.travelAgenciesChecks.Exists(id_travel_agency)))
+    if (!(await this.travelAgenciesChecks.exists(id_travel_agency)))
       throw new BadRequestException('Invalid travel agency id.');
 
     if (request.id_admin !== id_user)
