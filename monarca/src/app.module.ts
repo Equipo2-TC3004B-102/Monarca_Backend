@@ -42,6 +42,7 @@ import { join } from 'path';
 import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       serveRoot: '/files',
     }),
     NotificationsModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     TravelAgenciesModule,
@@ -113,4 +115,4 @@ import { NotificationsModule } from './notifications/notifications.module';
   controllers: [],
   providers: [SeedService],
 })
-export class AppModule {}
+export class AppModule { }
