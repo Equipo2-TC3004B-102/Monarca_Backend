@@ -1,6 +1,134 @@
-# 🚀 Complete Installation Guide - Proyecto Monarca in Windows with WSL
+# 🚀 Monarca Windows Guide (Native + Docker DB)
 
-This guide is designed specifically for the configuration and the execution of the “Proyecto Monarca” in **Windows using WSL2 (Ubuntu)**.
+This is the official development flow for Windows.
+
+- Backend runs natively.
+- Frontend runs natively.
+- PostgreSQL runs in Docker.
+- WSL is optional (not required for daily development).
+
+Important:
+
+- Keep repositories in a local Windows path such as `D:\Escritorio\TEC\Ditta`.
+- Avoid running npm from UNC paths like `\\wsl.localhost\...` in PowerShell/cmd.
+
+---
+
+## 1. Prerequisites
+
+- Volta
+- Docker Desktop
+- PowerShell
+- Git
+
+Install Volta:
+
+```powershell
+winget install Volta.Volta
+```
+
+Pin versions:
+
+```powershell
+volta install node@22.14.0 npm@10.9.2
+node -v
+npm -v
+```
+
+---
+
+## 2. Clone repositories (example)
+
+```powershell
+cd D:\Escritorio\TEC\Ditta
+git clone git@github.com:Equipo2-TC3004B-102/Monarca_Backend.git
+git clone git@github.com:Equipo2-TC3004B-102/Monarca_Frontend.git
+```
+
+---
+
+## 3. Start database (Docker)
+
+From `Monarca_Backend`:
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+---
+
+## 4. Setup and start backend (native)
+
+From `Monarca_Backend\monarca`:
+
+```powershell
+npm install
+npm run setup
+npm run dev
+```
+
+---
+
+## 5. Setup and start frontend (native)
+
+From `Monarca_Frontend`:
+
+```powershell
+npm install
+npm run setup
+npm run dev
+```
+
+Expected `.env` minimum:
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+---
+
+## 6. Seed data (optional)
+
+From `Monarca_Backend\monarca`:
+
+```powershell
+npm run db:seed
+```
+
+---
+
+## 7. Validation checklist
+
+Backend:
+
+```powershell
+cd Monarca_Backend\monarca
+npm run setup
+npm run build
+```
+
+Frontend:
+
+```powershell
+cd Monarca_Frontend
+npm run setup
+npm run build
+```
+
+---
+
+## 8. Notes
+
+- `.nvmrc` remains for compatibility.
+- `.envrc` is optional for people using direnv.
+- If you use WSL by preference, this guide still works.
+
+---
+
+## Legacy WSL-focused guide
+
+The section below is kept as historical reference.
 
 ---
 

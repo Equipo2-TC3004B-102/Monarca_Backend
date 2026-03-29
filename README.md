@@ -108,79 +108,93 @@ src/
 ```
 
 ---
-# 🚀 **Guía de Inicialización**
+# 🚀 Initialization Guide
 
-## 🛠️ Instalación del Entorno de Desarrollo
-### Requirements
+## Recommended Local Workflow
 
-- Node.js (we use NVM to manage versions)
-- npm (Node Package Manager)
-- direnv
-When you enter the repository, run “direnv allow” if it’s the first time
+- Backend: native process (Windows/macOS/Linux)
+- Frontend: native process (Windows/macOS/Linux)
+- Database: Docker (`Monarca_Backend/compose.yaml`)
 
-**How to Install**
-In MacOS: brew install direnv
+On Windows, run the project from a local drive path like `D:\Escritorio\TEC\Ditta` or `C:\dev\Monarca`.
+Avoid running npm from `\\wsl.localhost\...` paths in PowerShell/cmd, as they can fail with UNC path errors.
 
-Add the following hook to your shell/terminal
+## Prerequisites
 
-**If in Bash**
+- Volta (Node runtime manager)
+- Docker Desktop
+- Git
 
-```
-echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
-```
+Install Volta:
 
-**If in Zsh**
-
-```
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+```powershell
+winget install Volta.Volta
 ```
 
-Enable direnv in this repository by using:
-```
-direnv allow
+Pin versions:
+
+```powershell
+volta install node@22.14.0 npm@10.9.2
+node -v
+npm -v
 ```
 
-Install nvm and node.js
-For NVM:
-```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+## Backend Setup
+
+From `Monarca_Backend/monarca`:
+
+```bash
+npm install
+npm run setup
 ```
 
-source ~/.bashrc # or ~/.zshrc (depending on your shell)
+`npm run setup` performs:
 
-```
-nvm install
+- `.env` bootstrap from `.env.example` (if missing)
+- required environment variable validation
+
+Required backend variables in `.env`:
+
+```env
+JWT_SECRET=
+POSTGRES_HOST=
+POSTGRES_PORT=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DATABASE=
+DOWNLOAD_LINK=
+FRONTEND_URL=
 ```
 
-**Installing the Project**
-```
-npm Install
+## Run Backend
+
+1. Start PostgreSQL from `Monarca_Backend`:
+
+```bash
+docker compose up -d
+docker compose ps
 ```
 
-After that we want to activate a local host by doing the following:
-```
+2. Start backend from `Monarca_Backend/monarca`:
+
+```bash
 npm run dev
 ```
 
-**Environment Variables**
-Create an “.env” file with the content specified in the “.env.example” file
+3. Optional seed:
 
-VITE_API_URL=
+```bash
+npm run db:seed
+```
 
+## Team Note (Windows + WSL)
 
-> These are credentials the database uses
+The team can keep WSL for optional workflows, but the official day-to-day path is now native Windows with Volta.
+This keeps runtime versions consistent and avoids shell-specific setup issues.
 
 ## 🐳 Starting and managing Docker services (PostgreSQL)
 
-**Building the docker image (only if it doesn’t exist):**
-
-Through the terminal, go to “Monarca_Backend/DB”, if you are at that level, execute the following command:
-
-```bash
-docker build -t monarca-v1 .
-```
-
-> This build a Docker image called “monarca-v1”, which should appear in the image section in the Docker Desktop.
+This project uses the official `postgres:17-alpine` image configured in `compose.yaml`.
 
 ---
 **Starting the services with Docker Compose:**
@@ -191,7 +205,7 @@ From the root of the project “Monarca Backend”, execute:
 docker compose up -d
 ```
 
-> This starts up the containers defined in the folder “docker-compose.yaml” and will automatically generate a folder called “postgres” inside the “Monarca_Backend/DB” path, which will contain all of the data for the database
+> This starts PostgreSQL and persists data in `Monarca_Backend/DB/postgres`.
 
 Alternatively you can boot up the container through the Docker desktop, through the containers window and pressing click in Start over the corresponding button
 
@@ -250,6 +264,12 @@ Through the pgAdmin app, we need to configure a new server using the following p
 docker exec -it monarca_database psql -U postgres -d Monarca
 ```
 > This command gives u direct access to the interactive PostgreSQL console inside the docker container, connecting to the Monarca database as the user “postgres”.
+
+## Optional compatibility tools
+
+- `.nvmrc` is kept for compatibility.
+- `.envrc` is optional for people already using direnv.
+- Official and recommended runtime manager is Volta.
 
 
 ## Inserting data
