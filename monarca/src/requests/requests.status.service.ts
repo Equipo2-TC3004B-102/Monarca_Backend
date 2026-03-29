@@ -1,3 +1,11 @@
+/**
+ * FileName: requests.status.service.ts
+ * Description: Service responsible for request status transitions and related notifications.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 26/03/2026 [Diego de la Vega] Fixed travel agency validation call casing in approve flow.
+ */
+
 import {
   Injectable,
   NotFoundException,
@@ -42,7 +50,7 @@ export class RequestsStatusService {
     if (!request) throw new NotFoundException('Invalid request id');
 
     //CHECAR SI ES VALIDO EL TRAVEL AGENCY ID
-    if (!(await this.travelAgenciesChecks.Exists(id_travel_agency)))
+    if (!(await this.travelAgenciesChecks.exists(id_travel_agency)))
       throw new BadRequestException('Invalid travel agency id.');
 
     if (request.id_admin !== id_user)
