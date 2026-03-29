@@ -4,8 +4,19 @@
   "description": "",
   "author": "",
   "private": true,
+  "engines": {
+    "node": "22.14.x",
+    "npm": "10.x"
+  },
+  "volta": {
+    "node": "22.14.0",
+    "npm": "10.9.2"
+  },
   "license": "UNLICENSED",
   "scripts": {
+    "setup": "npm run setup:env && npm run check:env",
+    "setup:env": "node scripts/setup-env.cjs",
+    "check:env": "node scripts/setup-env.cjs --check",
     "db:seed": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --seed",
     "db:truncate": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --truncate",
     "db:drop": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --drop",
