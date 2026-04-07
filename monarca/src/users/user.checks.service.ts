@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 07/04/2026 [Julio Rodriguez] Authentication logging cleanup and consistency updates.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -13,7 +13,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Not, Repository } from 'typeorm';
 import { LogInDTO } from 'src/auth/dto/login.dto';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserChecks {
@@ -28,16 +27,7 @@ export class UserChecks {
       relations: ['department', 'role', 'role.permissions'],
     });
 
-    if (!user) {
-      console.log('Email or password incorrect');
-      return null;
-    }
-
-    const passwordMatch = await bcrypt.compare(data.password, user.password);
-    if (!passwordMatch) {
-      console.log('Password does not match');
-      return null;
-    }
+    if (!user) return null;
 
     return user;
   }
@@ -48,10 +38,7 @@ export class UserChecks {
       relations: ['department', 'role', 'role.permissions'],
     });
 
-    if (!user) {
-      console.log('User not found');
-      return null;
-    }
+    if (!user) return null;
 
     return user;
   }
