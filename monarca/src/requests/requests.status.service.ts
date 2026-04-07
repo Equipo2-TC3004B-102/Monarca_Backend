@@ -1,3 +1,11 @@
+/**
+ * FileName: requests.status.service.ts
+ * Description: Service responsible for request status transitions and related notifications.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 26/03/2026 [Diego de la Vega] Fixed travel agency validation call casing in approve flow.
+ */
+
 import {
   Injectable,
   NotFoundException,
