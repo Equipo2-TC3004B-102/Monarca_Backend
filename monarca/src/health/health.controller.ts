@@ -1,36 +1,26 @@
 /**
  * FileName: health.controller.ts
  * Description: REST controller exposing a public GET /health endpoint that returns
- *              the server and database connection status. Returns 200 when healthy,
- *              503 (Service Unavailable) when the database is unreachable.
+ *              the server status.
  * Authors: Fausto Izquierdo
  * Last Modification made:
  * 26/03/2026 – Initial creation for Requerimiento 27.
  */
 
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get } from '@nestjs/common';
 import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly healthService: HealthService) { }
+  constructor(private readonly healthService: HealthService) {}
 
   /**
-   * getHealth - Public endpoint to check application and database health.
+   * getHealth - Public endpoint to check application health.
    * Input: None
-   * Output: JSON response with status, database connectivity, and timestamp.
-   *         HTTP 200 if database is connected, HTTP 503 otherwise.
+   * Output: JSON response with status and timestamp.
    */
   @Get()
-  async getHealth(@Res() res: Response) {
-    const healthStatus = await this.healthService.checkHealth();
-
-    const httpStatus =
-      healthStatus.database === 'connected'
-        ? HttpStatus.OK
-        : HttpStatus.SERVICE_UNAVAILABLE;
-
-    return res.status(httpStatus).json(healthStatus);
+  getHealth() {
+    return this.healthService.checkHealth();
   }
 }
