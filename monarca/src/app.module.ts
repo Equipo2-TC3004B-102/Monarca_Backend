@@ -42,6 +42,7 @@ import { join } from 'path';
 import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { NotificationsModule } from './notifications/notifications.module';
         Department,
         CostCenter,
         Destination,
+        ExchangeRate,
         Request,
         RequestsDestination,
         Roles,
@@ -96,6 +98,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       Department,
       CostCenter,
       Destination,
+      ExchangeRate,
       Request,
       RequestsDestination,
       Roles,

@@ -108,6 +108,13 @@ export class CreateRequestDto {
   advance_money: number;
 
   @ApiProperty({
+    description: 'Currency of the advance money',
+    example: 'USD',
+  })
+  @IsString()
+  currency: string;
+
+  @ApiProperty({
     description: 'Additional requirements or notes',
     example: 'Need a wheelchair for an elderly person',
   })

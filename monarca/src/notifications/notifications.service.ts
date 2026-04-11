@@ -46,7 +46,12 @@ export class NotificationsService {
       text,
       html,
     };
-    return this.transporter.sendMail(mailOptions);
+    try {
+      return await this.transporter.sendMail(mailOptions);
+    } catch (error: any) {
+      console.warn(`[Local Dev] Ignored email to ${to} (${subject}). Error:`, error.message);
+      return null;
+    }
   }
 
   /**
