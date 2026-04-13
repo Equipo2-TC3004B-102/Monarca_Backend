@@ -1,14 +1,15 @@
 /**
  * FileName: destinations.service.ts
  * Description: Service handling destination business logic. Provides CRUD operations
- *              against the destinations table. Throws NotFoundException when a
+ *              against the destinations table. Throws BadRequestException when a
  *              destination is not found by ID.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Destination } from './entities/destination.entity';
@@ -37,7 +38,7 @@ export class DestinationsService {
   async findOne(id: string): Promise<Destination> {
     const dest = await this.destRepo.findOneBy({ id });
     if (!dest) {
-      throw new NotFoundException(`Destination ${id} not found`);
+      throw new BadRequestException(`Destination ${id} not found`);
     }
     return dest;
   }
