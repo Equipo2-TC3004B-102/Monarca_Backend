@@ -5,7 +5,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              POST upload endpoint and aligned header format.
  */
 
 import {
@@ -14,11 +15,10 @@ import {
   Post,
   Body,
   Param,
-  Put,
-  Delete,
   Patch,
   Req,
-  UseGuards
+  UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { VouchersService } from './vouchers.service';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
@@ -46,6 +46,7 @@ export class VouchersController {
    */
   @UseInterceptors(UploadPdfInterceptor())
   @Post('upload')
+  @HttpCode(200)
   async uploadVoucher(
     @Req() req: RequestInterface,
     @UploadedFiles()
