@@ -1,11 +1,17 @@
+/**
+ * FileName: requests.service.ts
+ * Description: Service for travel request business logic. Handles request creation,
+ *              role-based retrieval, updates, and status changes with auditing.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 11/04/2026 [Julio Rodriguez] Standardized request errors to 400/500 policy
+ *                              and aligned service header documentation.
+ */
+
 import {
   Injectable,
-  NotFoundException,
-  HttpException,
-  HttpStatus,
+  InternalServerErrorException,
   BadRequestException,
-  UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
@@ -84,6 +90,14 @@ export class RequestsService {
     }
   }
 
+  private clientError(message: string, code: string) {
+    return new BadRequestException({ message, code });
+  }
+
+  private serverError(message: string, code: string) {
+    return new InternalServerErrorException({ message, code });
+  }
+
   private async getCityName(id: string): Promise<string> {
     return await this.destinationChecks.getCityNameById(id);
   }
@@ -139,19 +153,19 @@ export class RequestsService {
       userId,
     );
     if (!adminId) {
-      throw new HttpException(
-        'There is no admin available to assign the request.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      throw new InternalServerErrorException({
+        message: 'There is no admin available to assign the request.',
+        code: 'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      });
     }
 
-    //ASIGNAR SOI
+    // Assign SOI user
     const SOIId = await this.userChecks.getRandomSOIID();
     if (!SOIId) {
-      throw new HttpException(
-        'There is no SOI available to assign the request.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      throw new InternalServerErrorException({
+        message: 'There is no SOI available to assign the request.',
+        code: 'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
+      });
     }
 
     let finalAdvanceMoney: number = 0;
@@ -222,7 +236,10 @@ export class RequestsService {
     const admin = await this.userChecks.getUserById(saved.id_admin);
 
     if (!admin) {
-      throw new NotFoundException(`Admin with ID ${saved.id_admin} not found.`);
+      throw this.serverError(
+        `Admin with ID ${saved.id_admin} not found.`,
+        'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
+      );
     }
 
     // Mandar mail de notificación al admin asignado
@@ -274,7 +291,8 @@ export class RequestsService {
         'requests_destinations.reservations',
       ],
     });
-    if (!request) throw new NotFoundException(`Request ${id} not found`);
+    if (!request)
+      throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
     // VALIDAR QUE PUEDE ACCEDER REQUEST
     const id_travel_agency = req.userInfo.id_travel_agency;
@@ -285,7 +303,7 @@ export class RequestsService {
       userId !== request.id_SOI &&
       !(id_travel_agency && id_travel_agency === request.id_travel_agency) //Testear mas
     )
-      throw new UnauthorizedException('Cannot access this request.');
+      throw this.clientError('Cannot access this request.', 'REQUESTS_ACCESS_DENIED');
 
     return request;
   }
@@ -377,7 +395,10 @@ export class RequestsService {
     const travelAgencyId = req.userInfo.id_travel_agency;
 
     if (!travelAgencyId)
-      throw new UnauthorizedException('Cannot access this endpoint.');
+      throw this.clientError(
+        'Cannot access this endpoint.',
+        'REQUESTS_TRAVEL_AGENCY_REQUIRED',
+      );
 
     const list = await this.requestsRepo.find({
       where: {
@@ -410,18 +431,23 @@ export class RequestsService {
         where: { id },
         relations: ['requests_destinations'],
       });
-      if (!entity) throw new NotFoundException(`Request ${id} not found`);
+      if (!entity)
+        throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
       if (req.sessionInfo.id !== entity.id_user)
-        throw new UnauthorizedException('Unable to edit this request.');
+        throw this.clientError(
+          'Unable to edit this request.',
+          'REQUESTS_UPDATE_NOT_ALLOWED',
+        );
 
       //Un request solo puede ser editado si esta en estos estados
       if (
         entity.status !== 'Pending Review' &&
         entity.status !== 'Changes Needed'
       )
-        throw new ConflictException(
+        throw this.clientError(
           'Unable to edit this request beacuse of its current status.',
+          'REQUESTS_UPDATE_INVALID_STATE',
         );
 
       //VALIDAR VALIDEZ DE CIUDADES
@@ -503,7 +529,10 @@ export class RequestsService {
       // Notificar al admin asignado
       const admin = await this.userChecks.getUserById(updated.id_admin);
       if (!admin) {
-        throw new NotFoundException(`Admin with ID ${updated.id_admin} not found.`);
+        throw this.serverError(
+          `Admin with ID ${updated.id_admin} not found.`,
+          'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
+        );
       }
       await this.notificationsService.notify(
         admin.email,
@@ -525,7 +554,10 @@ export class RequestsService {
       where: { id },
     });
     if (!request) {
-      throw new NotFoundException(`Request with ID ${id} not found.`);
+      throw this.clientError(
+        `Request with ID ${id} not found.`,
+        'REQUESTS_INVALID_ID',
+      );
     }
     return request;
   }
@@ -534,7 +566,7 @@ export class RequestsService {
     const request = await this.requestsRepo.findOne({ where: { id } });
 
     if (!request) {
-      throw new Error('Request not found');
+      throw this.clientError('Request not found', 'REQUESTS_INVALID_ID');
     }
     const previousStatus = request.status;
     request.status = newStatus;
