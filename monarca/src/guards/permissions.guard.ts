@@ -1,16 +1,24 @@
+/**
+ * FileName: permissions.guard.ts
+ * Description: Guard for enforcing user permissions on protected routes. Checks
+ *              if the authenticated user has the required permissions defined
+ *              by endpoint metadata.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to BadRequestException for HTTP 400 policy and aligned header documentation.
+ */
+
 import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './decorators/permission.decorator';
 import { Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionInfoInterface } from './interfaces/sessionInfo.interface';
-import { UserInfoInterface } from './interfaces/userInfo.interface';
 import { RequestInterface } from './interfaces/request.interface';
 
 @Injectable()
@@ -25,11 +33,11 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestInterface>();
 
     const userId = request.sessionInfo?.id;
-    if (!userId) throw new ForbiddenException('User session not found');
+    if (!userId) throw new BadRequestException('User session not found');
 
     const user = await this.findById(userId);
     if (!user || !user.role || !user.role.permissions) {
-      throw new ForbiddenException('User or permissions not found');
+      throw new BadRequestException('User or permissions not found');
     }
 
     // console.log('User found:', user.id);
@@ -62,7 +70,7 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Permission denied');
+      throw new BadRequestException('Permission denied');
     }
 
     return true;
@@ -75,7 +83,7 @@ export class PermissionsGuard implements CanActivate {
     });
 
     if (!user) {
-      throw new ForbiddenException('User not found');
+      throw new BadRequestException('User not found');
     }
 
     return user;

@@ -1,14 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  HttpException,
-  HttpStatus,
-  BadRequestException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { RequestsDestination } from './entities/requests-destination.entity';
 
