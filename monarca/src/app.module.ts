@@ -5,7 +5,7 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 25/02/2026 [Santiago Coronado Hernández] Changed synchronize value to false 
  */
 
 import { Module } from '@nestjs/common';
@@ -88,7 +88,7 @@ import { NotificationsModule } from './notifications/notifications.module';
         UserLogs,
         Revision,
       ],
-      synchronize: true,
+      synchronize: false,
     }),
 
     TypeOrmModule.forFeature([
