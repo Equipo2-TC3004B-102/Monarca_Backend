@@ -80,6 +80,11 @@ If needed:
 npm run migration:revert
 ```
 
+## Naming Conventions
+- Database_vx
+- x being the current version from 1 onward
+- In each version, you have to put the comment that all files need, and in that comment, you need to add what was added to the database
+
 ## Important Notes
 
 1. Keep `synchronize` set to `false` in runtime config to avoid schema drift.
