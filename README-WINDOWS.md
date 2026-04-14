@@ -21,13 +21,49 @@ Important:
 - PowerShell
 - Git
 
-Install Volta:
+Install Volta in a Powershell window (root)
 
 ```powershell
 winget install Volta.Volta
 ```
 
-Pin versions:
+---
+
+## 2. Clone repositories (example)
+
+<!-- Consider changing the routes to what you actually have -->
+```powershell
+cd D:\Escritorio\TEC\Ditta
+git clone git@github.com:Equipo2-TC3004B-102/Monarca_Backend.git
+git clone git@github.com:Equipo2-TC3004B-102/Monarca_Frontend.git
+```
+
+### Route Adaptation (Windows-only)
+
+If you will run everything from Windows (PowerShell or Git Bash), keep both repositories in a local Windows path.
+
+Example root path:
+
+- `D:\Escritorio\TEC\Ditta`
+
+Example clone folders:
+
+- `D:\Escritorio\TEC\Ditta\Monarca_Backend_clone`
+- `D:\Escritorio\TEC\Ditta\Monarca_Frontend_clone`
+
+Note:
+
+- If your previous copy was only in WSL (`/home/...`), create a Windows clone as shown above.
+
+---
+
+## Detailed First-Time Setup (Windows-only)
+
+Use this section when configuring a new Windows machine or a fresh clone.
+
+### A) Validate runtime versions
+
+<!--After winget install, close Powershell and open again, then enter these: -->
 
 ```powershell
 volta install node@22.14.0 npm@10.9.2
@@ -35,62 +71,139 @@ node -v
 npm -v
 ```
 
----
+### B) Clean Docker state for this clone (prevents common startup loops)
 
-## 2. Clone repositories (example)
+From backend root (`Monarca_Backend_clone`):
 
 ```powershell
-cd D:\Escritorio\TEC\Ditta
-git clone git@github.com:Equipo2-TC3004B-102/Monarca_Backend.git
-git clone git@github.com:Equipo2-TC3004B-102/Monarca_Frontend.git
+docker compose down --remove-orphans
+docker rm -f monarca_database 2>$null
+Remove-Item -Recurse -Force .\DB\postgres -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path .\DB\postgres -Force | Out-Null
+```
+
+### C) Start PostgreSQL and verify readiness
+
+```powershell
+docker compose up -d db
+docker compose ps
+docker logs --tail 120 monarca_database
+```
+
+Expected log message:
+
+- `database system is ready to accept connections`
+
+### D) Start backend (run commands inside `monarca`)
+
+```powershell
+cd .\monarca
+npm install
+npm run setup
+npm run dev
+```
+
+### E) Seed data (optional but recommended for E2E)
+
+In another terminal:
+
+```powershell
+cd D:\Escritorio\TEC\Ditta\Monarca_Backend_clone\monarca
+npm run db:seed
+```
+
+### F) Start frontend
+
+```powershell
+cd D:\Escritorio\TEC\Ditta\Monarca_Frontend_clone
+npm install
+npm run setup
+npm run dev
+```
+
+### G) Verify services
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3000`
+- Swagger: `http://localhost:3000/api`
+
+### H) Common Windows issues
+
+1. `ENOENT: Could not read package.json (D:\\package.json)`
+
+Cause:
+
+- You ran npm from the wrong directory.
+
+Fix:
+
+- Run backend npm commands from `Monarca_Backend_clone\monarca`.
+- Run frontend npm commands from `Monarca_Frontend_clone`.
+
+2. `The container name "/monarca_database" is already in use`
+
+Cause:
+
+- Another repository or compose project already created the same container name.
+
+Fix:
+
+```powershell
+docker rm -f monarca_database
+docker compose up -d db
+```
+
+3. `initdb: directory "/var/lib/postgresql/data" exists but is not empty`
+
+Cause:
+
+- The bind-mounted `DB\postgres` directory already contains leftover data.
+
+Fix:
+
+```powershell
+cd D:\Escritorio\TEC\Ditta\Monarca_Backend_clone
+docker compose down --remove-orphans
+docker rm -f monarca_database 2>$null
+Remove-Item -Recurse -Force .\DB\postgres -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path .\DB\postgres -Force | Out-Null
+docker compose up -d db
 ```
 
 ---
 
-## 3. Start database (Docker)
+## 3. Daily Startup (after first-time setup)
 
-From `Monarca_Backend`:
+Use this when your machine is already configured and dependencies are already installed.
+
+### A) Start database
+
+From `Monarca_Backend_clone`:
 
 ```powershell
-docker compose up -d
+docker compose up -d db
 docker compose ps
 ```
 
----
+### B) Start backend
 
-## 4. Setup and start backend (native)
-
-From `Monarca_Backend\monarca`:
+From `Monarca_Backend_clone\monarca`:
 
 ```powershell
-npm install
-npm run setup
 npm run dev
 ```
 
----
+### C) Start frontend
 
-## 5. Setup and start frontend (native)
-
-From `Monarca_Frontend`:
+From `Monarca_Frontend_clone`:
 
 ```powershell
-npm install
-npm run setup
 npm run dev
 ```
 
-Expected `.env` minimum:
+### D) Reseed data only when needed
 
-```env
-VITE_API_URL=http://localhost:3000
-```
-
----
-
-## 6. Seed data (optional)
-
-From `Monarca_Backend\monarca`:
+From `Monarca_Backend_clone\monarca`:
 
 ```powershell
 npm run db:seed
@@ -98,12 +211,12 @@ npm run db:seed
 
 ---
 
-## 7. Validation checklist
+## 4. Validation checklist
 
 Backend:
 
 ```powershell
-cd Monarca_Backend\monarca
+cd Monarca_Backend_clone\monarca
 npm run setup
 npm run build
 ```
@@ -111,14 +224,14 @@ npm run build
 Frontend:
 
 ```powershell
-cd Monarca_Frontend
+cd Monarca_Frontend_clone
 npm run setup
 npm run build
 ```
 
 ---
 
-## 8. Notes
+## 5. Notes
 
 - `.nvmrc` remains for compatibility.
 - `.envrc` is optional for people using direnv.
