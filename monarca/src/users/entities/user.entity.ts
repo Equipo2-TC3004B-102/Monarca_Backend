@@ -5,7 +5,7 @@
  *              requests, assigned requests, revisions and SOI assigned requests.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 15/04/2026 [Julio Rodríguez] Added company relationship to User entity to associate users with their respective companies.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -14,6 +14,7 @@ import { Request } from 'src/requests/entities/request.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
 import { Roles } from 'src/roles/entity/roles.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
+import { Company } from 'src/companies/entity/company.entity';
 
 import {
   Entity,
@@ -65,6 +66,15 @@ export class User {
   })
   id_travel_agency?: string;
 
+  // Add company attribute
+  @ApiProperty({ example: 1 })
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  id_company?: string;  
+
+  // Relationships
   @ManyToOne(() => Department, (department) => department.users)
   @JoinColumn({ name: 'id_department' })
   department: Department;
@@ -87,6 +97,12 @@ export class User {
   @OneToMany(() => Request, (req) => req.admin, {})
   assigned_requests: Request[];
 
-  @OneToMany(() => Request, (req) => req.admin, {})
+  // Modified relationship for consistency with Request entity, One SOI user can have many SOI assigned requests
+  @OneToMany(() => Request, (req) => req.SOI, {})
   SOI_assigned_requests: Request[];
+
+  // Added relationship with Company 1 company can have many users
+  @ManyToOne(() => Company, (company) => company.employees)
+  @JoinColumn({ name: 'id_company' })
+  company?: Company;
 }
