@@ -26,6 +26,10 @@ interface SeedData {
     entityName: string;
 }
 
+type UserSeed = Partial<User> & {
+    id_ceco?: string;
+};
+
 @Injectable()
 export class SeedService {
     private readonly logger = new Logger(SeedService.name);
@@ -99,8 +103,16 @@ export class SeedService {
 
             for (const entity of entities) {
                 if (entityName === 'User') {
+                    const userSeed = entity as UserSeed;
+                    const normalizedUser = {
+                        ...userSeed,
+                        id_department: userSeed.id_ceco ?? userSeed.id_department,
+                    };
+
+                    delete normalizedUser.id_ceco;
+
                     let user: User | undefined;
-                    user = await hashPasswords(entity as User);
+                    user = await hashPasswords(normalizedUser as User);
                     await repo.save(user);
                 } else if (entityName === 'Department') {
                     const costCenter = await this.costCenterRepo.findOneByOrFail({ id: entity.cost_center_id });
