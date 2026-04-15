@@ -21,7 +21,7 @@ import { RequestInterface } from 'src/guards/interfaces/request.interface';
 @UseGuards(AuthGuard, PermissionsGuard)
 @Controller('requests')
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(private readonly requestsService: RequestsService) { }
 
   @Post()
   async create(
