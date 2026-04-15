@@ -1,15 +1,18 @@
 [
     {
       "id": "a1f4e0e1-1b89-4ccf-9e57-43f4b3d1a001", 
-      "name": "CeCo001"
+      "description": "Technology CeCo",
+      "id_company": "11111111-1111-4111-8111-111111111111"
     },
     {
       "id": "b2d1c6c2-2f9e-43d3-8b1f-87fa7d2e8002", 
-      "name": "CeCo002"
+      "description": "Human Resources CeCo",
+      "id_company": "11111111-1111-4111-8111-111111111111"
     },
     {
       "id": "c3e8f9e3-3aad-4f0c-9d87-12bd7e3fa003", 
-      "name": "CeCo003"
+      "description": "Sales CeCo",
+      "id_company": "22222222-2222-4222-8222-222222222222"
     }
   ]
   

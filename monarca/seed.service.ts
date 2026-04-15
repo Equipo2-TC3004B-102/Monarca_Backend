@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Company } from 'src/companies/entity/company.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { Department } from './src/departments/entity/department.entity';
 import { Destination } from 'src/destinations/entities/destination.entity';
@@ -30,11 +31,16 @@ type UserSeed = Partial<User> & {
     id_ceco?: string;
 };
 
+type CostCenterSeed = Partial<CostCenter> & {
+    description?: string;
+};
+
 @Injectable()
 export class SeedService {
     private readonly logger = new Logger(SeedService.name);
 
     constructor(
+        @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
         @InjectRepository(Department) private readonly departmentRepo: Repository<Department>,
         @InjectRepository(CostCenter) private readonly costCenterRepo: Repository<CostCenter>,
         @InjectRepository(Destination) private readonly destinationRepo: Repository<Destination>,
@@ -54,6 +60,7 @@ export class SeedService {
 
     async run() {
         const seedData: SeedData[] = [
+            { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
             { repo: this.departmentRepo, file: 'departments.json', entityName: 'Department' },
             { repo: this.permissionRepo, file: 'permissions.json', entityName: 'Permission' },
@@ -114,6 +121,17 @@ export class SeedService {
                     let user: User | undefined;
                     user = await hashPasswords(normalizedUser as User);
                     await repo.save(user);
+                } else if (entityName === 'CostCenter') {
+                    const costCenterSeed = entity as CostCenterSeed;
+                    const normalizedCostCenter = {
+                        ...costCenterSeed,
+                        name: costCenterSeed.description ?? costCenterSeed.name,
+                    };
+
+                    delete normalizedCostCenter.description;
+
+                    const newEntity = repo.create(normalizedCostCenter);
+                    await repo.save(newEntity);
                 } else if (entityName === 'Department') {
                     const costCenter = await this.costCenterRepo.findOneByOrFail({ id: entity.cost_center_id });
                     
@@ -165,7 +183,8 @@ export class SeedService {
                 'exchange_rates',
                 'permissions',
                 'departments',
-                'cost_centers'
+                'cost_centers',
+                'companies',
             ];
 
             for (const table of tables) {
