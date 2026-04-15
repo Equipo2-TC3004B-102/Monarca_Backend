@@ -10,7 +10,7 @@
 import { User } from 'src/users/entities/user.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { ApprovalLevel } from 'src/approval-levels/entity/approval-levels.entity'; // Non exixtsing table
-import { Request } from 'src/requests/entity/request.entity'; // Non existing table 
+import { Request } from 'src/requests/entity/request.entity'; 
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 @Entity({ name: 'companies' })
