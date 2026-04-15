@@ -10,6 +10,7 @@
 
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
+import { CompaniesModule } from './comapines/company-module';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DepartmentsModule } from './departments/departments.module';
@@ -19,6 +20,7 @@ import { RequestsModule } from './requests/requests.module';
 import { RequestLogsModule } from './request-logs/request-logs.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { User } from './users/entities/user.entity';
+import { Company } from './comapines/entity/company.entity';
 import { UserLogs } from './user-logs/entity/user-logs.entity';
 import { Department } from './departments/entity/department.entity';
 import { Destination } from './destinations/entities/destination.entity';
@@ -65,6 +67,7 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
     DestinationsModule,
     UserLogsModule,
     GuardsModule,
+    CompaniesModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -74,6 +77,7 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
       database: process.env.POSTGRES_DATABASE,
       entities: [
         User,
+        Company,
         Department,
         CostCenter,
         Destination,
