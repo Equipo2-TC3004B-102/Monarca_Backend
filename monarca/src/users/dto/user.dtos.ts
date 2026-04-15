@@ -6,7 +6,7 @@
  *              for safe responses.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 15/02/2026 [Julio Rodriguez] Deleted unnecessary comments, and department relationships.
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -29,8 +29,8 @@ export class CreateUserDto {
   @ApiProperty({ example: 'active' })
   status: string;
 
-  @ApiProperty({ example: 1 })
-  id_department?: string;
+  @ApiProperty({ example: 1, required: false })
+  id_ceco?: string;
 
   @ApiProperty({ example: 2 })
   id_role: string;

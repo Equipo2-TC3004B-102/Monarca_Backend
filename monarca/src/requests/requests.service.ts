@@ -133,9 +133,16 @@ export class RequestsService {
     }
 
     //ASIGNAR APROVADOR
-    const id_department = req.userInfo.id_department;
-    const adminId = await this.userChecks.getRandomApproverIdFromSameDepartment(
-      id_department,
+    const id_ceco = req.userInfo.id_ceco;
+    if (!id_ceco) {
+      throw new HttpException(
+        'The requester is not linked to any cost center.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
+      id_ceco,
       userId,
     );
     if (!adminId) {
@@ -316,7 +323,6 @@ export class RequestsService {
       .leftJoinAndSelect('rd.destination', 'd')
       .leftJoinAndSelect('r.revisions', 'rev')
       .leftJoinAndSelect('r.user', 'u')
-      .leftJoinAndSelect('u.department', 'dept')
       .leftJoinAndSelect('r.admin', 'adm')
       .leftJoinAndSelect('r.SOI', 'soi')
       .leftJoinAndSelect('r.destination', 'dest')

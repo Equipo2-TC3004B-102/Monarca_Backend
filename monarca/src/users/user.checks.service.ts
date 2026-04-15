@@ -11,7 +11,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { LogInDTO } from 'src/auth/dto/login.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -25,7 +25,7 @@ export class UserChecks {
   async logIn(data: LogInDTO): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { email: data.email },
-      relations: ['department', 'role', 'role.permissions'],
+      relations: ['role', 'role.permissions'],
     });
 
     if (!user) {
@@ -44,8 +44,8 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'email', 'department', 'last_name', 'role'],
-      relations: ['department', 'role', 'role.permissions'],
+      select: ['id', 'name', 'email', 'last_name', 'role'],
+      relations: ['role', 'role.permissions'],
     });
 
     if (!user) {
@@ -78,21 +78,18 @@ export class UserChecks {
     return approvers[randomIndex].id;
   }
 
-  async getRandomApproverIdFromSameDepartment(id_department: string, id_user: string): Promise<string | null> {
-    const approvers = await this.userRepository.find({
-      where: {
-        id: Not(id_user), // Que no se pueda asignar a si mismo como aprobador
-        id_department: id_department,
-        role: {
-          name: 'Aprobador',
-
-        },
-      },
-      select: ['id'],
-      relations: [],
-    });
-
-    // console.log(approvers)
+  async getRandomApproverIdFromSameCostCenter(
+    id_cost_center: string,
+    id_user: string,
+  ): Promise<string | null> {
+    const approvers = await this.userRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.role', 'role')
+      .where('u.id != :id_user', { id_user })
+      .andWhere('u.id_department = :id_cost_center', { id_cost_center })
+      .andWhere('role.name = :roleName', { roleName: 'Aprobador' })
+      .select('u.id', 'id')
+      .getRawMany<{ id: string }>();
 
     if (approvers.length === 0) {
       return null;

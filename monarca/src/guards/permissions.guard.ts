@@ -41,7 +41,7 @@ export class PermissionsGuard implements CanActivate {
       name: user.name,
       last_name: user.last_name,
       status: user.status,
-      id_department: user.id_department,
+      id_ceco: user.id_department,
       id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
     };

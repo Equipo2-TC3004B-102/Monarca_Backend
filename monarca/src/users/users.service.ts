@@ -44,7 +44,13 @@ export class UsersService {
   }
 
   async create(data: CreateUserDto): Promise<User> {
-    const ent = this.repo.create(data);
+    const { id_ceco, ...rest } = data;
+
+    const ent = this.repo.create({
+      ...rest,
+      ...(id_ceco ? { id_department: id_ceco } : {}),
+    });
+
     return this.repo.save(ent);
   }
 
@@ -58,7 +64,13 @@ export class UsersService {
   }
 
   async update(id: string, data: UpdateUserDto): Promise<UserDto> {
-    await this.repo.update(id, data);
+    const { id_ceco, ...rest } = data;
+
+    await this.repo.update(id, {
+      ...rest,
+      ...(id_ceco ? { id_department: id_ceco } : {}),
+    });
+
     return this.findOne(id);
   }
 
