@@ -6,15 +6,18 @@
  *              current user by ID from the JWT payload.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 07/04/2026 [Julio Rodríguez] Standarized error handling with specific messages and codes for better debugging.
  */
 
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException, // Added for more specific error handling
+} from '@nestjs/common';
 import { Response } from 'express';
 import { LogInDTO } from '../dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserChecks } from 'src/users/user.checks.service';
-import { User } from 'src/users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -25,47 +28,97 @@ export class LoginService {
   ) {}
 
   async logIn(data: LogInDTO, res: Response) {
-    const user = await this.userChecks.logIn(data);
+    try {
+      const user = await this.userChecks.logIn(data);
 
-    if (!user) {
-      return { status: false, message: 'Email or password incorrect' };
+      if (!user) {
+        throw new BadRequestException({ // More specific error message and code for invalid credentials
+          message: 'Email or password incorrect',
+          code: 'AUTH_INVALID_CREDENTIALS', // 400 error code for invalid credentials
+        });
+      }
+
+      // Verify the password
+      const isPasswordValid = await bcrypt.compare(data.password, user.password);
+
+      if (!isPasswordValid) {
+        throw new BadRequestException({ // More specific error message and code for invalid credentials
+          message: 'Email or password incorrect',
+          code: 'AUTH_INVALID_CREDENTIALS', // 400 error code for invalid credentials
+        });
+      }
+
+      const payload = { id: user.id };
+      const token = this.jwtService.sign(payload);
+
+      // Cookie configuration for frontend connection
+      res.cookie('sessionInfo', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 3600 * 1000, // 1 hour
+      });
+
+      return { status: true, message: 'Logged in successfully' }; // More specific success message for successful login
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({ // More specific error message and code for internal server errors during login
+        message: 'Unable to process login',
+        code: 'AUTH_LOGIN_INTERNAL_ERROR', // 500 error code for internal server error during login
+      });
     }
-
-    // Verify the password
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
-
-    if (!isPasswordValid) {
-      return { status: false, message: 'Email or password incorrect' };
-    }
-
-    const payload = { id: user.id };
-    const token = this.jwtService.sign(payload);
-
-    // Cookie configuration for frontend connection
-    res.cookie('sessionInfo', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 3600 * 1000, // 1 hour
-    });
-
-    return { status: true, message: 'Logged in successfully' };
   }
 
   async logOut(res: Response) {
-    res.clearCookie('sessionInfo', {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-    });
-    return { status: true, message: 'Logged out successfully' };
+    try {
+      res.clearCookie('sessionInfo', {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+      });
+      return { status: true, message: 'Logged out successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Unable to process logout',
+        code: 'AUTH_LOGOUT_INTERNAL_ERROR', // 500 error code for internal server error during logout
+      });
+    }
   }
 
   async profile(req: any) {
-    const { id } = req.sessionInfo;
-    // get user by id with their permissions
-    const user = await this.userChecks.getUserById(id);
+    try {
+      const id = req?.sessionInfo?.id;
 
-    return { status: true, user };
+      if (!id) {
+        throw new BadRequestException({
+          message: 'Invalid session context',
+          code: 'AUTH_INVALID_SESSION',
+        });
+      }
+
+      // get user by id with their permissions
+      const user = await this.userChecks.getUserById(id);
+
+      if (!user) {
+        throw new BadRequestException({
+          message: 'Session user not found',
+          code: 'AUTH_SESSION_USER_NOT_FOUND', // 400 error code for session user not found
+        });
+      }
+
+      return { status: true, user };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({
+        message: 'Unable to fetch profile',
+        code: 'AUTH_PROFILE_INTERNAL_ERROR', // 500 error code for internal server error during profile retrieval
+      });
+    }
   }
 }
