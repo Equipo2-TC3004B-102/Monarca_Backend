@@ -10,7 +10,7 @@
 
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
-import { CompaniesModule } from './comapines/company-module';
+import { CompaniesModule } from './companies/company-module';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DepartmentsModule } from './departments/departments.module';
@@ -20,7 +20,7 @@ import { RequestsModule } from './requests/requests.module';
 import { RequestLogsModule } from './request-logs/request-logs.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { User } from './users/entities/user.entity';
-import { Company } from './comapines/entity/company.entity';
+import { Company } from './companies/entity/company.entity';
 import { UserLogs } from './user-logs/entity/user-logs.entity';
 import { Department } from './departments/entity/department.entity';
 import { Destination } from './destinations/entities/destination.entity';
