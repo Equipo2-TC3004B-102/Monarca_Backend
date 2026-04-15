@@ -4,7 +4,6 @@
  *              can have many employees associated to it.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 14/04/2026 [Julio Rodríguez] Created the Company entity to represent company data and its relationships with employees.
  * 15/04/2026 [Julio Rodríguez] Removed unresolved ApprovalLevel relation to keep the Companies module compilable while approval-level entities are implemented.
  */
 
