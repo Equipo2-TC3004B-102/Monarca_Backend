@@ -86,7 +86,7 @@ export class UserChecks {
       .createQueryBuilder('u')
       .innerJoin('u.role', 'role')
       .where('u.id != :id_user', { id_user })
-      .andWhere('u.id_department = :id_cost_center', { id_cost_center })
+      .andWhere('u.id_ceco = :id_cost_center', { id_cost_center })
       .andWhere('role.name = :roleName', { roleName: 'Aprobador' })
       .select('u.id', 'id')
       .getRawMany<{ id: string }>();

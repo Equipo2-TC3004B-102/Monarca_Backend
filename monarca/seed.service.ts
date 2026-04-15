@@ -1,8 +1,20 @@
+/**
+ * FileName: user.entity.ts
+ * Description: TypeORM entity representing the users table. A user belongs to a
+ *              CeCo (department), role and optionally a travel agency. Can have many
+ *              requests, assigned requests, revisions and SOI assigned requests.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 15/04/2026 [Julio Rodríguez] Added company relationship to User entity to associate users with their respective companies.
+ *                              Added id_ceco field to User entity to replace id_department for better clarity and consistency with the rest of the codebase.
+ *                              Updated related DTOs and interfaces to reflect the changes in the User entity.
+ *                              Added documentation comments in the file.
+ */
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Company } from 'src/companies/entity/company.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
-import { Department } from './src/departments/entity/department.entity';
 import { Destination } from 'src/destinations/entities/destination.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
@@ -29,6 +41,7 @@ interface SeedData {
 
 type UserSeed = Partial<User> & {
     id_ceco?: string;
+    id_department?: string;
 };
 
 type CostCenterSeed = Partial<CostCenter> & {
@@ -41,7 +54,6 @@ export class SeedService {
 
     constructor(
         @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
-        @InjectRepository(Department) private readonly departmentRepo: Repository<Department>,
         @InjectRepository(CostCenter) private readonly costCenterRepo: Repository<CostCenter>,
         @InjectRepository(Destination) private readonly destinationRepo: Repository<Destination>,
         @InjectRepository(User) private readonly userRepo: Repository<User>,
@@ -62,7 +74,6 @@ export class SeedService {
         const seedData: SeedData[] = [
             { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
-            { repo: this.departmentRepo, file: 'departments.json', entityName: 'Department' },
             { repo: this.permissionRepo, file: 'permissions.json', entityName: 'Permission' },
             { repo: this.destinationRepo, file: 'destinations.json', entityName: 'Destination' },
             { repo: this.travelAgencyRepo, file: 'travel-agencies.json', entityName: 'TravelAgency' },
@@ -113,10 +124,10 @@ export class SeedService {
                     const userSeed = entity as UserSeed;
                     const normalizedUser = {
                         ...userSeed,
-                        id_department: userSeed.id_ceco ?? userSeed.id_department,
+                        id_ceco: userSeed.id_ceco ?? userSeed.id_department,
                     };
 
-                    delete normalizedUser.id_ceco;
+                    delete normalizedUser.id_department;
 
                     let user: User | undefined;
                     user = await hashPasswords(normalizedUser as User);
@@ -132,16 +143,6 @@ export class SeedService {
 
                     const newEntity = repo.create(normalizedCostCenter);
                     await repo.save(newEntity);
-                } else if (entityName === 'Department') {
-                    const costCenter = await this.costCenterRepo.findOneByOrFail({ id: entity.cost_center_id });
-                    
-                    const department = this.departmentRepo.create({
-                        id: entity.id,
-                        name: entity.name,
-                        cost_center: costCenter,
-                    });
-                
-                    await this.departmentRepo.save(department);
                 } else {
                     const newEntity = repo.create(entity);
                     await repo.save(newEntity);
@@ -160,7 +161,7 @@ export class SeedService {
     async truncate() {
         this.logger.log('🔄 Starting manual truncate without disabling FK constraints...');
 
-        const connection = this.departmentRepo.manager.connection;
+        const connection = this.companyRepo.manager.connection;
         const queryRunner = connection.createQueryRunner();
         await queryRunner.connect();
 
@@ -182,7 +183,6 @@ export class SeedService {
                 'destinations',
                 'exchange_rates',
                 'permissions',
-                'departments',
                 'cost_centers',
                 'companies',
             ];
@@ -205,7 +205,7 @@ export class SeedService {
 
 
     async dropAllTables() {
-        const connection = this.departmentRepo.manager.connection;
+        const connection = this.companyRepo.manager.connection;
         const queryRunner = connection.createQueryRunner();
         await queryRunner.connect();
 

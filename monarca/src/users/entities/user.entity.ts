@@ -1,7 +1,7 @@
 /**
  * FileName: user.entity.ts
  * Description: TypeORM entity representing the users table. A user belongs to a
- *              department, role and optionally a travel agency. Can have many
+ *              CeCo (department), role and optionally a travel agency. Can have many
  *              requests, assigned requests, revisions and SOI assigned requests.
  * Authors: Original Monarca team
  * Last Modification made:
@@ -9,7 +9,7 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { Department } from 'src/departments/entity/department.entity';
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
 import { Roles } from 'src/roles/entity/roles.entity';
@@ -52,8 +52,8 @@ export class User {
   status: string;
 
   @ApiProperty({ example: 1 })
-  @Column()
-  id_department: string;
+  @Column({ name: 'id_department' })
+  id_ceco: string;
 
   @ApiProperty({ example: 2 })
   @Column()
@@ -75,9 +75,9 @@ export class User {
   id_company?: string;  
 
   // Relationships
-  @ManyToOne(() => Department, (department) => department.users)
+  @ManyToOne(() => CostCenter)
   @JoinColumn({ name: 'id_department' })
-  department: Department;
+  ceco: CostCenter;
 
   @ManyToOne(() => Roles)
   @JoinColumn({ name: 'id_role' })
