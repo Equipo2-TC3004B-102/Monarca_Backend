@@ -9,10 +9,15 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
+    "ignoreDeprecations": "5.0", // Ignore deprecations for compatibility with older versions
     "baseUrl": "./",
     "paths": {
-      "seed.service": ["seed.service"],
-      "src/*": ["src/*"]
+      "seed.service": [
+        "seed.service"
+      ],
+      "src/*": [
+        "src/*"
+      ]
     },
     "incremental": true,
     "skipLibCheck": true,

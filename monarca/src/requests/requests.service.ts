@@ -19,6 +19,20 @@ import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
+const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
+  USD: 'SF43718',
+  EUR: 'SF46410',
+  JPY: 'SF46406',
+  GBP: 'SF46407',
+  CAD: 'SF60632',
+  CHF: 'SF46405',
+  CNY: 'SF290383',
+  BRL: 'SF290312',
+  ARS: 'SF290311',
+  CLP: 'SF290351',
+  COP: 'SF290382',
+};
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -28,7 +42,47 @@ export class RequestsService {
     private readonly destinationChecks: DestinationsChecks,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
+
+  private async fetchBanxicoRate(currency: string): Promise<number | null> {
+    const banxicoId = BANXICO_CURRENCY_MAPPING[currency];
+    if (!banxicoId) return null;
+
+    const bmxToken = process.env['BMX-TOKEN'];
+    if (!bmxToken) {
+      console.warn('BMX-TOKEN is not set in environment.');
+      return null;
+    }
+
+    try {
+      const url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${banxicoId}/datos/oportuno`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Bmx-Token': bmxToken,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`Banxico API error: ${response.statusText}`);
+        return null;
+      }
+
+      const rawData = await response.json();
+      const series = rawData?.bmx?.series?.[0];
+      const data = series?.datos?.[0];
+      
+      if (data && data.dato) {
+        const rate = parseFloat(data.dato);
+        return isNaN(rate) ? null : rate;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch from Banxico API:', error);
+      return null;
+    }
+  }
 
   private async getCityName(id: string): Promise<string> {
     return await this.destinationChecks.getCityNameById(id);
@@ -100,11 +154,50 @@ export class RequestsService {
       );
     }
 
+    let finalAdvanceMoney: number = 0;
+    let finalExchangeRate: number | null = null;
+    let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+
+    if (data.currency === 'MXN') {
+      finalAdvanceMoney = data.advance_money;
+    } else if (data.currency) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const rates = await this.dataSource.query(
+        `SELECT exchange_rate FROM exchange_rates WHERE currency = $1 AND update_date = $2`,
+        [data.currency, todayStr],
+      );
+
+      if (rates && rates.length > 0) {
+        const rate = Number(rates[0].exchange_rate);
+        finalExchangeRate = rate;
+        finalAdvanceMoney = Math.round(data.advance_money * rate);
+      } else {
+        console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
+        const fetchedRate = await this.fetchBanxicoRate(data.currency);
+        
+        if (fetchedRate !== null) {
+          finalExchangeRate = fetchedRate;
+          finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
+          
+          await this.dataSource.query(
+            `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
+            [data.currency, fetchedRate, todayStr]
+          );
+        } else {
+          console.log(`Could not fetch exchange rate for currency ${data.currency}. Proceeding with default (0).`);
+        }
+      }
+    }
+
     const request = this.requestsRepo.create({
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
       ...data,
+      advance_money: finalAdvanceMoney,
+      unconverted_advance_money: finalUnconvertedAdvanceMoney,
+      exchange_rate: finalExchangeRate,
       requests_destinations: data.requests_destinations.map((destDto) => ({
         ...destDto,
       })),
@@ -214,31 +307,31 @@ export class RequestsService {
     return list;
   }
 
-async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
-  const userId = req.sessionInfo.id;
+  async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
+    const userId = req.sessionInfo.id;
 
-  return this.requestsRepo
-    .createQueryBuilder('r')
-    .leftJoinAndSelect('r.requests_destinations', 'rd')
-    .leftJoinAndSelect('rd.destination', 'd')
-    .leftJoinAndSelect('r.revisions', 'rev')
-    .leftJoinAndSelect('r.user', 'u')
-    .leftJoinAndSelect('u.department', 'dept')
-    .leftJoinAndSelect('r.admin', 'adm')
-    .leftJoinAndSelect('r.SOI', 'soi')
-    .leftJoinAndSelect('r.destination', 'dest')
-    .where('r.id_admin = :userId', { userId })
-    .andWhere('r.status = :status', { status: 'Pending Review' })
-    .orderBy(
-      `CASE r.priority
+    return this.requestsRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.requests_destinations', 'rd')
+      .leftJoinAndSelect('rd.destination', 'd')
+      .leftJoinAndSelect('r.revisions', 'rev')
+      .leftJoinAndSelect('r.user', 'u')
+      .leftJoinAndSelect('u.department', 'dept')
+      .leftJoinAndSelect('r.admin', 'adm')
+      .leftJoinAndSelect('r.SOI', 'soi')
+      .leftJoinAndSelect('r.destination', 'dest')
+      .where('r.id_admin = :userId', { userId })
+      .andWhere('r.status = :status', { status: 'Pending Review' })
+      .orderBy(
+        `CASE r.priority
          WHEN 'alta' THEN 1
          WHEN 'media' THEN 2
          WHEN 'baja' THEN 3
        END`,
-      'ASC'
-    )
-    .getMany();
-}
+        'ASC'
+      )
+      .getMany();
+  }
 
 
   async findBySOI(req: RequestInterface): Promise<RequestEntity[]> {
@@ -262,7 +355,7 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
   async findPendingRefundApproval(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
-      where: { 
+      where: {
         status: 'Pending Refund Approval',
         id_SOI: userId
       },
@@ -342,7 +435,46 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
       }
 
       //Update informacion general
-      entity.advance_money = data.advance_money;
+      let finalAdvanceMoney: number = 0;
+      let finalExchangeRate: number | null = null;
+      let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+
+      if (data.currency === 'MXN') {
+        finalAdvanceMoney = data.advance_money;
+      } else if (data.currency) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const rates = await manager.query(
+          `SELECT exchange_rate FROM exchange_rates WHERE currency = $1 AND update_date = $2`,
+          [data.currency, todayStr],
+        );
+
+        if (rates && rates.length > 0) {
+          const rate = Number(rates[0].exchange_rate);
+          finalExchangeRate = rate;
+          finalAdvanceMoney = Math.round(data.advance_money * rate);
+        } else {
+          console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
+          const fetchedRate = await this.fetchBanxicoRate(data.currency);
+          
+          if (fetchedRate !== null) {
+            finalExchangeRate = fetchedRate;
+            finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
+            
+            await manager.query(
+              `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
+              [data.currency, fetchedRate, todayStr]
+            );
+          } else {
+            console.log(`Could not fetch exchange rate for currency ${data.currency}. Proceeding with default (0).`);
+          }
+        }
+      }
+
+      entity.unconverted_advance_money = finalUnconvertedAdvanceMoney;
+      entity.exchange_rate = finalExchangeRate;
+      entity.advance_money = finalAdvanceMoney;
+      entity.currency = data.currency;
       entity.id_origin_city = data.id_origin_city;
       entity.motive = data.motive;
       entity.requirements = data.requirements;
