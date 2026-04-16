@@ -1,11 +1,10 @@
 /**
  * FileName: destination.entity.ts
  * Description: TypeORM entity representing the destinations table. A destination
- *              has a country and city, and can be associated to multiple requests
- *              and request destinations.
+ *              stores airport and location information used for travel requests.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 15/04/2026 [Jin Sik Yoon] Added airport-related fields for multidestination support and CSV migration.
  */
 
 import { Request } from 'src/requests/entities/request.entity';
@@ -23,7 +22,11 @@ export class Destination {
   @Column()
   city: string;
 
-  //RELATIONSHIPS
+  @Column({ nullable: true, length: 10 })
+  iata_code: string;
+
+  @Column({ nullable: true, length: 255 })
+  airport_name: string;
 
   @OneToMany(() => Request, (req) => req.destination, {
     cascade: true,
