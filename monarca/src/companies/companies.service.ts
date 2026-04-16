@@ -7,7 +7,7 @@
  * 15/04/2026 [Julio Rodriguez] Created service for Companies CRUD operations.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from './entity/company.entity';
@@ -19,6 +19,10 @@ export class CompaniesService {
     @InjectRepository(Company)
     private readonly repo: Repository<Company>,
   ) {}
+
+  private clientError(message: string, code: string) {
+    return new BadRequestException({ message, code });
+  }
 
   /**
    * create, stores a new company in database.
@@ -48,7 +52,7 @@ export class CompaniesService {
     const entity = await this.repo.findOne({ where: { id } });
 
     if (!entity) {
-      throw new NotFoundException(`Company ${id} not found`);
+      throw this.clientError(`Company ${id} not found`, 'COMPANIES_INVALID_ID');
     }
 
     return entity;
@@ -73,7 +77,7 @@ export class CompaniesService {
     const existing = await this.repo.findOne({ where: { id } });
 
     if (!existing) {
-      throw new NotFoundException(`Company ${id} not found`);
+      throw this.clientError(`Company ${id} not found`, 'COMPANIES_INVALID_ID');
     }
 
     await this.repo.delete(id);

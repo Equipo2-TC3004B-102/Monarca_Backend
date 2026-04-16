@@ -138,20 +138,26 @@ export class RequestsService {
     const userId = req.sessionInfo.id;
     //VALIDAR VALIDEZ DE CIUDADES
     if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-      throw new BadRequestException('Invalid id_origin_city.');
+      throw this.clientError(
+        'Invalid id_origin_city.',
+        'REQUESTS_INVALID_ORIGIN_CITY',
+      );
     }
 
     for (const rd of data.requests_destinations) {
       if (!(await this.destinationChecks.isValid(rd.id_destination)))
-        throw new BadRequestException('Invalid id_destination.');
+        throw this.clientError(
+          'Invalid id_destination.',
+          'REQUESTS_INVALID_DESTINATION',
+        );
     }
 
     //ASIGNAR APROVADOR
     const id_ceco = req.userInfo.id_ceco;
     if (!id_ceco) {
-      throw new HttpException(
+      throw this.clientError(
         'The requester is not linked to any cost center.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
+        'REQUESTS_REQUESTER_CECO_REQUIRED',
       );
     }
 
@@ -160,19 +166,19 @@ export class RequestsService {
       userId,
     );
     if (!adminId) {
-      throw new InternalServerErrorException({
-        message: 'There is no admin available to assign the request.',
-        code: 'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
-      });
+      throw this.serverError(
+        'There is no admin available to assign the request.',
+        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      );
     }
 
     // Assign SOI user
     const SOIId = await this.userChecks.getRandomSOIID();
     if (!SOIId) {
-      throw new InternalServerErrorException({
-        message: 'There is no SOI available to assign the request.',
-        code: 'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
-      });
+      throw this.serverError(
+        'There is no SOI available to assign the request.',
+        'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
+      );
     }
 
     let finalAdvanceMoney: number = 0;
@@ -458,12 +464,18 @@ export class RequestsService {
 
       //VALIDAR VALIDEZ DE CIUDADES
       if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-        throw new BadRequestException('Invalid id_origin_city.');
+        throw this.clientError(
+          'Invalid id_origin_city.',
+          'REQUESTS_INVALID_ORIGIN_CITY',
+        );
       }
 
       for (const rd of data.requests_destinations) {
         if (!(await this.destinationChecks.isValid(rd.id_destination)))
-          throw new BadRequestException('Invalid id_destination.');
+          throw this.clientError(
+            'Invalid id_destination.',
+            'REQUESTS_INVALID_DESTINATION',
+          );
       }
 
       //Update informacion general
