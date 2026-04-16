@@ -5,10 +5,12 @@
  *              update, and deletion of reservations.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy and
+ *                              aligned header documentation.
  */
 
-import { Injectable, NotFoundException, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Reservation } from './entity/reservations.entity';
@@ -17,8 +19,6 @@ import {
   UpdateReservationDto,
 } from './dto/reservation.dtos';
 import { RequestsChecks } from 'src/requests/requests.checks';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { PermissionsGuard } from 'src/guards/permissions.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 
 
@@ -39,7 +39,7 @@ export class ReservationsService {
    *        reservation (CreateReservationDto) - fields: title, comments, price,
    *        id_request_destination, and optional file link.
    * Output: Promise<Reservation> - the newly saved reservation entity.
-   * Throws UnauthorizedException if the agency does not own the destination or
+  * Throws BadRequestException if the agency does not own the destination or
    *        the request is not in the correct status.
    */
   async createReservation(req: RequestInterface,reservation: CreateReservationDto) {
@@ -47,13 +47,13 @@ export class ReservationsService {
     // //VALIDAR USER Y id_request_destination
     const id_travel_agency = req.userInfo.id_travel_agency;
     if (!(id_travel_agency && await this.requestChecks.isRequestDestinationTravelAgencyId(reservation.id_request_destination, id_travel_agency))) {
-      throw new UnauthorizedException('Unable to add reservation to that request.');
+      throw new BadRequestException('Unable to add reservation to that request.');
     }
     
     //VALIDAR ESTADO DE REQUEST
     const requestStatus = await this.requestChecks.getRequestStatusFromRequestDestination(reservation.id_request_destination)
     if (requestStatus !== 'Pending Reservations') {
-      throw new UnauthorizedException('Unable to create reservation because of the requests status.');
+      throw new BadRequestException('Unable to create reservation because of the requests status.');
     }
 
     const newReservation = this.reservationsRepository.create(reservation);
@@ -73,12 +73,12 @@ export class ReservationsService {
    * findOne - Retrieves a single reservation by its UUID.
    * Input: id (string) - UUID of the reservation to retrieve.
    * Output: Promise<Reservation> - the matching reservation entity.
-   * Throws NotFoundException if no reservation with the given ID exists.
+   * Throws BadRequestException if no reservation with the given ID exists.
    */
   async findOne(id: string): Promise<Reservation> {
     const reservation = await this.reservationsRepository.findOneBy({ id });
     if (!reservation) {
-      throw new NotFoundException(`Reservation ${id} not found`);
+      throw new BadRequestException(`Reservation ${id} not found`);
     }
     return reservation;
   }

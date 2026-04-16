@@ -6,7 +6,8 @@
  *              and remove (DELETE /user-logs/:id).
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              POST endpoint and aligned header format.
  */
 
 import {
@@ -17,6 +18,7 @@ import {
   Delete,
   Body,
   Param,
+  HttpCode,
 } from '@nestjs/common';
 import { UserLogsService } from './user-logs.service';
 import { CreateUserLogDto } from './dto/create-user-log.dto';
@@ -27,6 +29,7 @@ export class UserLogsController {
   constructor(private readonly userLogsService: UserLogsService) {}
 
   @Post()
+  @HttpCode(200)
   create(@Body() dto: CreateUserLogDto) {
     return this.userLogsService.create(dto);
   }

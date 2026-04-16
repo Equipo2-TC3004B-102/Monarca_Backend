@@ -1,18 +1,17 @@
 /**
  * FileName: request-logs.service.ts
  * Description: Service handling request log business logic. Provides read operations
- *              against the request_logs table. Throws NotFoundException when a
+ *              against the request_logs table. Throws BadRequestException when a
  *              log entry is not found by ID.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateRequestLogDto } from './dto/create-request-log.dto';
-import { UpdateRequestLogDto } from './dto/update-request-log.dto';
 import { RequestLog } from './entities/request-log.entity';
 
 @Injectable()
@@ -28,7 +27,7 @@ export class RequestLogsService {
 
   async findOne(id: string): Promise<RequestLog> {
     const ent = await this.repo.findOneBy({ id });
-    if (!ent) throw new NotFoundException(`Log ${id} not found`);
+    if (!ent) throw new BadRequestException(`Log ${id} not found`);
     return ent;
   }
 }
