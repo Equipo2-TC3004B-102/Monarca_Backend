@@ -5,7 +5,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              POST endpoint and aligned header format.
  */
 
 import {
@@ -16,6 +17,7 @@ import {
   Patch,
   Delete,
   Body,
+  HttpCode,
   ParseUUIDPipe,
   UseGuards,
   Request,
@@ -48,6 +50,7 @@ export class ReservationsController {
    */
   @UseInterceptors(UploadPdfInterceptor())
   @Post()
+  @HttpCode(200)
   async createReservation(
     @Request() req : RequestInterface,
     @UploadedFiles()
