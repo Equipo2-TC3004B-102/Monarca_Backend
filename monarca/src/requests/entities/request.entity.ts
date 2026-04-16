@@ -45,6 +45,15 @@ export class Request {
   @Column()
   advance_money: number;
 
+  @Column({ type: 'varchar', nullable: true })
+  currency: string | null;
+
+  @Column({ type: 'float', nullable: true })
+  exchange_rate: number | null;
+
+  @Column({ type: 'integer', nullable: true })
+  unconverted_advance_money: number | null;
+
   @Column({ default: 'Pending Review' })
   status: string;
 

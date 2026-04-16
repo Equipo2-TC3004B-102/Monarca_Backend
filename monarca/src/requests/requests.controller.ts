@@ -1,7 +1,19 @@
+/**
+ * FileName: requests.controller.ts
+ * Description: Controller for travel request endpoints. Exposes create, read,
+ *              and update operations for requests, including role-specific list
+ *              queries. All routes are protected by AuthGuard and PermissionsGuard.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 11/04/2026 [Julio Rodriguez] Standardized HTTP success code behavior and
+ *                              aligned controller header documentation.
+ */
+
 import {
   Controller,
   Get,
   Post,
+  HttpCode,
   Body,
   Patch,
   Param,
@@ -24,6 +36,7 @@ export class RequestsController {
   constructor(private readonly requestsService: RequestsService) { }
 
   @Post()
+  @HttpCode(200)
   async create(
     @Request() req: RequestInterface,
     @Body() data: CreateRequestDto,
