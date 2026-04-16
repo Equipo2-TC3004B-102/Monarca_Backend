@@ -5,13 +5,15 @@
  *              by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              POST endpoint and aligned header format.
  */
 
 import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -36,6 +38,7 @@ export class RevisionsController {
    * Output: Promise<Revision> - the newly created and persisted revision record.
    */
   @Post()
+  @HttpCode(200)
   postRevision(
     @Request() req: RequestInterface,
     @Body() dto: CreateRevisionDto,

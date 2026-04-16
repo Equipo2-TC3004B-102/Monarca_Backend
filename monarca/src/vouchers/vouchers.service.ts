@@ -5,17 +5,18 @@
  *              Enforces ownership rules and validates referenced request existence.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy and
+ *                              aligned header documentation.
  */
 
-import { Injectable, NotFoundException,ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, UpdateResult } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
-import { privateDecrypt } from 'crypto';
 @Injectable()
 export class VouchersService {
   constructor(
@@ -32,22 +33,22 @@ export class VouchersService {
    *        data (CreateVoucherDto) - voucher fields: id_request, class, amount,
    *        currency, tax_type, date, file_url_pdf, file_url_xml, status.
    * Output: Promise<Voucher> - the newly saved voucher entity.
-   * Throws NotFoundException if the referenced request does not exist.
-   * Throws ForbiddenException if the caller is not the request owner.
+  * Throws BadRequestException if the referenced request does not exist.
+  * Throws BadRequestException if the caller is not the request owner.
    */
   async create(id_user:string, data: CreateVoucherDto): Promise<Voucher> {
     const request = await this.rRepo.findOne({
       where: { id: data.id_request },
     });
     if (!request) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         `RequestDestination ${data.id_request} not found`,
       );
     }
     const approverId = request.id_admin;
     const id_creator= request.id_user;
     if (id_user !== id_creator) {
-      throw new ForbiddenException(
+      throw new BadRequestException(
         `User ${id_user} is not authorized to create a voucher for this request`,
       );
     }
@@ -79,12 +80,12 @@ export class VouchersService {
    * findOne - Retrieves a single voucher by its UUID.
    * Input: id (string) - UUID of the voucher to retrieve.
    * Output: Promise<Voucher> - the matching voucher entity.
-   * Throws NotFoundException if no voucher with the given ID exists.
+   * Throws BadRequestException if no voucher with the given ID exists.
    */
   async findOne(id: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.findOne({ where: { id } });
     if (!voucher) {
-      throw new NotFoundException(`Voucher with ID ${id} not found`);
+      throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
     return voucher;
   }
@@ -122,12 +123,12 @@ export class VouchersService {
    * remove - Deletes a voucher record from the database by its UUID.
    * Input: id (string) - UUID of the voucher to delete.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
-   * Throws NotFoundException if no voucher with the given ID exists.
+   * Throws BadRequestException if no voucher with the given ID exists.
    */
   async remove(id: string): Promise<{ status: boolean; message: string }> {
     const result = await this.voucherRepo.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Voucher with ID ${id} not found`);
+      throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
     return { status: true, message: `Voucher with ID ${id} removed` };
   }
@@ -135,7 +136,7 @@ export class VouchersService {
    * approve - Sets a voucher's status to 'Voucher Approved'.
    * Input: id (string) - UUID of the voucher to approve.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
-   * Throws NotFoundException if no voucher with the given ID exists.
+  * Throws BadRequestException if no voucher with the given ID exists.
    */  
   async approve(id: string): Promise<{ status: boolean; message: string }> {
     // 1) run the update
@@ -145,7 +146,7 @@ export class VouchersService {
 
     // 2) if nothing was affected, the id didn’t exist
     if (result.affected === 0) {
-      throw new NotFoundException(`Voucher with ID ${id} not found`);
+      throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
 
     // 3) return a success payload
@@ -158,7 +159,7 @@ export class VouchersService {
    * deny - Sets a voucher's status to 'Voucher Denied'.
    * Input: id (string) - UUID of the voucher to deny.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
-   * Throws NotFoundException if no voucher with the given ID exists.
+  * Throws BadRequestException if no voucher with the given ID exists.
    */  
   async deny(id: string): Promise<{ status: boolean; message: string }> {
     // 1) run the update
@@ -168,7 +169,7 @@ export class VouchersService {
 
     // 2) if nothing was affected, the id didn’t exist
     if (result.affected === 0) {
-      throw new NotFoundException(`Voucher with ID ${id} not found`);
+      throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
 
     // 3) return a success payload
@@ -182,14 +183,14 @@ export class VouchersService {
    * findByRequest - Retrieves all vouchers linked to a specific travel request.
    * Input: requestId (string) - UUID of the travel request to filter vouchers by.
    * Output: Promise<Voucher[]> - array of vouchers associated with the given request.
-   * Throws NotFoundException if no vouchers exist for the given request ID.
+  * Throws BadRequestException if no vouchers exist for the given request ID.
    */
   async findByRequest(requestId: string): Promise<Voucher[]> {
     const vouchers = await this.voucherRepo.find({
       where: { id_request: requestId},
     });
     if (vouchers.length === 0) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         `No vouchers found for Request ID ${requestId}`
       );
     }
