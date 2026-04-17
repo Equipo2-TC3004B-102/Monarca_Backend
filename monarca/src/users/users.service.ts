@@ -6,8 +6,7 @@
  *              role and permission relations.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
- *                              BadRequestException for HTTP 400 policy.
+ * 16/04/2026 [Julio Rodriguez] Added role handdler with flags for permissions for access certain resources, added company_id to separate users by company.
  */
 
 import {
@@ -43,8 +42,13 @@ export class UsersService {
     return await this.repo.find();
   }
 
+  // Added create, update and delete methods for user management
   async create(data: CreateUserDto): Promise<User> {
-    const ent = this.repo.create(data);
+    const ent = this.repo.create({
+      ...data,
+      user_name: data.user_name ?? data.email.split('@')[0],
+      creation_date: data.creation_date ?? new Date(),
+    });
 
     return this.repo.save(ent);
   }
