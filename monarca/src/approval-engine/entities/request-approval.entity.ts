@@ -24,16 +24,16 @@ export class RequestApproval {
     @PrimaryGeneratedColumn('uuid', { name: 'id' })
     id: string;
 
-    @Column({ name: 'request_id', type: 'uuid' })
+    @Column({ name: 'request_id', type: 'uuid', nullable: false })
     request_id: string;
 
-    @Column({ name: 'approval_level_id', type: 'uuid' })
+    @Column({ name: 'approval_level_id', type: 'uuid', nullable: false })
     approval_level_id: string;
 
-    @Column({ name: 'approval_actor_id', type: 'uuid' })
+    @Column({ name: 'approval_actor_id', type: 'uuid', nullable: true })
     approval_actor_id: string;
 
-    @Column({ name: 'approver_user_id', type: 'uuid' })
+    @Column({ name: 'approver_user_id', type: 'uuid', nullable: false })
     approver_user_id: string;
 
     @Column({ name: 'descision', type: 'varchar'})

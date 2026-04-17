@@ -32,6 +32,14 @@ export class ApprovalLevelActor {
     @Column({ name: 'actor_type', type: 'varchar' })
     actor_type: string;
 
+    // Indicates how target_id should be resolved (USER, ROLE, REQUEST_FIELD, etc.).
+    @Column({ name: 'target_type', type: 'varchar', nullable: true })
+    target_type: string;
+
+    // Target object id when rule points to a specific approver source.
+    @Column({ name: 'target_id', type: 'uuid', nullable: true })
+    target_id: string;
+
     // Indicates whether this actor rule is mandatory.
     @Column({ name: 'is_required', type: 'boolean', default: true })
     is_required: boolean;
@@ -45,8 +53,8 @@ export class ApprovalLevelActor {
     selection_mode: string;
 
     // Optional cost center filter to narrow applicable approvers.
-    @Column({ name: 'id_ceco', type: 'uuid', nullable: true })
-    id_ceco: string;
+    @Column({ name: 'ceco_id', type: 'uuid', nullable: true })
+    ceco_id?: string;
 
     // Escalation order inside the same approval level.
     @Column({ name: 'escalation_step', type: 'integer', default: 0 })
@@ -61,13 +69,13 @@ export class ApprovalLevelActor {
         { onDelete: 'CASCADE' },
     )
     @JoinColumn({ name: 'approval_level_id' })
-    approval_level!: ApprovalLevel;
+    approval_level: ApprovalLevel;
 
     // Many actors can be associated with one cost center. This is optional and allows for filtering approvers based on cost center.
     @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'ceco_id' })
-    cost_center?: CostCenter;
+    cost_center: CostCenter;
 
     @OneToMany(() => RequestApproval, (requestApproval) => requestApproval.approval_actor)
-    request_approvals!: RequestApproval[];
+    request_approvals-: RequestApproval[];
 }
