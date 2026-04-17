@@ -5,8 +5,8 @@
  *              including file URLs and fiscal fields for CFDI integration.
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Fausto Izquierdo] Added fiscal fields (uuid, RFCs, subtotal, taxes)
- *            for CFDI invoice data persistence.
+ * 16/04/2026 [Fausto Izquierdo] Added receiver_name/exchange_rate,
+ *            unified @Transform on decimals, fixed amount precision.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -38,7 +38,7 @@ export class CreateVoucherDto {
     description: 'Monetary amount of the voucher',
     example: 150.0,
   })
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => (value ? parseFloat(value) : value))
   @IsNumber()
   amount: number;
 
@@ -132,12 +132,21 @@ export class CreateVoucherDto {
   receiver_rfc?: string;
 
   @ApiProperty({
+    description: 'Business name of the invoice receiver (Razón social del Receptor)',
+    example: 'Ditta Consulting S.A. de C.V.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  receiver_name?: string;
+
+  @ApiProperty({
     description: 'Subtotal amount before taxes',
     example: 1000.0,
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => (value != null ? Number(value) : undefined))
+  @Transform(({ value }) => (value ? parseFloat(value) : value))
   @IsNumber()
   subtotal?: number;
 
@@ -147,7 +156,7 @@ export class CreateVoucherDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => (value != null ? Number(value) : undefined))
+  @Transform(({ value }) => (value ? parseFloat(value) : value))
   @IsNumber()
   tax_amount?: number;
 
@@ -157,8 +166,18 @@ export class CreateVoucherDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => (value != null ? Number(value) : undefined))
+  @Transform(({ value }) => (value ? parseFloat(value) : value))
   @IsNumber()
   retention_amount?: number;
+
+  @ApiProperty({
+    description: 'Exchange rate at the time of the transaction (Tipo de Cambio)',
+    example: 17.0524,
+    required: false,
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : value))
+  @IsNumber()
+  exchange_rate?: number;
 }
 

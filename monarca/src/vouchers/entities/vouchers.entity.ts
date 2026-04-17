@@ -5,8 +5,8 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Fausto Izquierdo] Added fiscal columns (uuid, RFCs, subtotal, taxes)
- *            for CFDI invoice data persistence.
+ * 16/04/2026 [Fausto Izquierdo] Fixed taxt_type typo, changed amount to decimal,
+ *            added receiver_name and exchange_rate.
  */
 
 import {
@@ -29,10 +29,10 @@ export class Voucher {
   @Column({ name: 'class', type: 'varchar' })
   class: string;
 
-  @Column({ name: 'amount', type: 'float' })
+  @Column({ name: 'amount', type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @Column({ name: 'taxt_type', type: 'varchar' })
+  @Column({ name: 'tax_type', type: 'varchar' })
   tax_type: string;
 
   @Column({ name: 'currency', type: 'varchar' })
@@ -73,6 +73,10 @@ export class Voucher {
   @Column({ name: 'receiver_rfc', type: 'varchar', nullable: true })
   receiver_rfc: string | null;
 
+  /** Razón social del receptor (e.g. Ditta's legal name) */
+  @Column({ name: 'receiver_name', type: 'varchar', nullable: true })
+  receiver_name: string | null;
+
   /** Subtotal antes de impuestos */
   @Column({ name: 'subtotal', type: 'decimal', precision: 12, scale: 2, nullable: true })
   subtotal: number | null;
@@ -84,6 +88,10 @@ export class Voucher {
   /** Total de impuestos retenidos (ISR, IVA retenido) */
   @Column({ name: 'retention_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
   retention_amount: number | null;
+
+  /** Tipo de Cambio – exchange rate at the time of the transaction */
+  @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
+  exchange_rate: number | null;
 
   // ──────────────────────────────────────────────
   // Relationships
