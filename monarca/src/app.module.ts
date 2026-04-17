@@ -91,6 +91,8 @@ import { HealthModule } from './health/health.module';
         Revision,
       ],
       synchronize: true,
+      retryAttempts: 3,
+      retryDelay: 3000,
     }),
 
     TypeOrmModule.forFeature([
