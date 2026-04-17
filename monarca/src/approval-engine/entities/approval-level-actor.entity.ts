@@ -77,5 +77,5 @@ export class ApprovalLevelActor {
     cost_center: CostCenter;
 
     @OneToMany(() => RequestApproval, (requestApproval) => requestApproval.approval_actor)
-    request_approvals-: RequestApproval[];
+    request_approvals: RequestApproval[];
 }

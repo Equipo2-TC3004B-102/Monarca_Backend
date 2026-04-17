@@ -5,7 +5,7 @@
  *              including file URLs injected by the upload interceptor.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Julio Rodríguez] Updated optional approver/id URL validations for DTO consistency.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -61,11 +61,13 @@ export class CreateVoucherDto {
   @IsDateString()
   date: string;
 
+  // Added IsString validation for file URLs, which are expected to be strings, and marked as optional since they are injected by the upload interceptor
   @ApiProperty({
     description: 'URL pointing to the stored voucher file',
     example: 'https://storage.example.com/vouchers/voucher-123.pdf',
   })
   @IsOptional()
+  @IsString()
   file_url_pdf?: string;
 
   @ApiProperty({
@@ -73,6 +75,7 @@ export class CreateVoucherDto {
     example: 'https://storage.example.com/vouchers/voucher-123.xml',
   })
   @IsOptional()
+  @IsString()
   file_url_xml?: string;
 
   @ApiProperty({
@@ -82,10 +85,13 @@ export class CreateVoucherDto {
   @IsString()
   status: string;
 
+  // Updated to allow null values for id_approver, which is consistent with the entity definition and domain model where a voucher may not have an approver assigned at creation
   @ApiProperty({
     description: 'ID of the person in charge of approving the vouchers',
     example: 'd05c8455-c3d5-4a6c-b79b-2d9c695cd674',
+    required: false,
   })
-  @IsString()
-  id_approver: string;
+  @IsOptional()
+  @IsUUID()
+  id_approver?: string;
 }

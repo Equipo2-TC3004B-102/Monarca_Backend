@@ -4,7 +4,7 @@
  *              can have many destinations associated to it.
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Julio Rodríguez] Updated the Request entity to represent request data and its relationships with users, destinations, travel agencies, vouchers and companies.
+ * 17/04/2026 [Julio Rodríguez] Updated voucher inverse relation mapping for consistency.
  */
 
 import {
@@ -128,7 +128,7 @@ export class Request {
   @JoinColumn({ name: 'id_company' })
   company: Company;
 
-  @OneToMany(() => Voucher, (v) => v.requests, {})
-  @JoinColumn({ name: 'id_request' })
+  // Updated inverse relation mapping for vouchers, One request can have many vouchers
+  @OneToMany(() => Voucher, (voucher) => voucher.request, {})
   vouchers: Voucher[];
 }
