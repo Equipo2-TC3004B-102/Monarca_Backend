@@ -5,7 +5,7 @@
  *              Profile route is protected by AuthGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 07/04/2026 [Julio Rodriguez] Added correct HTTP status codes for each endpoint and detailed comments for clarity and maintainability. Deleated non using code.
  */
 
 import {
@@ -28,11 +28,12 @@ export class LoginController {
   constructor(private readonly loginService: LoginService) {}
 
   @Post()
+  @HttpCode(200) // Changed to 200 for successful response
   logIn(@Body() data: LogInDTO, @Res({ passthrough: true }) res: Response) {
     return this.loginService.logIn(data, res);
   }
   @Post('logout')
-  @HttpCode(200)
+  @HttpCode(200) // Changed to 200 for successful response
   logOut(@Res({ passthrough: true }) res: Response) {
     return this.loginService.logOut(res);
   }
@@ -43,41 +44,4 @@ export class LoginController {
   getProfile(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     return this.loginService.profile(req);
   }
-
-  // YA NO USAR: BORRAR PRONTO
-  // // Prueba de permiso de roles para las rutas con Guard
-  // @Get('Eliminar')
-  // @UseGuards(AuthGuard, PermissionsGuard)
-  // @Permissions('Eliminar Datos')
-  // roleAcess2() {
-  //   return 'Only users with permission ID 2 can access this';
-  // }
-
-  // @Get('prueba_permisos')
-  // @UseGuards(AuthGuard, PermissionsGuard)
-  // @Permissions('Ver Reportes') // Acceso a los usuarios que tienes este permiso
-  // permissionsTest(@Req() req) {
-
-  //   // Permisos especificos
-  //   const canDelete = hasPermission(req, 'Eliminar Datos');
-  //   const canEdit = hasPermission(req, 'Editar Datos');
-
-  //   let message = 'Tienes permisos de ver.';
-
-  //   if (canDelete) {
-  //     message += ' Tambien tienes permisos de eliminar.';
-  //   }
-
-  //   if (canEdit) {
-  //     message += ' Tambien tienes permisos de editar.';
-  //   }
-
-  //   return {
-  //     message,
-  //     permissions: {
-  //       canDelete,
-  //       canEdit
-  //     }
-  //   };
-  // }
 }

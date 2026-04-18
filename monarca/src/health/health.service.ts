@@ -12,7 +12,7 @@ import { DataSource } from 'typeorm';
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   /**
    * checkHealth - Verifies that the server is running and the database is reachable.

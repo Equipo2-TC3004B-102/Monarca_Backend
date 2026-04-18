@@ -14,7 +14,7 @@ import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly healthService: HealthService) {}
+  constructor(private readonly healthService: HealthService) { }
 
   /**
    * getHealth - Public endpoint to check application and database health.

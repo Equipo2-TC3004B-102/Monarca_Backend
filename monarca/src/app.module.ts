@@ -5,7 +5,7 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 25/02/2026 [Santiago Coronado Hernández] Changed synchronize value to false 
  */
 
 import { Module } from '@nestjs/common';
@@ -43,6 +43,7 @@ import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
+import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { HealthModule } from './health/health.module';
         Department,
         CostCenter,
         Destination,
+        ExchangeRate,
         Request,
         RequestsDestination,
         Roles,
@@ -100,6 +102,7 @@ import { HealthModule } from './health/health.module';
       Department,
       CostCenter,
       Destination,
+      ExchangeRate,
       Request,
       RequestsDestination,
       Roles,

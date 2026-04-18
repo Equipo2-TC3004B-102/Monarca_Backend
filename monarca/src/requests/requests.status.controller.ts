@@ -1,5 +1,17 @@
+/**
+ * FileName: requests.status.controller.ts
+ * Description: Controller for request status transitions (approve, deny, cancel,
+ *              and stage completion actions). All routes are protected by
+ *              AuthGuard and PermissionsGuard.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success codes for
+ *                              all status transition endpoints.
+ */
+
 import {
   Controller,
+  HttpCode,
   Get,
   Post,
   Body,
@@ -22,6 +34,7 @@ export class RequestsStatusController {
   constructor(private readonly requestsStatusService: RequestsStatusService) {}
 
   @Patch('approve/:id')
+  @HttpCode(200)
   async approve(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -31,6 +44,7 @@ export class RequestsStatusController {
   }
 
   @Patch('deny/:id')
+  @HttpCode(200)
   async deny(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -39,6 +53,7 @@ export class RequestsStatusController {
   }
 
   @Patch('cancel/:id')
+  @HttpCode(200)
   async cancel(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -47,6 +62,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-reservations/:id')
+  @HttpCode(200)
   async finsihedReservations(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -58,6 +74,7 @@ export class RequestsStatusController {
   }
 
   @Patch('SOI-approve/:id')
+  @HttpCode(200)
   async SOIApproval(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -66,6 +83,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-uploading-vouchers/:id')
+  @HttpCode(200)
   async finsihedUploadingVouchers(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -77,6 +95,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-approving-vouchers/:id')
+  @HttpCode(200)
   async finsihedApprovingVouchers(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,
@@ -88,6 +107,7 @@ export class RequestsStatusController {
   }
 
   @Patch('complete-request/:id')
+  @HttpCode(200)
   async finsihedRegisteringRequest(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id_request: string,

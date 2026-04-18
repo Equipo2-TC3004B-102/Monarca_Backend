@@ -150,6 +150,7 @@ export class SeedService {
                 'roles',
                 'travel_agencies',
                 'destinations',
+                'exchange_rates',
                 'permissions',
                 'departments',
                 'cost_centers'

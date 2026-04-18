@@ -6,7 +6,8 @@
  *              and remove (DELETE /destinations/:id).
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              POST endpoint and aligned header format.
  */
 
 import {
@@ -18,6 +19,7 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { DestinationsService } from './destinations.service';
 import { CreateDestinationDto } from './dto/create-destination.dto';
@@ -28,8 +30,9 @@ export class DestinationsController {
   constructor(private readonly destService: DestinationsService) {}
 
   @Post()
-  create(@Body() data: CreateDestinationDto) {
-    return this.destService.create(data);
+  @HttpCode(200)
+  create(@Body() createDestinationDto: CreateDestinationDto) {
+    return this.destService.create(createDestinationDto);
   }
 
   @Get()
