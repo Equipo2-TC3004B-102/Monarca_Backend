@@ -122,9 +122,17 @@ export class SeedService {
             for (const entity of entities) {
                 if (entityName === 'User') {
                     const userSeed = entity as UserSeed;
+                    // Added fallback logic for user_name to ensure it is always populated, using email prefix if user_name is not provided.
+                    const fallbackUserName =
+                        userSeed.user_name ??
+                        (typeof userSeed.email === 'string'
+                            ? userSeed.email.split('@')[0]
+                            : undefined);
+
                     const normalizedUser = {
                         ...userSeed,
                         id_ceco: userSeed.id_ceco ?? userSeed.id_department,
+                        user_name: fallbackUserName,
                     };
 
                     delete normalizedUser.id_department;
