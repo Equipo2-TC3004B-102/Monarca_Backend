@@ -52,6 +52,7 @@ export class PermissionsGuard implements CanActivate {
       id_ceco: user.id_ceco,
       id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
+      id_company: user.id_company, // Added company ID to userInfo for access control based on company association
     };
     // console.log(`request.sessionInfo.id: ${request.sessionInfo.id}`)
 

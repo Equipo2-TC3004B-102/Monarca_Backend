@@ -161,6 +161,22 @@ export class RequestsService {
       );
     }
 
+    let id_company = req.userInfo.id_company;
+    if (!id_company) {
+      const rows = await this.dataSource.query(
+        `SELECT id_company FROM cost_centers WHERE id = $1 LIMIT 1`,
+        [id_ceco],
+      );
+      id_company = rows?.[0]?.id_company;
+    }
+
+    if (!id_company) {
+      throw this.clientError(
+        'The requester is not linked to any company.',
+        'REQUESTS_REQUESTER_COMPANY_REQUIRED',
+      );
+    }
+
     const adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
       id_ceco,
       userId,
@@ -218,10 +234,11 @@ export class RequestsService {
     }
 
     const request = this.requestsRepo.create({
+      ...data,
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
-      ...data,
+      id_company,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
       exchange_rate: finalExchangeRate,
