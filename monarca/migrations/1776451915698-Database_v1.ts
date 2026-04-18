@@ -10,8 +10,8 @@
 
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class DatabaseV21776451915698 implements MigrationInterface {
-    name = 'DatabaseV21776451915698'
+export class DatabaseV11776451915698 implements MigrationInterface {
+    name = 'DatabaseV11776451915698'
     /**
      * up - Creates the complete baseline schema aligned with current entities.
      * Input: queryRunner (QueryRunner) - TypeORM query runner.
