@@ -46,7 +46,7 @@ export class ApprovalLevel {
     @Column({ name: 'min_amount_mon', type: 'decimal', scale: 2, nullable: true}) // Scale allows for 2 decimal places, suitable for currency values
     min_amount_mon: number;
 
-   @Column({ name: 'min_amount_mon', type: 'decimal', scale: 2, nullable: true}) // Scale allows for 2 decimal places, suitable for currency values
+    @Column({ name: 'max_amount_mon', type: 'decimal', scale: 2, nullable: true}) // Scale allows for 2 decimal places, suitable for currency values
     max_amount_mon: number;
 
     // Number of approvals required for this level.
