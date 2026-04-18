@@ -5,7 +5,7 @@
  *              including file URLs and fiscal fields for CFDI integration.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Merged approver validations with fiscal CFDI fields.
+ * 17/04/2026 [Julio Rodríguez] Updated optional approver/id URL validations for DTO consistency.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -94,7 +94,7 @@ export class CreateVoucherDto {
   })
   @IsOptional()
   @IsUUID()
-  id_approver?: string;
+  id_approver: string;
 
   // ──────────────────────────────────────────────
   // Fiscal fields – CFDI integration (Req. 10)

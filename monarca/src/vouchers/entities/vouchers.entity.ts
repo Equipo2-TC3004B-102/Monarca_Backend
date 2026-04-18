@@ -5,7 +5,7 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Merged approver mapping with fiscal CFDI columns.
+ * 17/04/2026 [Julio Rodríguez] Aligned monetary typing and approver mapping with domain model.
  */
 
 import {
