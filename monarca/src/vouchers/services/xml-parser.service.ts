@@ -1,11 +1,12 @@
 /**
  * FileName: xml-parser.service.ts
  * Description: Service that parses Mexican CFDI XML files (versions 3.3 and 4.0)
- *              using fast-xml-parser and maps the fiscal data into a ParsedCfdi
- *              object compatible with CreateVoucherDto.
+ *              using fast-xml-parser and maps the raw fiscal data into a ParsedCfdi
+ *              object. Scoped to ST-3: structural validation and data extraction only.
+ *              Classification (ST-4) and DB persistence (ST-6) are out of scope.
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 17/04/2026 – Initial creation for Task 10 (ST-3).
+ * 19/04/2026 – Removed classifyByClaveProdServ and tax label logic (ST-4 scope). ST-3 cleanup.
  */
 
 import { Injectable, BadRequestException } from '@nestjs/common';
@@ -107,17 +108,13 @@ export class XmlParserService {
     // Complemento → TimbreFiscalDigital (UUID)
     const fiscalUuid = this.extractFiscalUuid(comprobante);
 
-    // Impuestos
-    const { taxAmount, retentionAmount, taxTypeLabel } =
-      this.extractTaxes(comprobante);
+    // Impuestos – raw sums only, no label interpretation
+    const { taxAmount, retentionAmount } = this.extractTaxes(comprobante);
 
-    // Tipo de cambio (defaults to 1 for MXN)
+    // Tipo de cambio (defaults to 1 for MXN invoices)
     const exchangeRate = parseFloat(comprobante['@_TipoCambio']) || 1;
 
-    // ClaveProdServ from first Concepto for auto-classification
-    const voucherClass = this.classifyByClaveProdServ(comprobante);
-
-    // Date – CFDI uses format "2024-01-15T12:30:00" without timezone
+    // Date – CFDI uses "2024-01-15T12:30:00" without timezone suffix
     const rawDate = comprobante['@_Fecha'] || '';
     const isoDate = rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`;
 
@@ -135,8 +132,6 @@ export class XmlParserService {
       tax_amount: taxAmount,
       retention_amount: retentionAmount,
       date: isoDate,
-      class: voucherClass,
-      tax_type: taxTypeLabel,
     };
   }
 
@@ -174,19 +169,18 @@ export class XmlParserService {
 
   /**
    * extractTaxes - Sums all transferred and retained tax amounts from the
-   *                Impuestos node. Also generates a human-readable tax label.
+   *                Impuestos node. Returns raw numeric totals only;
+   *                label generation (e.g. "IVA 16%") belongs to ST-4.
    * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: { taxAmount, retentionAmount, taxTypeLabel }.
+   * Output: { taxAmount, retentionAmount }.
    */
   private extractTaxes(comprobante: Record<string, any>): {
     taxAmount: number;
     retentionAmount: number;
-    taxTypeLabel: string;
   } {
     const impuestos = comprobante.Impuestos || {};
     let taxAmount = 0;
     let retentionAmount = 0;
-    const taxTypes: string[] = [];
 
     // ── Traslados (transferred taxes: IVA, IEPS) ──
     const traslados = impuestos.Traslados?.Traslado;
@@ -194,15 +188,6 @@ export class XmlParserService {
       const trasladoList = Array.isArray(traslados) ? traslados : [traslados];
       for (const t of trasladoList) {
         taxAmount += parseFloat(t['@_Importe']) || 0;
-
-        // Build tax type label (e.g. "IVA 16%")
-        const impuesto = t['@_Impuesto'];
-        const tasa = t['@_TasaOCuota'];
-        if (impuesto && tasa) {
-          const taxName = this.getTaxName(impuesto);
-          const percentage = (parseFloat(tasa) * 100).toFixed(0);
-          taxTypes.push(`${taxName} ${percentage}%`);
-        }
       }
     }
 
@@ -217,54 +202,6 @@ export class XmlParserService {
       }
     }
 
-    // Deduplicate and join tax type labels
-    const uniqueTaxTypes = [...new Set(taxTypes)];
-    const taxTypeLabel =
-      uniqueTaxTypes.length > 0 ? uniqueTaxTypes.join(', ') : 'N/A';
-
-    return { taxAmount, retentionAmount, taxTypeLabel };
-  }
-
-  /**
-   * getTaxName - Maps SAT tax codes (c_Impuesto) to human-readable names.
-   * Input: code (string) – SAT tax code ('001', '002', '003').
-   * Output: string – human-readable name.
-   */
-  private getTaxName(code: string): string {
-    const taxNames: Record<string, string> = {
-      '001': 'ISR',
-      '002': 'IVA',
-      '003': 'IEPS',
-    };
-    return taxNames[code] || code;
-  }
-
-  /**
-   * classifyByClaveProdServ - Infers a voucher classification based on the
-   *                           ClaveProdServ of the first concept in the XML.
-   * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: string – classification label (e.g. 'TRANSPORT', 'FOOD').
-   *
-   * SAT ClaveProdServ reference ranges:
-   *   50 → Food & beverage
-   *   78 → Transport & logistics
-   *   90 → Travel / lodging services
-   *   15 → Fuels & lubricants
-   */
-  private classifyByClaveProdServ(comprobante: Record<string, any>): string {
-    const conceptos = comprobante.Conceptos?.Concepto;
-    if (!conceptos) {
-      return 'OTHER';
-    }
-
-    const firstConcepto = Array.isArray(conceptos) ? conceptos[0] : conceptos;
-    const clave = String(firstConcepto['@_ClaveProdServ'] || '');
-
-    if (clave.startsWith('50')) return 'FOOD';
-    if (clave.startsWith('78')) return 'TRANSPORT';
-    if (clave.startsWith('90')) return 'LODGING';
-    if (clave.startsWith('15')) return 'GASOLINE';
-
-    return 'OTHER';
+    return { taxAmount, retentionAmount };
   }
 }

@@ -2,9 +2,10 @@
  * FileName: xml-parser.service.spec.ts
  * Description: Unit tests for XmlParserService. Validates correct parsing of
  *              CFDI 4.0 XML files and error handling for malformed inputs.
+ *              Scoped to ST-3 fields only (class and tax_type removed).
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 17/04/2026 – Initial creation for Task 10 (ST-3).
+ * 19/04/2026 – Removed class and tax_type assertions (ST-4 scope). ST-3 cleanup.
  */
 
 import { BadRequestException } from '@nestjs/common';
@@ -65,16 +66,6 @@ describe('XmlParserService', () => {
     it('should set retention to 0 when no retentions exist', () => {
       const result = service.parse(xmlBuffer);
       expect(result.retention_amount).toBe(0);
-    });
-
-    it('should generate tax type label', () => {
-      const result = service.parse(xmlBuffer);
-      expect(result.tax_type).toBe('IVA 16%');
-    });
-
-    it('should classify as TRANSPORT based on ClaveProdServ 7810', () => {
-      const result = service.parse(xmlBuffer);
-      expect(result.class).toBe('TRANSPORT');
     });
 
     it('should extract the invoice date', () => {
