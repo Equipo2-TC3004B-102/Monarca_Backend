@@ -36,7 +36,7 @@ export class RequestApproval {
     @Column({ name: 'approver_user_id', type: 'uuid', nullable: false })
     approver_user_id: string;
 
-    @Column({ name: 'descision', type: 'varchar'})
+    @Column({ name: 'decision', type: 'varchar'})
     decision: string;
     
     @Column({ name: 'comments', type: 'text', nullable: true })

@@ -5,7 +5,7 @@
  *              by endpoint metadata.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized client error handling to BadRequestException for HTTP 400 policy and aligned header documentation.
+ * 18/04/2026 [Julio Rodriguez] Added new attributes to userInfo for better access control and logging.
  */
 
 import {
@@ -53,6 +53,13 @@ export class PermissionsGuard implements CanActivate {
       id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
       id_company: user.id_company, // Added company ID to userInfo for access control based on company association
+      manager_id: user.manager_id,
+      is_system_admin: user.is_system_admin,
+      is_first_login: user.is_first_login,
+      is_requester: user.is_requester,
+      is_approver: user.is_approver,
+      is_soi: user.is_soi,
+      is_travelAgent: user.is_travelAgent,
     };
     // console.log(`request.sessionInfo.id: ${request.sessionInfo.id}`)
 

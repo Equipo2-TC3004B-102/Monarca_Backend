@@ -5,8 +5,8 @@
  *              AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success codes for
- *                              all status transition endpoints.
+ * 18/04/2026 [Julio Rodriguez] Added new endpoints for SOI approval and stage completions.
+ *                            Updated endpoint contracts to include necessary parameters and permissions.
  */
 
 import {
@@ -27,6 +27,7 @@ import { PermissionsGuard } from 'src/guards/permissions.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsStatusService } from './requests.status.service';
 import { ApproveRequestDTO } from './dto/approve-request.dto';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard, PermissionsGuard)
 @Controller('requests')
@@ -34,6 +35,7 @@ export class RequestsStatusController {
   constructor(private readonly requestsStatusService: RequestsStatusService) {}
 
   @Patch('approve/:id')
+  @Permissions('approve_request') // Add appropriate permission for approving requests.
   @HttpCode(200)
   async approve(
     @Request() req: RequestInterface,
@@ -44,6 +46,7 @@ export class RequestsStatusController {
   }
 
   @Patch('deny/:id')
+  @Permissions('deny_request') // Add appropriate permission for denying requests.
   @HttpCode(200)
   async deny(
     @Request() req: RequestInterface,
@@ -53,6 +56,7 @@ export class RequestsStatusController {
   }
 
   @Patch('cancel/:id')
+  @Permissions('edit_request') // Add appropriate permission for canceling requests.
   @HttpCode(200)
   async cancel(
     @Request() req: RequestInterface,
@@ -62,6 +66,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-reservations/:id')
+  @Permissions('submit_reservations') // Add appropriate permission for marking reservations as finished.
   @HttpCode(200)
   async finsihedReservations(
     @Request() req: RequestInterface,
@@ -74,6 +79,7 @@ export class RequestsStatusController {
   }
 
   @Patch('SOI-approve/:id')
+  @Permissions('approve_budget') // Add appropriate permission for SOI approval.
   @HttpCode(200)
   async SOIApproval(
     @Request() req: RequestInterface,
@@ -83,6 +89,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-uploading-vouchers/:id')
+  @Permissions('upload_vouchers') // Add appropriate permission for marking voucher upload as finished.
   @HttpCode(200)
   async finsihedUploadingVouchers(
     @Request() req: RequestInterface,
@@ -95,6 +102,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-approving-vouchers/:id')
+  @Permissions('approve_vouchers')
   @HttpCode(200)
   async finsihedApprovingVouchers(
     @Request() req: RequestInterface,
@@ -107,6 +115,7 @@ export class RequestsStatusController {
   }
 
   @Patch('complete-request/:id')
+  @Permissions('approve_budget') // Add appropriate permission for marking request as fully completed.
   @HttpCode(200)
   async finsihedRegisteringRequest(
     @Request() req: RequestInterface,
