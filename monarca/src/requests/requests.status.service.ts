@@ -3,8 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized status transition errors to 400
- *                              with internal codes and aligned header format.
+ * 18/04/2026 [Julio Rodriguez] Updated the solicitation approval, first Approvers, then SOI and finally a travel agent.
  */
 
 import {
@@ -46,7 +45,7 @@ export class RequestsStatusService {
     const id_travel_agency = data.id_travel_agency;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
-      relations: ['user'],
+      relations: ['user', 'SOI'],
     });
     if (!request)
       throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
@@ -78,33 +77,29 @@ export class RequestsStatusService {
     await this.notificationsService.notify(
       request.user.email,
       'Solicitud de viaje aprobada',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de reservaciones.`,
+      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de reservaciones.</p>
-<p>Por favor, espera a que se realicen las reservaciones necesarias.</p>
+<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
+<p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
 
-    // Notify to the travel agents
-    const agents = await this.travelAgenciesChecks.getTravelAgencyUsers(id_travel_agency);
-
-    for (const agent of agents) {
-      await this.notificationsService.notify(
-        agent.email,
-        'Nueva solicitud de viaje aprobada',
-        `La solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de reservaciones.`,
-        `<p>Hola ${agent.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de reservaciones.</p>
-<p>Por favor, revisa los detalles de la solicitud y procede con las reservaciones necesarias.</p>
+    // Notify SOI to review budget before reservations.
+    await this.notificationsService.notify(
+      request.SOI.email,
+      'Solicitud de viaje pendiente de aprobación de presupuesto',
+      `La solicitud de viaje con el título "${request.title}" fue aprobada y está pendiente de tu revisión de presupuesto.`,
+      `<p>Hola ${request.SOI.name},</p>
+<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada y está pendiente de tu revisión de presupuesto.</p>
+<p>Por favor, revisa la información para continuar el flujo.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
-      );
-    }
+    );
 
     return await this.requestsService.updateStatus(
       id_request,
-      'Pending Reservations',
+      'Pending Accounting Approval',
     );
   }
 
@@ -186,7 +181,7 @@ export class RequestsStatusService {
 
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
-      relations: ['SOI'],
+      relations: ['user'],
     });
 
     if (!request)
@@ -204,14 +199,14 @@ export class RequestsStatusService {
         'REQUEST_STATUS_TRANSITION_INVALID_STATE',
       );
 
-    // Notify SOI
+    // Notify user once reservations are completed.
     await this.notificationsService.notify(
-      request.SOI.email,
-      'Solicitud de viaje pendiente de aprobación contable',
-      `La solicitud de viaje con el título "${request.title}" ha finalizado las reservaciones y está pendiente de tu aprobación contable.`,
-      `<p>Hola ${request.SOI.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha finalizado las reservaciones y está pendiente de tu aprobación contable.</p>
-<p>Por favor, revisa los detalles de la solicitud y espera la aprobación contable.</p>
+      request.user.email,
+      'Reservaciones de viaje completadas',
+      `La agencia de viajes completó las reservaciones de la solicitud "${request.title}".`,
+      `<p>Hola ${request.user.name},</p>
+<p>La agencia de viajes completó las reservaciones de tu solicitud "<strong>${request.title}</strong>".</p>
+<p>Tu solicitud pasa ahora a estado de viaje en progreso.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
@@ -219,7 +214,7 @@ export class RequestsStatusService {
 
     return await this.requestsService.updateStatus(
       id_request,
-      'Pending Accounting Approval',
+      'In Progress',
     );
   }
 
@@ -245,20 +240,46 @@ export class RequestsStatusService {
         'REQUEST_STATUS_SOI_APPROVE_INVALID_STATE',
       );
 
+    if (!request.id_travel_agency)
+      throw this.clientError(
+        'Unable to route request because travel agency is not assigned.',
+        'REQUEST_STATUS_TRAVEL_AGENCY_REQUIRED',
+      );
+
     // Notify user
     await this.notificationsService.notify(
       request.user.email,
       'Solicitud de viaje aprobada contablemente',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada contablemente.`,
+      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada contablemente y será enviada a reservaciones.`,
       `<p>Hola ${request.user.name},</p>
 <p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada contablemente.</p>
-<p>Ya puedes descargar tus reservaciones y llevar a cabo tu viaje.</p>
-<p>Una vez concluyas el viaje, puedes iniciar la comprobación de gastos.</p>
+<p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
 
-    return await this.requestsService.updateStatus(id_request, 'In Progress');
+    // Notify travel agents to start reservations after SOI budget approval.
+    const agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
+      request.id_travel_agency,
+    );
+
+    for (const agent of agents) {
+      await this.notificationsService.notify(
+        agent.email,
+        'Solicitud lista para reservaciones',
+        `La solicitud de viaje con el título "${request.title}" fue aprobada por SOI y está lista para reservaciones.`,
+        `<p>Hola ${agent.name},</p>
+<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada por SOI y está lista para reservaciones.</p>
+<p>Por favor, revisa la solicitud y procede con la reservación.</p>
+<p>Saludos,</p>
+<p>Equipo de Monarca</p>`,
+      );
+    }
+
+    return await this.requestsService.updateStatus(
+      id_request,
+      'Pending Reservations',
+    );
   }
 
   async finishedUploadingVouchers(req: RequestInterface, id_request: string) {

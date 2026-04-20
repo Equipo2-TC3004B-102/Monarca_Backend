@@ -5,8 +5,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
- *                              POST upload endpoint and aligned header format.
+ * 18/04/2026 [Julio Rodriguez] Implemented file upload handling in the create endpoint and added new endpoints for approving and denying vouchers.
+ * 
  */
 
 import {
@@ -30,6 +30,7 @@ import { UseInterceptors, UploadedFiles, InternalServerErrorException } from '@n
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard, PermissionsGuard)
 @ApiTags('Vouchers') // Swagger documentation tag for the controller
@@ -46,6 +47,7 @@ export class VouchersController {
    */
   @UseInterceptors(UploadPdfInterceptor())
   @Post('upload')
+  @Permissions('upload_vouchers') // Add appropriate permission for uploading vouchers.
   @HttpCode(200)
   async uploadVoucher(
     @Req() req: RequestInterface,
@@ -63,7 +65,7 @@ export class VouchersController {
       throw new InternalServerErrorException('DOWNLOAD_LINK not configured');
     }
 
-    const id_user = req.sessionInfo.id; 
+    const id_user = req.sessionInfo.id;
     const fileMap: Record<string, string> = {};
 
     // flatten both arrays into one list
@@ -93,6 +95,7 @@ export class VouchersController {
    * Output: Promise<Voucher[]> - array of all voucher records.
    */
   @Get()
+  @Permissions('view_assigned_requests_readonly') // Add appropriate permission for retrieving vouchers.
   async findAll(): Promise<Voucher[]> {
     return this.vouchersService.findAll();
   }
@@ -103,12 +106,13 @@ export class VouchersController {
    * Output: Promise<Voucher[]> - array of vouchers associated with the given request ID.
    */
   @Get(':requestId')
+  @Permissions('view_assigned_requests_readonly') // Add appropriate permission for retrieving vouchers.
   async findByRequest(
     @Param('requestId') requestId: string
   ): Promise<Voucher[]> {
     return this.vouchersService.findByRequest(requestId);
   }
-  
+
 
   /**
    * update - Partially updates an existing voucher's fields by its UUID.
@@ -117,6 +121,7 @@ export class VouchersController {
    * Output: Promise<Voucher> - the updated voucher record.
    */
   @Patch(':id')
+  @Permissions('upload_vouchers') // Add appropriate permission for updating vouchers.
   async update(
     @Param('id') id: string,
     @Body() updateVoucherDto: UpdateVoucherDto,
@@ -131,6 +136,7 @@ export class VouchersController {
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/approve')
+  @Permissions('approve_vouchers') // Add appropriate permission for approving vouchers.
   async approve(
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {
@@ -143,6 +149,7 @@ export class VouchersController {
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/deny')
+  @Permissions('deny_vouchers') // Add appropriate permission for denying vouchers.
   async deny(
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {

@@ -4,8 +4,8 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized request errors to 400/500 policy
- *                              and aligned service header documentation.
+ * 18/04/2026 [Julio Rodriguez] Added Banxico exchange rate fetching and logging of request actions for better traceability.
+ *                              Modified the method for assing approvers to ensure better load distribution and added error handling for missing environment variables.
  */
 
 import {
@@ -177,18 +177,30 @@ export class RequestsService {
       );
     }
 
-    const adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
-      id_ceco,
+    let adminId = await this.userChecks.getApproverIdFromManagerChain(
       userId,
+      2,
     );
     if (!adminId) {
+      adminId = await this.userChecks.getApproverIdByCompany(
+        id_company,
+        userId,
+      );
+    }
+    if (!adminId) {
+      adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
+        id_ceco,
+        userId,
+      );
+    }
+    if (!adminId) {
       throw this.serverError(
-        'There is no admin available to assign the request.',
+        'There is no approver available to assign the request.',
         'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
       );
     }
 
-    // Assign SOI user
+    // Assign SOI user globally (SOI is not company-scoped)
     const SOIId = await this.userChecks.getRandomSOIID();
     if (!SOIId) {
       throw this.serverError(
@@ -263,21 +275,21 @@ export class RequestsService {
       },
     );
 
-    const admin = await this.userChecks.getUserById(saved.id_admin);
+    const approver = await this.userChecks.getUserById(saved.id_admin);
 
-    if (!admin) {
+    if (!approver) {
       throw this.serverError(
-        `Admin with ID ${saved.id_admin} not found.`,
+        `Approver with ID ${saved.id_admin} not found.`,
         'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
       );
     }
 
-    // Mandar mail de notificación al admin asignado
+    // Mandar mail de notificación al aprobador asignado
     await this.notificationsService.notify(
-      admin.email,
+      approver.email,
       `Nueva solicitud asignada`,
       `Se te ha asignado una nueva solicitud de viaje con ID: ${saved.id}. Por favor, revisa los detalles en el sistema.`,
-      `<p>Hola ${admin.name},</p>
+      `<p>Hola ${approver.name},</p>
 <p>Se te ha asignado una nueva solicitud de viaje con ID: <strong>${saved.id}</strong>.</p>
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
@@ -384,7 +396,10 @@ export class RequestsService {
   async findBySOI(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
-      where: { id_SOI: userId },
+      where: {
+        id_SOI: userId,
+        status: 'Pending Accounting Approval',
+      },
       relations: [
         'requests_destinations',
         'requests_destinations.destination',
@@ -562,18 +577,18 @@ export class RequestsService {
       );
 
       // Notificar al admin asignado
-      const admin = await this.userChecks.getUserById(updated.id_admin);
-      if (!admin) {
+      const approver = await this.userChecks.getUserById(updated.id_admin);
+      if (!approver) {
         throw this.serverError(
-          `Admin with ID ${updated.id_admin} not found.`,
+          `Approver with ID ${updated.id_admin} not found.`,
           'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
         );
       }
       await this.notificationsService.notify(
-        admin.email,
+        approver.email,
         `Solicitud actualizada`,
         `La solicitud de viaje con ID: ${updated.id} ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
-        `<p>Hola ${admin.name},</p>
+        `<p>Hola ${approver.name},</p>
 <p>La solicitud de viaje con ID: <strong>${updated.id}</strong> ha sido actualizada.</p>
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
