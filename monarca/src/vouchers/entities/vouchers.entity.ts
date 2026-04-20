@@ -5,8 +5,7 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 16/04/2026 [Fausto Izquierdo] Fixed taxt_type typo, changed amount to decimal,
- *            added receiver_name and exchange_rate.
+ * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
  */
 
 import {
@@ -17,6 +16,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Request } from 'src/requests/entities/request.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Entity({ name: 'vouchers' })
 export class Voucher {
@@ -50,8 +50,8 @@ export class Voucher {
   @Column({ name: 'status', type: 'varchar' })
   status: string;
 
-  @Column({ name: 'id_approver', type: 'uuid' })
-  id_approver: string;
+  @Column({ name: 'id_approver', type: 'uuid', nullable: true })
+  id_approver: string | null;
 
   // ──────────────────────────────────────────────
   // Fiscal fields – CFDI integration
@@ -73,25 +73,46 @@ export class Voucher {
   @Column({ name: 'receiver_rfc', type: 'varchar', nullable: true })
   receiver_rfc: string | null;
 
-  /** Razón social del receptor (e.g. Ditta's legal name) */
+  /** Razón social del receptor */
   @Column({ name: 'receiver_name', type: 'varchar', nullable: true })
   receiver_name: string | null;
+
+  /** Tipo de cambio CFDI */
+  @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
+  exchange_rate: number | null;
 
   /** Subtotal antes de impuestos */
   @Column({ name: 'subtotal', type: 'decimal', precision: 12, scale: 2, nullable: true })
   subtotal: number | null;
 
-  /** Total de impuestos trasladados (IVA, IEPS) */
-  @Column({ name: 'tax_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  tax_amount: number | null;
+  /** Descuento total del comprobante */
+  @Column({ name: 'discount', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  discount: number | null;
 
-  /** Total de impuestos retenidos (ISR, IVA retenido) */
-  @Column({ name: 'retention_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  retention_amount: number | null;
+  /** Impuesto trasladado tipo IVA (SAT 002) */
+  @Column({ name: 'iva_trasladado', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  iva_trasladado: number | null;
 
-  /** Tipo de Cambio – exchange rate at the time of the transaction */
-  @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
-  exchange_rate: number | null;
+  /** Impuesto trasladado tipo IEPS (SAT 003) */
+  @Column({ name: 'ieps_trasladado', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  ieps_trasladado: number | null;
+
+  /** Retención tipo ISR (SAT 001) */
+  @Column({ name: 'isr_retenido', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  isr_retenido: number | null;
+
+  /** Retención tipo IVA (SAT 002) */
+  @Column({ name: 'iva_retenido', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  iva_retenido: number | null;
+
+  /** Forma de pago SAT (ej. 01) */
+  @Column({ name: 'payment_form', type: 'varchar', nullable: true })
+  payment_form: string | null;
+
+  /** Método de pago SAT (ej. PUE) */
+  @Column({ name: 'payment_method', type: 'varchar', nullable: true })
+  payment_method: string | null;
+
 
   // ──────────────────────────────────────────────
   // Relationships
@@ -99,10 +120,18 @@ export class Voucher {
 
   @ManyToOne(
     () => Request,
-    (requests) => requests.id,
+    (request) => request.vouchers,
     { onDelete: 'CASCADE' },
   )
   @JoinColumn({ name: 'id_request' })
-  requests: Request;
+  request: Request;
+
+  // Many vouchers can be approved by one user
+  @ManyToOne(() => User, (user) => user.approved_vouchers, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'id_approver' })
+  approver?: User | null;
 }
 

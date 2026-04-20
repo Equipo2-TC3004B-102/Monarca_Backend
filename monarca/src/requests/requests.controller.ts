@@ -84,6 +84,7 @@ export class RequestsController {
   }
 
   @Put(':id')
+  @HttpCode(200)
   async updateRequest(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() data: UpdateRequestDto,

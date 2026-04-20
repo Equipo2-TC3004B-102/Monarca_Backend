@@ -1,3 +1,12 @@
+/**
+ * FileName: request.entity.ts
+ * Description: TypeORM entity representing the requests table. A request
+ *              can have many destinations associated to it.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 17/04/2026 [Julio Rodríguez] Updated voucher inverse relation mapping for consistency.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -15,6 +24,7 @@ import { Destination } from 'src/destinations/entities/destination.entity';
 import { User } from 'src/users/entities/user.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
+import { Company } from 'src/companies/entity/company.entity'; // Added import for Company entity to establish relationship
 
 @Entity({ name: 'requests' })
 export class Request {
@@ -35,6 +45,10 @@ export class Request {
 
   @Column({ nullable: true, default: null })
   id_travel_agency: string;
+
+  // New column to establish relationship with Company entity.
+  @Column({ type: 'uuid' })
+  id_company: string;
 
   @Column()
   title: string;
@@ -109,7 +123,12 @@ export class Request {
   @JoinColumn({ name: 'id_travel_agency' })
   travel_agency: TravelAgency;
 
-  @OneToMany(() => Voucher, (v) => v.requests, {})
-  @JoinColumn({ name: 'id_request' })
+  // New relationship with Company entity, Many requests can belong to one company
+  @ManyToOne(() => Company, (company) => company.requests)
+  @JoinColumn({ name: 'id_company' })
+  company: Company;
+
+  // Updated inverse relation mapping for vouchers, One request can have many vouchers
+  @OneToMany(() => Voucher, (voucher) => voucher.request, {})
   vouchers: Voucher[];
 }

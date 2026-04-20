@@ -5,7 +5,7 @@
  *              are present), and sets up Swagger API documentation.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Julio Rodríguez] Registered global exception filter for sanitized 500 responses.
  */
 
 import 'dotenv/config';

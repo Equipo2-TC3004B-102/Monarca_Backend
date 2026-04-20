@@ -49,8 +49,10 @@ export class NotificationsService {
     try {
       await this.transporter.sendMail(mailOptions);
       console.log('Correo enviado correctamente');
-    } catch (error) {
-      console.error('Error enviando correo:', error.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown email error';
+      console.error('Error enviando correo:', errorMessage);
     }
   }
     // BYPASS EMAILS FOR NOW
