@@ -5,8 +5,7 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Fausto Izquierdo] Added fiscal columns (uuid, RFCs, subtotal, taxes)
- *            for CFDI invoice data persistence.
+ * 17/04/2026 [Julio Rodríguez] Aligned monetary typing and approver mapping with domain model.
  */
 
 import {
@@ -17,6 +16,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Request } from 'src/requests/entities/request.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Entity({ name: 'vouchers' })
 export class Voucher {
@@ -29,10 +29,10 @@ export class Voucher {
   @Column({ name: 'class', type: 'varchar' })
   class: string;
 
-  @Column({ name: 'amount', type: 'float' })
+  @Column({ name: 'amount', type: 'decimal', scale: 2 })
   amount: number;
 
-  @Column({ name: 'taxt_type', type: 'varchar' })
+  @Column({ name: 'tax_type', type: 'varchar' })
   tax_type: string;
 
   @Column({ name: 'currency', type: 'varchar' })
@@ -50,8 +50,8 @@ export class Voucher {
   @Column({ name: 'status', type: 'varchar' })
   status: string;
 
-  @Column({ name: 'id_approver', type: 'uuid' })
-  id_approver: string;
+  @Column({ name: 'id_approver', type: 'uuid', nullable: true })
+  id_approver: string | null;
 
   // ──────────────────────────────────────────────
   // Fiscal fields – CFDI integration
@@ -91,10 +91,18 @@ export class Voucher {
 
   @ManyToOne(
     () => Request,
-    (requests) => requests.id,
+    (request) => request.vouchers,
     { onDelete: 'CASCADE' },
   )
   @JoinColumn({ name: 'id_request' })
-  requests: Request;
+  request: Request;
+
+  // Many vouchers can be approved by one user
+  @ManyToOne(() => User, (user) => user.approved_vouchers, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'id_approver' })
+  approver?: User | null;
 }
 

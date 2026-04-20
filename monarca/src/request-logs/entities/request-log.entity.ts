@@ -5,7 +5,7 @@
  *              and what the new status was. Belongs to a Request via id_request.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Julio Rodríguez] Added strict UUID typing and User relationship for audit ownership.
  */
 
 import {
@@ -16,16 +16,17 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Request } from 'src/requests/entities/request.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Entity({ name: 'request_logs' })
 export class RequestLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'id_request' })
+  @Column({ name: 'id_request', type: 'uuid' })
   id_request: string;
 
-  @Column({ name: 'id_user' })
+  @Column({ name: 'id_user', type: 'uuid' })
   id_user: string;
 
   @Column({
@@ -35,20 +36,29 @@ export class RequestLog {
   })
   report: string | null;
 
-  @Column({ name: 'new_status' })
+  @Column({ name: 'new_status', type: 'varchar' })
   new_status: string;
 
   @Column({
     name: 'change_date',
-    type: 'timestamp',
+    type: 'timestamptz', // Changed to timestamptz for better timezone handling
     default: () => 'CURRENT_TIMESTAMP',
   })
-  change_date: string;
+  change_date: Date;
 
   // Relationships
+
+  // Many logs can belong to one request
   @ManyToOne(() => Request, (request) => request.requestLogs, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'id_request' })
   request: Request;
+
+  // Many logs can be made by one user
+  @ManyToOne(() => User, (user) => user.request_logs, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'id_user' })
+  user: User;
 }
