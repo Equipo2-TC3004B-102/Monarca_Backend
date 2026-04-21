@@ -83,6 +83,41 @@ describe('XmlParserService', () => {
     });
   });
 
+  describe('parse() – valid CFDI 3.3', () => {
+    const xmlPath33 = path.join(__dirname, 'sample-cfdi-3.3.xml');
+    const xmlBuffer33 = fs.readFileSync(xmlPath33);
+
+    it('should detect CFDI version 3.3', () => {
+      const result = service.parse(xmlBuffer33);
+      expect(result.cfdi_version).toBe('3.3');
+    });
+
+    it('should extract the fiscal UUID', () => {
+      const result = service.parse(xmlBuffer33);
+      expect(result.fiscal_uuid).toBe('11112222-3333-4444-5555-666677778888');
+    });
+
+    it('should handle missing optional fields gracefully (like Receiver Name in 3.3)', () => {
+      const result = service.parse(xmlBuffer33);
+      expect(result.receiver_rfc).toBe('BBB020202BBB');
+      expect(result.receiver_name).toBeUndefined(); // Should not crash
+    });
+
+    it('should parse exchange rates correctly with decimals', () => {
+      const result = service.parse(xmlBuffer33);
+      expect(result.currency).toBe('USD');
+      expect(result.exchange_rate).toBe(19.5030);
+    });
+
+    it('should correctly sum transferred and retained taxes', () => {
+      const result = service.parse(xmlBuffer33);
+      expect(result.iva_trasladado).toBe(304);
+      expect(result.isr_retenido).toBe(90);
+      expect(result.ieps_trasladado).toBe(0); // Not present in the XML
+      expect(result.iva_retenido).toBe(0); // Not present in the XML
+    });
+  });
+
   describe('parse() – error handling', () => {
     it('should throw on invalid XML', () => {
       const badBuffer = Buffer.from('not xml at all <<<>>>', 'utf-8');
