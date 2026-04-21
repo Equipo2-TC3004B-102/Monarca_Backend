@@ -7,6 +7,8 @@
  * Last Modification made:
  * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
  *                              BadRequestException for HTTP 400 policy.
+ * 20/04/2026 [Diego de la Vega] Ensured create/update operations persist
+ *                             iata_code and airport_name fields.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -25,6 +27,8 @@ export class DestinationsService {
 
   async create(data: CreateDestinationDto): Promise<Destination> {
     const dest = this.destRepo.create({
+      iata_code: data.iata_code,
+      airport_name: data.airport_name,
       country: data.country,
       city: data.city,
     });
@@ -45,6 +49,10 @@ export class DestinationsService {
 
   async update(id: string, data: UpdateDestinationDto): Promise<Destination> {
     await this.destRepo.update(id, {
+      ...(data.iata_code !== undefined && { iata_code: data.iata_code }),
+      ...(data.airport_name !== undefined && {
+        airport_name: data.airport_name,
+      }),
       ...(data.country !== undefined && { country: data.country }),
       ...(data.city !== undefined && { city: data.city }),
     });
