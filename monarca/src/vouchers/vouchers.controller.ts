@@ -2,11 +2,12 @@
  * FileName: vouchers.controller
  * Description: REST controller for Voucher operations. Exposes endpoints for
  *              uploading, retrieving, updating, approving, and denying vouchers.
+ *              Also exposes a parse-only endpoint (ST-3) for XML extraction testing.
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
- *                              POST upload endpoint and aligned header format.
+ * 19/04/2026 [Fausto Izquierdo] Added POST /vouchers/parse-xml endpoint for ST-3
+ *                               XML extraction testing (no DB persistence).
  */
 
 import {
@@ -19,8 +20,12 @@ import {
   Req,
   UseGuards,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
+import * as fs from 'fs';
 import { VouchersService } from './vouchers.service';
+import { XmlParserService } from './services/xml-parser.service';
+import { ParsedCfdi } from './interfaces/parsed-cfdi.interface';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -35,7 +40,33 @@ import { PermissionsGuard } from 'src/guards/permissions.guard';
 @ApiTags('Vouchers') // Swagger documentation tag for the controller
 @Controller('vouchers')
 export class VouchersController {
-  constructor(private readonly vouchersService: VouchersService) {}
+  constructor(
+    private readonly vouchersService: VouchersService,
+    private readonly xmlParserService: XmlParserService,
+  ) {}
+
+  /**
+   * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
+   *            and returns the extracted ParsedCfdi JSON without saving anything.
+   * Input: files – multipart upload with field name 'file_url_xml'.
+   * Output: Promise<ParsedCfdi> – the raw fiscal data extracted from the CFDI.
+   * Throws BadRequestException if no XML file is provided or parsing fails.
+   */
+  @UseInterceptors(UploadPdfInterceptor())
+  @Post('parse-xml')
+  @HttpCode(200)
+  async parseXml(
+    @UploadedFiles()
+    files: { file_url_xml?: Express.Multer.File[] },
+  ): Promise<ParsedCfdi> {
+    const xmlFile = files?.file_url_xml?.[0];
+    if (!xmlFile) {
+      throw new BadRequestException('An XML file is required in the file_url_xml field.');
+    }
+    // Multer uses diskStorage so the file is on disk, not in memory
+    const buffer = fs.readFileSync(xmlFile.path);
+    return this.xmlParserService.parse(buffer);
+  }
 
   /**
    * uploadVoucher - Handles PDF/XML file upload and creates a new voucher record.

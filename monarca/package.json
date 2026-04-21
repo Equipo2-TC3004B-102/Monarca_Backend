@@ -56,6 +56,7 @@
     "cookie-parser": "^1.4.7",
     "csv-parser": "^3.2.0",
     "dotenv": "^16.6.1",
+    "fast-xml-parser": "^5.7.0",
     "handlebars": "^4.7.8",
     "i18n-iso-countries": "^7.14.0",
     "multer": "^1.4.5-lts.2",
@@ -110,6 +111,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
+    
   }
 }

@@ -5,12 +5,13 @@
  *              and includes GuardsModule for authentication and authorization.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Fausto Izquierdo] Added XmlParserService provider for CFDI extraction.
  */
 
 import { Module, Req } from '@nestjs/common';
 import { VouchersController } from './vouchers.controller';
 import { VouchersService } from './vouchers.service';
+import { XmlParserService } from './services/xml-parser.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
@@ -21,6 +22,6 @@ import { GuardsModule } from 'src/guards/guards.module';
 
 ],
   controllers: [VouchersController],
-  providers: [VouchersService],
+  providers: [VouchersService, XmlParserService],
 })
 export class VouchersModule {}
