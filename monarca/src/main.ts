@@ -5,7 +5,8 @@
  *              are present), and sets up Swagger API documentation.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Registered global exception filter for sanitized 500 responses.
+ * 17/04/2026 [Fausto Izquierdo] Added try/catch to bootstrap for graceful
+ *            database connection failure logging (ST-4).
  */
 
 import 'dotenv/config';
@@ -20,50 +21,58 @@ import * as https from 'https';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  // Read SSL certificate and key files if they exist
-  const keyPath = 'certs/backend-key.pem';
-  const certPath = 'certs/backend.pem';
+  try {
+    // Read SSL certificate and key files if they exist
+    const keyPath = 'certs/backend-key.pem';
+    const certPath = 'certs/backend.pem';
 
-  const options: any = {};
+    const options: any = {};
 
-  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    options.httpsOptions = {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    };
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      options.httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      };
+    }
+
+    const app = await NestFactory.create<NestExpressApplication>(
+      AppModule,
+      options,
+    );
+
+    // Enable CORS to allow requests from the frontend origin
+    app.enableCors({
+      origin: true,
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      credentials: true,
+    });
+
+    app.use(cookieParser());
+    app.use(new LoggingMiddleware().use);
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+
+    const config = new DocumentBuilder()
+      .setTitle('Monarca API')
+      .setDescription('The monarca API description')
+      .setVersion('1.0')
+      .build();
+    const documentFactory = () => SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, documentFactory);
+
+    await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+    console.log(`Application is running on: ${await app.getUrl()}`);
+  } catch (error) {
+    console.error('\n❌ Failed to start the Monarca application.');
+    console.error(`   Reason: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('   Please verify that the database is running and the connection');
+    console.error('   settings in the .env file are correct.\n');
+    process.exit(1);
   }
-
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-    options,
-  );
-
-  // Enable CORS to allow requests from the frontend origin
-  app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
-
-  app.use(cookieParser());
-  app.use(new LoggingMiddleware().use);
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-
-  const config = new DocumentBuilder()
-    .setTitle('Monarca API')
-    .setDescription('The monarca API description')
-    .setVersion('1.0')
-    .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
-
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
-  console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();
