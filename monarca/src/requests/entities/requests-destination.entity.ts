@@ -1,3 +1,14 @@
+/**
+ * FileName: requests-destination.entity.ts
+ * Description: Request destination entity. Stores each destination leg associated
+ *              with a travel request, including reservation requirements and
+ *              provider support metadata for compatibility checks.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 20/04/2026 [Diego de la Vega] Added provider support status fields to track
+ *                             pending/supported/unsupported destination legs.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -45,6 +56,20 @@ export class RequestsDestination {
 
   @Column({ name: 'details', nullable: true })
   details: string;
+
+  @Column({
+    name: 'provider_support_status',
+    type: 'varchar',
+    length: 40,
+    default: 'pending_provider',
+  })
+  provider_support_status: string;
+
+  @Column({ name: 'provider_support_reason', type: 'text', nullable: true })
+  provider_support_reason: string | null;
+
+  @Column({ name: 'provider_support_checked_at', type: 'timestamp', nullable: true })
+  provider_support_checked_at: Date | null;
 
   // Relationships
 

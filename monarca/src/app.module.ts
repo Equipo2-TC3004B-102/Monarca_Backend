@@ -92,7 +92,9 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
         UserLogs,
         Revision,
       ],
-      synchronize: false,
+      synchronize: true,
+      retryAttempts: 3,
+      retryDelay: 3000,
     }),
 
     TypeOrmModule.forFeature([

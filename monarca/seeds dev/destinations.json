@@ -1,16 +1,22 @@
 [
     {
       "id": "d7ee631a-c1b8-42f0-8ae6-cd4d6b23470f",
+      "iata_code": "MEX",
+      "airport_name": "Aeropuerto Internacional Benito Juarez",
       "country": "Mexico",
       "city": "Mexico City"
     },
     {
       "id": "04963809-842e-457a-97aa-ac885bd6e1bf",
+      "iata_code": "JFK",
+      "airport_name": "John F. Kennedy International Airport",
       "country": "USA",
       "city": "New York"
     },
     {
       "id": "19283055-1ce3-48ea-a05a-04ae53978dfe",
+      "iata_code": "CDG",
+      "airport_name": "Charles de Gaulle Airport",
       "country": "France",
       "city": "Paris"
     }

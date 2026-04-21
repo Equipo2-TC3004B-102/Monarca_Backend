@@ -110,7 +110,10 @@ In another terminal:
 ```powershell
 cd D:\Escritorio\TEC\Ditta\Monarca_Backend_clone\monarca
 npm run db:seed
+npm run db:import
 ```
+
+Use `npm run db:import` to sync destinations from `data/ourairports/airports_clean.csv`.
 
 ### F) Start frontend
 
@@ -207,6 +210,7 @@ From `Monarca_Backend_clone\monarca`:
 
 ```powershell
 npm run db:seed
+npm run db:import
 ```
 
 ---
@@ -555,6 +559,7 @@ npm run start:dev
 ```bash
 cd ~/Monarca/Monarca_Backend/monarca
 npm run db:seed
+npm run db:import
 ```
 
 > ⏱️ Wait in between 10 to 15 seconds after starting up the backend before running the seed command.
@@ -636,6 +641,7 @@ npm run db:truncate
 
 # To populate again
 npm run db:seed
+npm run db:import
 ```
 
 ---
@@ -662,6 +668,7 @@ npm install
 2. Restart the backend (`CTRL + C` and `npm run start:dev`)
 3. Wait for a full start
 4. Execute `npm run db:seed`
+5. Execute `npm run db:import`
 
 ### Error: "Unable to connect to the database"
 **Cause**: Docker is not running or not accessible by WSL.
