@@ -5,7 +5,7 @@
  *              Scoped to ST-3 fields only (class and tax_type removed).
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 19/04/2026 – Removed class and tax_type assertions (ST-4 scope). ST-3 cleanup.
+ * 20/04/2026 – Updated assertions for detailed CFDI fiscal fields.
  */
 
 import { BadRequestException } from '@nestjs/common';
@@ -50,22 +50,31 @@ describe('XmlParserService', () => {
       expect(result.receiver_name).toBe('Ditta Consulting S.A. de C.V.');
     });
 
+    it('should extract payment and exchange fields', () => {
+      const result = service.parse(xmlBuffer);
+      expect(result.exchange_rate).toBe(1);
+      expect(result.discount).toBe(50);
+      expect(result.payment_form).toBe('01');
+      expect(result.payment_method).toBe('PUE');
+    });
+
     it('should extract monetary amounts', () => {
       const result = service.parse(xmlBuffer);
       expect(result.subtotal).toBe(1000);
       expect(result.amount).toBe(1160);
       expect(result.currency).toBe('MXN');
-      expect(result.exchange_rate).toBe(1);
     });
 
-    it('should sum transferred taxes', () => {
+    it('should sum transferred taxes by SAT code', () => {
       const result = service.parse(xmlBuffer);
-      expect(result.tax_amount).toBe(160);
+      expect(result.iva_trasladado).toBe(160);
+      expect(result.ieps_trasladado).toBe(0);
     });
 
-    it('should set retention to 0 when no retentions exist', () => {
+    it('should sum retained taxes by SAT code', () => {
       const result = service.parse(xmlBuffer);
-      expect(result.retention_amount).toBe(0);
+      expect(result.isr_retenido).toBe(25);
+      expect(result.iva_retenido).toBe(0);
     });
 
     it('should extract the invoice date', () => {

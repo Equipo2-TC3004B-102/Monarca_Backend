@@ -6,7 +6,7 @@
  *              Classification and business validations belong to future subtasks.
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 19/04/2026 – Removed class and tax_type (ST-4 scope). ST-3 cleanup.
+ * 20/04/2026 – Aligned with detailed CFDI fiscal fields for vouchers.
  */
 
 /**
@@ -33,7 +33,7 @@ export interface ParsedCfdi {
   receiver_rfc: string;
 
   /** Razón social del receptor */
-  receiver_name: string;
+  receiver_name?: string;
 
   /** Subtotal before taxes (@_SubTotal) */
   subtotal: number;
@@ -45,13 +45,28 @@ export interface ParsedCfdi {
   currency: string;
 
   /** Exchange rate (@_TipoCambio); defaults to 1 when currency is MXN */
-  exchange_rate: number;
+  exchange_rate?: number;
 
-  /** Sum of all Traslado/@_Importe values (IVA, IEPS) */
-  tax_amount: number;
+  /** Discount amount (@_Descuento) */
+  discount?: number;
 
-  /** Sum of all Retencion/@_Importe values (ISR, retained IVA) */
-  retention_amount: number;
+  /** IVA trasladado amount from Traslado/@_Importe when Impuesto = 002 */
+  iva_trasladado?: number;
+
+  /** IEPS trasladado amount from Traslado/@_Importe when Impuesto = 003 */
+  ieps_trasladado?: number;
+
+  /** ISR retenido amount from Retencion/@_Importe when Impuesto = 001 */
+  isr_retenido?: number;
+
+  /** IVA retenido amount from Retencion/@_Importe when Impuesto = 002 */
+  iva_retenido?: number;
+
+  /** Forma de pago (@_FormaPago) */
+  payment_form?: string;
+
+  /** Método de pago (@_MetodoPago) */
+  payment_method?: string;
 
   /** Invoice date normalized to ISO 8601 string */
   date: string;

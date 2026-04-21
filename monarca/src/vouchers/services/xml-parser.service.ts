@@ -6,7 +6,7 @@
  *              Classification (ST-4) and DB persistence (ST-6) are out of scope.
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 19/04/2026 – Removed classifyByClaveProdServ and tax label logic (ST-4 scope). ST-3 cleanup.
+ * 20/04/2026 – Extracted detailed CFDI fiscal fields for voucher integration.
  */
 
 import { Injectable, BadRequestException } from '@nestjs/common';
@@ -64,8 +64,9 @@ export class XmlParserService {
     try {
       return this.mapComprobante(comprobante, cfdiVersion);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       throw new BadRequestException(
-        `Failed to extract fiscal data from XML: ${error.message}`,
+        `Failed to extract fiscal data from XML: ${message}`,
       );
     }
   }
@@ -102,37 +103,88 @@ export class XmlParserService {
     cfdiVersion: string,
   ): ParsedCfdi {
     // Emisor & Receptor
-    const emisor = comprobante.Emisor || {};
-    const receptor = comprobante.Receptor || {};
+    const emisor = this.getNode(comprobante, 'Emisor');
+    const receptor = this.getNode(comprobante, 'Receptor');
 
     // Complemento → TimbreFiscalDigital (UUID)
     const fiscalUuid = this.extractFiscalUuid(comprobante);
 
-    // Impuestos – raw sums only, no label interpretation
-    const { taxAmount, retentionAmount } = this.extractTaxes(comprobante);
+    // Impuestos – detailed fiscal breakdown by SAT code
+    const {
+      ivaTrasladado,
+      iepsTrasladado,
+      isrRetenido,
+      ivaRetenido,
+    } = this.extractTaxes(comprobante);
 
     // Tipo de cambio (defaults to 1 for MXN invoices)
-    const exchangeRate = parseFloat(comprobante['@_TipoCambio']) || 1;
+    const exchangeRate = this.parseNumber(
+      this.getAttribute(comprobante, 'TipoCambio'),
+    );
+
+    const discount = this.parseNumber(
+      this.getAttribute(comprobante, 'Descuento'),
+    );
+
+    const paymentForm = this.getAttribute(comprobante, 'FormaPago') || undefined;
+    const paymentMethod =
+      this.getAttribute(comprobante, 'MetodoPago') || undefined;
 
     // Date – CFDI uses "2024-01-15T12:30:00" without timezone suffix
-    const rawDate = comprobante['@_Fecha'] || '';
+    const rawDate = this.getAttribute(comprobante, 'Fecha') || '';
     const isoDate = rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`;
 
     return {
       cfdi_version: cfdiVersion,
       fiscal_uuid: fiscalUuid,
-      issuer_rfc: emisor['@_Rfc'] || '',
-      issuer_name: emisor['@_Nombre'] || '',
-      receiver_rfc: receptor['@_Rfc'] || '',
-      receiver_name: receptor['@_Nombre'] || '',
-      subtotal: parseFloat(comprobante['@_SubTotal']) || 0,
-      amount: parseFloat(comprobante['@_Total']) || 0,
-      currency: comprobante['@_Moneda'] || 'MXN',
+      issuer_rfc: this.getAttribute(emisor, 'Rfc') || '',
+      issuer_name: this.getAttribute(emisor, 'Nombre') || '',
+      receiver_rfc: this.getAttribute(receptor, 'Rfc') || '',
+      receiver_name: this.getAttribute(receptor, 'Nombre') || undefined,
+      subtotal: this.parseNumber(this.getAttribute(comprobante, 'SubTotal')) || 0,
+      amount: this.parseNumber(this.getAttribute(comprobante, 'Total')) || 0,
+      currency: this.getAttribute(comprobante, 'Moneda') || 'MXN',
       exchange_rate: exchangeRate,
-      tax_amount: taxAmount,
-      retention_amount: retentionAmount,
+      discount,
+      iva_trasladado: ivaTrasladado,
+      ieps_trasladado: iepsTrasladado,
+      isr_retenido: isrRetenido,
+      iva_retenido: ivaRetenido,
+      payment_form: paymentForm,
+      payment_method: paymentMethod,
       date: isoDate,
     };
+  }
+
+  private getNode(comprobante: Record<string, any>, key: string): Record<string, any> {
+    return (
+      comprobante[key] ||
+      comprobante[`cfdi:${key}`] ||
+      comprobante[`tfd:${key}`] ||
+      {}
+    );
+  }
+
+  private getAttribute(
+    node: Record<string, any>,
+    attribute: string,
+  ): string | undefined {
+    return (
+      node[`@_${attribute}`] ??
+      node[`@_${attribute.toLowerCase()}`] ??
+      node[attribute] ??
+      node[`cfdi:${attribute}`] ??
+      node[`tfd:${attribute}`]
+    );
+  }
+
+  private parseNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+
+    const parsed = typeof value === 'number' ? value : parseFloat(String(value));
+    return Number.isNaN(parsed) ? undefined : parsed;
   }
 
   /**
@@ -151,7 +203,8 @@ export class XmlParserService {
     // TimbreFiscalDigital can be a direct child or within an array
     const timbre =
       complemento.TimbreFiscalDigital ||
-      complemento['tfd:TimbreFiscalDigital'];
+      complemento['tfd:TimbreFiscalDigital'] ||
+      complemento['cfdi:TimbreFiscalDigital'];
 
     if (!timbre) {
       throw new Error(
@@ -169,39 +222,60 @@ export class XmlParserService {
 
   /**
    * extractTaxes - Sums all transferred and retained tax amounts from the
-   *                Impuestos node. Returns raw numeric totals only;
-   *                label generation (e.g. "IVA 16%") belongs to ST-4.
+   *                Impuestos node using SAT tax codes.
    * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: { taxAmount, retentionAmount }.
+   * Output: detailed fiscal breakdown by tax code.
    */
   private extractTaxes(comprobante: Record<string, any>): {
-    taxAmount: number;
-    retentionAmount: number;
+    ivaTrasladado: number;
+    iepsTrasladado: number;
+    isrRetenido: number;
+    ivaRetenido: number;
   } {
-    const impuestos = comprobante.Impuestos || {};
-    let taxAmount = 0;
-    let retentionAmount = 0;
+    const impuestos = this.getNode(comprobante, 'Impuestos');
+    let ivaTrasladado = 0;
+    let iepsTrasladado = 0;
+    let isrRetenido = 0;
+    let ivaRetenido = 0;
 
     // ── Traslados (transferred taxes: IVA, IEPS) ──
-    const traslados = impuestos.Traslados?.Traslado;
+    const traslados = this.getNode(impuestos, 'Traslados').Traslado;
     if (traslados) {
       const trasladoList = Array.isArray(traslados) ? traslados : [traslados];
       for (const t of trasladoList) {
-        taxAmount += parseFloat(t['@_Importe']) || 0;
+        const impuesto = this.getAttribute(t, 'Impuesto');
+        const importe = this.parseNumber(this.getAttribute(t, 'Importe')) || 0;
+
+        if (impuesto === '002') {
+          ivaTrasladado += importe;
+        }
+
+        if (impuesto === '003') {
+          iepsTrasladado += importe;
+        }
       }
     }
 
     // ── Retenciones (retained taxes: ISR, retained IVA) ──
-    const retenciones = impuestos.Retenciones?.Retencion;
+    const retenciones = this.getNode(impuestos, 'Retenciones').Retencion;
     if (retenciones) {
       const retencionList = Array.isArray(retenciones)
         ? retenciones
         : [retenciones];
       for (const r of retencionList) {
-        retentionAmount += parseFloat(r['@_Importe']) || 0;
+        const impuesto = this.getAttribute(r, 'Impuesto');
+        const importe = this.parseNumber(this.getAttribute(r, 'Importe')) || 0;
+
+        if (impuesto === '001') {
+          isrRetenido += importe;
+        }
+
+        if (impuesto === '002') {
+          ivaRetenido += importe;
+        }
       }
     }
 
-    return { taxAmount, retentionAmount };
+    return { ivaTrasladado, iepsTrasladado, isrRetenido, ivaRetenido };
   }
 }
