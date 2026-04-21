@@ -6,7 +6,7 @@
  *              for safe responses.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 16/02/2026 [Julio Rodriguez] Added new fields required by Ditta Consulting.
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -29,14 +29,56 @@ export class CreateUserDto {
   @ApiProperty({ example: 'active' })
   status: string;
 
-  @ApiProperty({ example: 1 })
-  id_department?: string;
+  @ApiProperty({ example: 1, required: false })
+  id_ceco?: string;
 
   @ApiProperty({ example: 2 })
   id_role: string;
 
   @ApiProperty()
-  id_travel_agency?: string;
+  id_travel_agency: string;
+
+  @ApiProperty({ required: false })
+  employee_num: string;
+
+  @ApiProperty({ required: false })
+  user_name: string;
+
+  @ApiProperty({ required: false })
+  creation_date: Date;
+
+  @ApiProperty({ required: false })
+  id_company: string;
+
+  @ApiProperty({ required: false })
+  provider: string;
+
+  @ApiProperty({ required: false })
+  manager_id: string;
+
+  @ApiProperty({ required: false, default: false })
+  is_system_admin: boolean;
+
+  @ApiProperty({ required: false, default: true })
+  is_first_login: boolean;
+
+  @ApiProperty({ required: false, default: true })
+  is_requester: boolean;
+
+  @ApiProperty({ required: false, default: false })
+  is_approver: boolean;
+
+  @ApiProperty({ required: false, default: false })
+  is_soi: boolean;
+
+  @ApiProperty({ required: false, default: false })
+  is_travelAgent: boolean;
+
+  @ApiProperty({ required: false })
+  first_login_at: Date;
+
+  @ApiProperty({ required: false })
+  last_login_at: Date;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

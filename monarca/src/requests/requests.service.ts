@@ -138,34 +138,63 @@ export class RequestsService {
     const userId = req.sessionInfo.id;
     //VALIDAR VALIDEZ DE CIUDADES
     if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-      throw new BadRequestException('Invalid id_origin_city.');
+      throw this.clientError(
+        'Invalid id_origin_city.',
+        'REQUESTS_INVALID_ORIGIN_CITY',
+      );
     }
 
     for (const rd of data.requests_destinations) {
       if (!(await this.destinationChecks.isValid(rd.id_destination)))
-        throw new BadRequestException('Invalid id_destination.');
+        throw this.clientError(
+          'Invalid id_destination.',
+          'REQUESTS_INVALID_DESTINATION',
+        );
     }
 
     //ASIGNAR APROVADOR
-    const id_department = req.userInfo.id_department;
-    const adminId = await this.userChecks.getRandomApproverIdFromSameDepartment(
-      id_department,
+    const id_ceco = req.userInfo.id_ceco;
+    if (!id_ceco) {
+      throw this.clientError(
+        'The requester is not linked to any cost center.',
+        'REQUESTS_REQUESTER_CECO_REQUIRED',
+      );
+    }
+
+    let id_company = req.userInfo.id_company;
+    if (!id_company) {
+      const rows = await this.dataSource.query(
+        `SELECT id_company FROM cost_centers WHERE id = $1 LIMIT 1`,
+        [id_ceco],
+      );
+      id_company = rows?.[0]?.id_company;
+    }
+
+    if (!id_company) {
+      throw this.clientError(
+        'The requester is not linked to any company.',
+        'REQUESTS_REQUESTER_COMPANY_REQUIRED',
+      );
+    }
+
+    const adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
+      id_ceco,
       userId,
     );
     if (!adminId) {
-      throw new InternalServerErrorException({
-        message: 'There is no admin available to assign the request.',
-        code: 'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
-      });
+      throw this.serverError(
+        'There is no admin available to assign the request.',
+        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      );
     }
 
     // Assign SOI user
     const SOIId = await this.userChecks.getRandomSOIID();
     if (!SOIId) {
-      throw new InternalServerErrorException({
-        message: 'There is no SOI available to assign the request.',
-        code: 'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
-      });
+      throw this.serverError(
+        'There is no SOI available to assign the request.',
+        'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
+      );
     }
 
     let finalAdvanceMoney: number = 0;
@@ -205,10 +234,11 @@ export class RequestsService {
     }
 
     const request = this.requestsRepo.create({
+      ...data,
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
-      ...data,
+      id_company,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
       exchange_rate: finalExchangeRate,
@@ -334,7 +364,6 @@ export class RequestsService {
       .leftJoinAndSelect('rd.destination', 'd')
       .leftJoinAndSelect('r.revisions', 'rev')
       .leftJoinAndSelect('r.user', 'u')
-      .leftJoinAndSelect('u.department', 'dept')
       .leftJoinAndSelect('r.admin', 'adm')
       .leftJoinAndSelect('r.SOI', 'soi')
       .leftJoinAndSelect('r.destination', 'dest')
@@ -452,12 +481,18 @@ export class RequestsService {
 
       //VALIDAR VALIDEZ DE CIUDADES
       if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-        throw new BadRequestException('Invalid id_origin_city.');
+        throw this.clientError(
+          'Invalid id_origin_city.',
+          'REQUESTS_INVALID_ORIGIN_CITY',
+        );
       }
 
       for (const rd of data.requests_destinations) {
         if (!(await this.destinationChecks.isValid(rd.id_destination)))
-          throw new BadRequestException('Invalid id_destination.');
+          throw this.clientError(
+            'Invalid id_destination.',
+            'REQUESTS_INVALID_DESTINATION',
+          );
       }
 
       //Update informacion general

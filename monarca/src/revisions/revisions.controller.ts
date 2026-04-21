@@ -5,17 +5,13 @@
  *              by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
- *                              POST endpoint and aligned header format.
+ * 17/04/2026 [Julio Rodríguez] Removed unused imports and kept endpoint contract clean.
  */
 
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
-  Param,
-  ParseUUIDPipe,
   Post,
   Request,
   UseGuards,
