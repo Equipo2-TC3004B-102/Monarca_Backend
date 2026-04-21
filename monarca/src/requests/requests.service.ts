@@ -6,6 +6,8 @@
  * Last Modification made:
  * 11/04/2026 [Julio Rodriguez] Standardized request errors to 400/500 policy
  *                              and aligned service header documentation.
+ * 20/04/2026 [Diego de la Vega] Added default provider support metadata for
+ *                             requests_destinations on create and update.
  */
 
 import {
@@ -244,6 +246,9 @@ export class RequestsService {
       exchange_rate: finalExchangeRate,
       requests_destinations: data.requests_destinations.map((destDto) => ({
         ...destDto,
+        provider_support_status: 'pending_provider',
+        provider_support_reason: null,
+        provider_support_checked_at: null,
       })),
     });
 
@@ -544,7 +549,12 @@ export class RequestsService {
       //Overhaul de requests_destinations
       const destRepo = manager.getRepository(RequestsDestination);
       entity.requests_destinations = data.requests_destinations.map((d) =>
-        destRepo.create({ ...d }),
+        destRepo.create({
+          ...d,
+          provider_support_status: 'pending_provider',
+          provider_support_reason: null,
+          provider_support_checked_at: null,
+        }),
       );
 
       //Update status
