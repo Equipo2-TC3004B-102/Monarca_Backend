@@ -5,7 +5,7 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Aligned monetary typing and approver mapping with domain model.
+ * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
  */
 
 import {
@@ -29,7 +29,7 @@ export class Voucher {
   @Column({ name: 'class', type: 'varchar' })
   class: string;
 
-  @Column({ name: 'amount', type: 'decimal', scale: 2 })
+  @Column({ name: 'amount', type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
   @Column({ name: 'tax_type', type: 'varchar' })
@@ -73,17 +73,45 @@ export class Voucher {
   @Column({ name: 'receiver_rfc', type: 'varchar', nullable: true })
   receiver_rfc: string | null;
 
+  /** Razón social del receptor */
+  @Column({ name: 'receiver_name', type: 'varchar', nullable: true })
+  receiver_name: string | null;
+
+  /** Tipo de cambio CFDI */
+  @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 4, nullable: true })
+  exchange_rate: number | null;
+
   /** Subtotal antes de impuestos */
   @Column({ name: 'subtotal', type: 'decimal', precision: 12, scale: 2, nullable: true })
   subtotal: number | null;
 
-  /** Total de impuestos trasladados (IVA, IEPS) */
-  @Column({ name: 'tax_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  tax_amount: number | null;
+  /** Descuento total del comprobante */
+  @Column({ name: 'discount', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  discount: number | null;
 
-  /** Total de impuestos retenidos (ISR, IVA retenido) */
-  @Column({ name: 'retention_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  retention_amount: number | null;
+  /** Impuesto trasladado tipo IVA (SAT 002) */
+  @Column({ name: 'iva_trasladado', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  iva_trasladado: number | null;
+
+  /** Impuesto trasladado tipo IEPS (SAT 003) */
+  @Column({ name: 'ieps_trasladado', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  ieps_trasladado: number | null;
+
+  /** Retención tipo ISR (SAT 001) */
+  @Column({ name: 'isr_retenido', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  isr_retenido: number | null;
+
+  /** Retención tipo IVA (SAT 002) */
+  @Column({ name: 'iva_retenido', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  iva_retenido: number | null;
+
+  /** Forma de pago SAT (ej. 01) */
+  @Column({ name: 'payment_form', type: 'varchar', nullable: true })
+  payment_form: string | null;
+
+  /** Método de pago SAT (ej. PUE) */
+  @Column({ name: 'payment_method', type: 'varchar', nullable: true })
+  payment_method: string | null;
 
   // ──────────────────────────────────────────────
   // Relationships
