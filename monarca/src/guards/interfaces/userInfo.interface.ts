@@ -3,8 +3,7 @@
  * Description: Interface for defining the structure of user information.
  * Authors: Original Monarca team
  * Last Modification made:
- * 16/02/2026 [Julio Rodriguez] Added new fields required by Ditta Consulting.
- *                              Added coments for better documentation and maintainability.
+ * 22/04/2026 [Julio Rodriguez] Added new field for knowing if the user is authorized to access the configurable settings for each compamy.
  */
 
 export interface UserInfoInterface {
@@ -24,4 +23,5 @@ export interface UserInfoInterface {
   is_approver?: boolean;
   is_soi?: boolean;
   is_travelAgent?: boolean;
+  is_company_admin?: boolean;
 }

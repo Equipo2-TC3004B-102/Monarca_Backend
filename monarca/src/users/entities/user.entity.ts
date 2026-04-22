@@ -5,10 +5,7 @@
  *              requests, assigned requests, revisions and SOI assigned requests.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Added new fields to the entity to support new features and requirements.
- *                              New permisions auth handdleing by flags for easier access to certain resources.
- *                              Fixed the inverse relation mapping for revisions and requests for consistency with the Request and Revision entities.
- *                              Added new relationships with Company entity and self-referential relationship for manager and direct reports.
+ * 22/04/2026 [Julio Rodríguez] Added field for company administrators authorizations.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -124,6 +121,11 @@ export class User {
   @ApiProperty({ required: false })
   @Column({ name: 'is_travelAgent', default: false })
   is_travelAgent: boolean;
+
+  // Added flag to indicate if the user is a company admin.
+  @ApiProperty({ required: false })
+  @Column({ name: 'is_company_admin', default: false })
+  is_company_admin: boolean;
 
   @ApiProperty({ required: false })
   @Column({ name: 'first_login_at', type: 'timestamp', nullable: true })

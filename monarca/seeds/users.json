@@ -8,6 +8,7 @@
     "id_company": "11111111-1111-4111-8111-111111111111",
     "provider": "local",
     "is_system_admin": false,
+    "is_company_admin": false,
     "is_first_login": true,
     "is_requester": true,
     "is_approver": true,
@@ -28,6 +29,7 @@
     "id_company": "11111111-1111-4111-8111-111111111111",
     "provider": "local",
     "is_system_admin": false,
+    "is_company_admin": false,
     "is_first_login": true,
     "is_requester": true,
     "is_approver": false,
@@ -38,7 +40,7 @@
     "password": "password",
     "email": "requester1@monarca.com",
     "status": "active",
-    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f" 
+    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f"
   },
   {
     "id": "7528d97a-02d1-4c55-9477-8b368acc09f0",
@@ -49,6 +51,7 @@
     "id_company": "11111111-1111-4111-8111-111111111111",
     "provider": "local",
     "is_system_admin": false,
+    "is_company_admin": false,
     "is_first_login": true,
     "is_requester": true,
     "is_approver": false,
@@ -59,7 +62,7 @@
     "password": "password",
     "email": "requester2@monarca.com",
     "status": "active",
-    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f" 
+    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f"
   },
   {
     "id": "d3b833d4-a445-4c1e-9d3d-06be11d115fd",
@@ -70,6 +73,7 @@
     "id_company": "22222222-2222-4222-8222-222222222222",
     "provider": "local",
     "is_system_admin": false,
+    "is_company_admin": false,
     "is_first_login": true,
     "is_requester": false,
     "is_approver": false,
@@ -91,6 +95,7 @@
     "id_company": "22222222-2222-4222-8222-222222222222",
     "provider": "local",
     "is_system_admin": false,
+    "is_company_admin": false,
     "is_first_login": true,
     "is_requester": false,
     "is_approver": false,
