@@ -113,6 +113,7 @@ export class Voucher {
   @Column({ name: 'payment_method', type: 'varchar', nullable: true })
   payment_method: string | null;
 
+
   // ──────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────
