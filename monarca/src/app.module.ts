@@ -44,6 +44,10 @@ import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
 import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
+import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
+import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
+import { RequestApproval } from './approval-engine/entities/request-approval.entity';
+import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
 @Module({
   imports: [
@@ -67,6 +71,7 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
     UserLogsModule,
     GuardsModule,
     CompaniesModule,
+    ApprovalEngineModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -91,8 +96,11 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
         Voucher,
         UserLogs,
         Revision,
+        ApprovalLevel,
+        ApprovalLevelActor,
+        RequestApproval,
       ],
-      synchronize: true,
+      synchronize: false,
       retryAttempts: 3,
       retryDelay: 3000,
     }),
@@ -113,6 +121,9 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
       Voucher,
       UserLogs,
       Revision,
+      ApprovalLevel,
+      ApprovalLevelActor,
+      RequestApproval,
     ]),
 
   ],
