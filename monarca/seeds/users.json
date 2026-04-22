@@ -17,7 +17,8 @@
     "last_name": "One",
     "password": "password",
     "email": "requester1@monarca.com",
-    "status": "active"
+    "status": "active",
+    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f" // approver1
   },
   {
     "id": "7528d97a-02d1-4c55-9477-8b368acc09f0",
@@ -37,7 +38,8 @@
     "last_name": "Two",
     "password": "password",
     "email": "requester2@monarca.com",
-    "status": "active"
+    "status": "active",
+    "manager_id": "5781a1d8-f9f7-4561-b2ed-f6117877459f" // approver1
   },
   {
     "id": "5781a1d8-f9f7-4561-b2ed-f6117877459f",

@@ -5,7 +5,7 @@
  *              by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Removed unused imports and kept endpoint contract clean.
+ * 18/04/2026 [Julio Rodríguez] Added the RevisionsController with a POST endpoint to create revisions for travel requests. Integrated AuthGuard and PermissionsGuard for security.
  */
 
 import {
@@ -21,6 +21,7 @@ import { CreateRevisionDto } from './dto/create-revision.dto';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard, PermissionsGuard)
 @Controller('revisions')
@@ -34,6 +35,7 @@ export class RevisionsController {
    * Output: Promise<Revision> - the newly created and persisted revision record.
    */
   @Post()
+  @Permissions('deny_request') // Add appropriate permission for creating revisions.
   @HttpCode(200)
   postRevision(
     @Request() req: RequestInterface,
