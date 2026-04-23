@@ -1,14 +1,11 @@
 /**
- * FileName: user.entity.ts
- * Description: TypeORM entity representing the users table. A user belongs to a
- *              CeCo (department), role and optionally a travel agency. Can have many
- *              requests, assigned requests, revisions and SOI assigned requests.
+ * FileName: seed.service.ts
+ * Description: Service for seeding and resetting the database. Loads initial data
+ *              from JSON files in /seeds. Handles password hashing for users and
+ *              backwards-compatible field normalization (id_ceco, user_name).
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Julio Rodríguez] Added company relationship to User entity to associate users with their respective companies.
- *                              Added id_ceco field to User entity to replace id_department for better clarity and consistency with the rest of the codebase.
- *                              Updated related DTOs and interfaces to reflect the changes in the User entity.
- *                              Added documentation comments in the file.
+ * 23/04/2026 [Julio Rodríguez] Fixed header; added approval_levels tables to truncate list.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -192,6 +189,8 @@ export class SeedService {
                 'exchange_rates',
                 'permissions',
                 'cost_centers',
+                'approval_levels_actors',
+                'approval_levels',
                 'companies',
             ];
 
