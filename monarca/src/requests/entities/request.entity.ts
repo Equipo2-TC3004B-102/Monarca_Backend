@@ -4,7 +4,8 @@
  *              can have many destinations associated to it.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Updated voucher inverse relation mapping for consistency.
+ * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
+ *                            Added uuid type to FK columns for consistency.
  */
 
 import {
@@ -34,17 +35,17 @@ export class Request {
   @Column({ name: 'id_user', type: 'uuid' })
   id_user: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   id_origin_city: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   id_admin: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   id_SOI: string;
 
-  @Column({ nullable: true, default: null })
-  id_travel_agency: string;
+  @Column({ nullable: true, default: null, type: 'uuid' })
+  id_travel_agency: string | null;
 
   // New column to establish relationship with Company entity.
   @Column({ type: 'uuid' })

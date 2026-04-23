@@ -5,8 +5,8 @@
  *              provider support metadata for compatibility checks.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [Diego de la Vega] Added provider support status fields to track
- *                             pending/supported/unsupported destination legs.
+ * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
+ *                            Added uuid type to FK columns for consistency.
  */
 
 import {
@@ -27,10 +27,10 @@ export class RequestsDestination {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'id_destination' })
+  @Column({ name: 'id_destination', type: 'uuid' })
   id_destination: string;
 
-  @Column({ name: 'id_request' })
+  @Column({ name: 'id_request', type: 'uuid' })
   id_request: string;
 
   @Column({ name: 'destination_order', type: 'int' })
@@ -54,8 +54,8 @@ export class RequestsDestination {
   @Column({ name: 'is_last_destination', default: false })
   is_last_destination: boolean;
 
-  @Column({ name: 'details', nullable: true })
-  details: string;
+  @Column({ name: 'details', type: 'varchar', nullable: true })
+  details: string | null;
 
   @Column({
     name: 'provider_support_status',
@@ -73,6 +73,7 @@ export class RequestsDestination {
 
   // Relationships
 
+  // Many request destinations can belong to one request.
   @ManyToOne(() => Request, (request) => request.requests_destinations, {
     onDelete: 'CASCADE',
     orphanedRowAction: 'delete',
@@ -80,9 +81,11 @@ export class RequestsDestination {
   @JoinColumn({ name: 'id_request' })
   request: Request;
 
+  // One request destination can have many reservations (e.g., hotel, flight).
   @OneToMany(() => Reservation, (reservation) => reservation.requestDestination)
   reservations: Reservation[];
 
+  // One request destination can have many vouchers associated with it.
   @ManyToOne(() => Destination, (dest) => dest.requests_destinations, {
     onDelete: 'CASCADE',
   })

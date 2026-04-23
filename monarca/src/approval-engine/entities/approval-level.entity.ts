@@ -4,7 +4,7 @@
  *              This entity defines the structure of approval levels, including their order, applicable amount ranges, and relationships with companies, approval level actors and request approvals.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 15/04/2026 [Julio Rodríguez] Created the ApprovalLevel entity to represent approval level data and its relationships with companies, approval level actors and request approvals.
+ * 22/04/2026 [Julio Rodríguez] Added | null to nullable column types; added scale to decimal columns for currency values; added onDelete cascade to company relation.
  */
 
 import {
@@ -33,8 +33,8 @@ export class ApprovalLevel {
     @Column({ name: 'company_id', type: 'uuid' })
     company_id: string;
 
-    @Column({ name: 'description', nullable: true })
-    description: string;
+    @Column({ name: 'description', type: 'varchar', nullable: true })
+    description: string | null;
 
     @Column({ name: 'applies_to', default: 'travel' })
     applies_to: string;
@@ -44,17 +44,17 @@ export class ApprovalLevel {
 
     // Minimal and maximum amount for assigning the correct approval level.
     @Column({ name: 'min_amount_mon', type: 'decimal', scale: 2, nullable: true}) // Scale allows for 2 decimal places, suitable for currency values
-    min_amount_mon: number;
+    min_amount_mon: number | null;
 
     @Column({ name: 'max_amount_mon', type: 'decimal', scale: 2, nullable: true}) // Scale allows for 2 decimal places, suitable for currency values
-    max_amount_mon: number;
+    max_amount_mon: number | null;
 
     // Number of approvals required for this level.
     @Column({ name: 'required_approvals', type: 'integer', default: 1 })
     required_approvals: number;
 
     @Column({ name: 'escalation_hours', type: 'integer', nullable: true })
-    escalation_hours: number;
+    escalation_hours: number | null;
 
     @Column({ name: 'is_active', default: true })
     is_active: boolean;

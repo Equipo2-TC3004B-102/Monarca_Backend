@@ -1,10 +1,10 @@
-/*
+/**
  * FileName: request-approval.entity.ts
  * Description: TypeORM entity representing the request approval table.
  *              This entity defines the structure of request approvals, including their status, associated approval levels, and relationships with requests and approvers.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 16/04/2026 [Julio Rodríguez] Created the RequestApproval entity to represent the approval status of requests, including their associated approval levels and approvers.
+ * 22/04/2026 [Julio Rodríguez] Added | null to nullable column types.
  */
 
 import {
@@ -31,7 +31,7 @@ export class RequestApproval {
     approval_level_id: string;
 
     @Column({ name: 'approval_actor_id', type: 'uuid', nullable: true })
-    approval_actor_id: string;
+    approval_actor_id: string | null;
 
     @Column({ name: 'approver_user_id', type: 'uuid', nullable: false })
     approver_user_id: string;
@@ -40,7 +40,7 @@ export class RequestApproval {
     decision: string;
     
     @Column({ name: 'comments', type: 'text', nullable: true })
-    comments: string;
+    comments: string | null;
 
     @Column({ name: 'amount_snapshot', type: 'decimal', scale: 2 })
     amount_snapshot: number;
@@ -55,7 +55,7 @@ export class RequestApproval {
     escalation_step: number;
 
     @Column({ name: 'decided_at', type: 'timestamp', nullable: true })
-    decided_at: Date;
+    decided_at: Date | null;
 
     // Relationships
 

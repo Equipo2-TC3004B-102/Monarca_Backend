@@ -3,7 +3,7 @@
  * Description: Interface for defining the structure of user information.
  * Authors: Original Monarca team
  * Last Modification made:
- * 22/04/2026 [Julio Rodriguez] Added new field for knowing if the user is authorized to access the configurable settings for each compamy.
+ * 23/04/2026 [Julio Rodríguez] Aligned nullable fields to string | null to match User entity types.
  */
 
 export interface UserInfoInterface {
@@ -12,11 +12,11 @@ export interface UserInfoInterface {
   name: string;
   last_name: string;
   status: string;
-  id_ceco?: string;
+  id_ceco: string | null;
   id_role?: string;
-  id_travel_agency: string | undefined;
-  id_company?: string;
-  manager_id?: string;
+  id_travel_agency: string | null;
+  id_company: string | null;
+  manager_id: string | null;
   is_system_admin?: boolean;
   is_first_login?: boolean;
   is_requester?: boolean;

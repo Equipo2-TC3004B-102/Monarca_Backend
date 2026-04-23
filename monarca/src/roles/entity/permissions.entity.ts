@@ -5,7 +5,7 @@
  *              roles_permissions join table.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 22/04/2026 [Julio Rodríguez] Fixed id type from number to string to match UUID primary key.
  */
 
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
@@ -14,7 +14,7 @@ import { RolePermission } from './roles_permissions.entity';
 @Entity('permissions')
 export class Permission {
   @PrimaryGeneratedColumn('uuid')
-  id: number;
+  id: string;
 
   @Column()
   name: string;

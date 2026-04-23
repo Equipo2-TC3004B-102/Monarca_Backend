@@ -1,10 +1,10 @@
-/*
+/**
  * FileName: approval-level-actor.entity.ts
  * Description: TypeORM entity representing the approval level actor table.
  *              This entity defines the relationship between approval levels and their actors, including the actor type, whether their approval is required, and any applicable cost center filters.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 16/04/2026 [Julio Rodríguez] Created the ApprovalLevelActor entity to represent the relationship between approval levels and their actors, including the actor type and whether their approval is required.
+ * 22/04/2026 [Julio Rodríguez] Added | null to nullable column types for better handdleing
  */
 
 import {
@@ -34,11 +34,11 @@ export class ApprovalLevelActor {
 
     // Indicates how target_id should be resolved (USER, ROLE, REQUEST_FIELD, etc.).
     @Column({ name: 'target_type', type: 'varchar', nullable: true })
-    target_type: string;
+    target_type: string | null;
 
     // Target object id when rule points to a specific approver source.
     @Column({ name: 'target_id', type: 'uuid', nullable: true })
-    target_id: string;
+    target_id: string | null;
 
     // Indicates whether this actor rule is mandatory.
     @Column({ name: 'is_required', type: 'boolean', default: true })
@@ -46,7 +46,7 @@ export class ApprovalLevelActor {
 
     // Minimum number of approvals needed for this actor group (if applicable).
     @Column({ name: 'required_count', type: 'integer', nullable: true })
-    required_count: number;
+    required_count: number | null;
 
     // Rule evaluation mode (for example: ANY, ALL, COUNT).
     @Column({ name: 'selection_mode', type: 'varchar', default: 'any' })
@@ -54,7 +54,7 @@ export class ApprovalLevelActor {
 
     // Optional cost center filter to narrow applicable approvers.
     @Column({ name: 'ceco_id', type: 'uuid', nullable: true })
-    ceco_id?: string;
+    ceco_id: string | null;
 
     // Escalation order inside the same approval level.
     @Column({ name: 'escalation_step', type: 'integer', default: 0 })

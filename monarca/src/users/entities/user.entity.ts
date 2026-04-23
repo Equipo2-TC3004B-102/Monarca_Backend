@@ -5,7 +5,8 @@
  *              requests, assigned requests, revisions and SOI assigned requests.
  * Authors: Original Monarca team
  * Last Modification made:
- * 22/04/2026 [Julio Rodríguez] Added field for company administrators authorizations.
+ * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
+ *                              Added company relation and manager self-relation for organizational structure.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -57,8 +58,8 @@ export class User {
   status: string;
 
   @ApiProperty({ example: 'E-1001', required: false })
-  @Column({ name: 'employee_num', nullable: true })
-  employee_num: string;
+  @Column({ name: 'employee_num', type: 'varchar', nullable: true })
+  employee_num: string | null;
 
   @ApiProperty({ example: 'jrodriguez' })
   @Column({ name: 'user_name' })
@@ -70,7 +71,7 @@ export class User {
 
   @ApiProperty({ example: 1 })
   @Column({ name: 'id_ceco', type: 'uuid', nullable: true })
-  id_ceco: string;
+  id_ceco: string | null;
 
   @ApiProperty({ example: 2 })
   @Column({ name: 'id_role' })
@@ -82,20 +83,20 @@ export class User {
     type: 'uuid',
     nullable: true,
   })
-  id_travel_agency: string;
+  id_travel_agency: string | null;
 
   // Add company attribute
   @ApiProperty({ example: 1 })
   @Column({ name: 'id_company', type: 'uuid', nullable: true })
-  id_company: string;
+  id_company: string | null;
 
   @ApiProperty({ required: false })
-  @Column({ name: 'provider', nullable: true })
-  provider: string;
+  @Column({ name: 'provider', type: 'varchar', nullable: true })
+  provider: string | null;
 
   @ApiProperty({ required: false })
   @Column({ name: 'manager_id', type: 'uuid', nullable: true })
-  manager_id: string;
+  manager_id: string | null;
 
   // Flags for permissions and role management.
   @ApiProperty({ required: false })
@@ -129,11 +130,11 @@ export class User {
 
   @ApiProperty({ required: false })
   @Column({ name: 'first_login_at', type: 'timestamp', nullable: true })
-  first_login_at: Date;
+  first_login_at: Date | null;
 
   @ApiProperty({ required: false })
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
-  last_login_at: Date;
+  last_login_at: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   created_at: Date;
@@ -144,19 +145,19 @@ export class User {
   // Relationships
 
   // Many users can belong to one cost center (CeCo).
-  @ManyToOne(() => CostCenter)
+  @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_ceco' })
-  ceco: CostCenter;
+  ceco: CostCenter | null;
 
-  // Pending to review
-  @ManyToOne(() => Roles)
+  // Pending to move logic to flags
+  @ManyToOne(() => Roles, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'id_role' })
   role: Roles;
 
   // Pending to review
-  @ManyToOne(() => TravelAgency, (travel_agency) => travel_agency.users)
+  @ManyToOne(() => TravelAgency, (travel_agency) => travel_agency.users, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_travel_agency' })
-  travel_agency: TravelAgency;
+  travel_agency: TravelAgency | null;
 
   // One user can have many revisions
   @OneToMany(() => Revision, (revision) => revision.user, {})
@@ -187,9 +188,9 @@ export class User {
   SOI_assigned_requests: Request[];
 
   // Added relationship with Company 1 company can have many users
-  @ManyToOne(() => Company, (company) => company.employees)
+  @ManyToOne(() => Company, (company) => company.employees, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_company' })
-  company: Company;
+  company: Company | null;
 
   // Added self-referential relationship for manager and direct reports, One manager can have many direct reports, and one user can have one manager
   @ManyToOne(() => User, (manager) => manager.direct_reports, {

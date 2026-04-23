@@ -4,7 +4,7 @@
  *              all columns and the ManyToOne relationship to the RequestsDestination entity.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 23/04/2026 [Julio Rodríguez] Fixed requestDestination relation type typo.
  */
 
 import {
@@ -43,5 +43,5 @@ export class Reservation {
     { onDelete: 'CASCADE' },
   )
   @JoinColumn({ name: 'id_request_destination' })
-  requestDestination: RequestDestination;
+  requestDestination: RequestsDestination;
 }

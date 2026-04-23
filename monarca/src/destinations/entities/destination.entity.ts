@@ -4,7 +4,8 @@
  *              stores airport and location information used for travel requests.
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Jin Sik Yoon] Added airport-related fields for multidestination support and CSV migration.
+ * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types.
+ *                              Added explicit data types to columns for better type safety and consistency.
  */
 
 import { Request } from 'src/requests/entities/request.entity';
@@ -16,17 +17,17 @@ export class Destination {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ name: 'country', type: 'varchar' })
   country: string;
 
-  @Column()
+  @Column({ name: 'city', type: 'varchar' })
   city: string;
 
-  @Column({ nullable: true, length: 10 })
-  iata_code: string;
+  @Column({ name: 'iata_code', type: 'varchar', nullable: true, length: 10 })
+  iata_code: string | null;
 
-  @Column({ nullable: true, length: 255 })
-  airport_name: string;
+  @Column({ name: 'airport_name', type: 'varchar', nullable: true, length: 255 })
+  airport_name: string | null;
 
   @OneToMany(() => Request, (req) => req.destination, {
     cascade: true,
