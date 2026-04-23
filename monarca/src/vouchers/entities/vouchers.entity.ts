@@ -32,6 +32,9 @@ export class Voucher {
   @Column({ name: 'amount', type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
+  @Column({ name: 'unconverted_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  unconverted_amount: number | null;
+
   @Column({ name: 'tax_type', type: 'varchar' })
   tax_type: string;
 
