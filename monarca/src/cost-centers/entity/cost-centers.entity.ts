@@ -7,6 +7,7 @@
  * 23/04/2026 [Julio Rodríguez] Added explicit type to name column and onDelete to company relation.
  */
 
+import { ApiProperty } from '@nestjs/swagger';
 import { Company } from 'src/companies/entity/company.entity'; // Added import for Company entity to establish relationship
 import {
   Entity,
@@ -18,12 +19,15 @@ import {
 
 @Entity({ name: 'cost_centers' })
 export class CostCenter {
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ApiProperty({ example: 'Finanzas' })
   @Column({ name: 'name', type: 'varchar' })
   name: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ type: 'uuid' })
   id_company: string;
 

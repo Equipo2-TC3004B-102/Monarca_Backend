@@ -8,6 +8,7 @@
  *                            Added uuid type to FK columns for consistency.
  */
 
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -29,55 +30,71 @@ import { Company } from 'src/companies/entity/company.entity'; // Added import f
 
 @Entity({ name: 'requests' })
 export class Request {
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ name: 'id_user', type: 'uuid' })
   id_user: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ type: 'uuid' })
   id_origin_city: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ type: 'uuid' })
   id_admin: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ type: 'uuid' })
   id_SOI: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false, nullable: true })
   @Column({ nullable: true, default: null, type: 'uuid' })
   id_travel_agency: string | null;
 
-  // New column to establish relationship with Company entity.
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ type: 'uuid' })
   id_company: string;
 
+  @ApiProperty({ example: 'Business trip to Monterrey' })
   @Column()
   title: string;
 
+  @ApiProperty({ example: 'Client meeting for Q2 review' })
   @Column()
   motive: string;
 
+  @ApiProperty({ example: 5000 })
   @Column()
   advance_money: number;
 
+  @ApiProperty({ example: 'MXN', required: false, nullable: true })
   @Column({ type: 'varchar', nullable: true })
   currency: string | null;
 
+  @ApiProperty({ example: 17.5, required: false, nullable: true })
   @Column({ type: 'float', nullable: true })
   exchange_rate: number | null;
 
+  @ApiProperty({ example: 5000, required: false, nullable: true })
   @Column({ type: 'integer', nullable: true })
   unconverted_advance_money: number | null;
 
+  @ApiProperty({ example: 'Pending Review' })
   @Column({ default: 'Pending Review' })
   status: string;
 
+  @ApiProperty({ example: 'Laptop required', required: false, nullable: true })
   @Column({ nullable: true })
   requirements?: string;
 
+  @ApiProperty({ example: 'High' })
   @Column()
   priority: string;
 
+  @ApiProperty({ example: '2026-04-23T12:00:00Z' })
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

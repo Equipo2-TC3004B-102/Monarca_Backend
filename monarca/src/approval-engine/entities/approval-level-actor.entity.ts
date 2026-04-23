@@ -4,9 +4,10 @@
  *              This entity defines the relationship between approval levels and their actors, including the actor type, whether their approval is required, and any applicable cost center filters.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 22/04/2026 [Julio Rodríguez] Added | null to nullable column types for better handdleing
+ * 23/04/2026 [Julio Rodríguez] Added @ApiProperty to all fields for Swagger documentation.
  */
 
+import { ApiProperty } from '@nestjs/swagger';
 import {
     Entity,
     PrimaryGeneratedColumn,
@@ -21,42 +22,43 @@ import { RequestApproval } from './request-approval.entity';
 
 @Entity({ name: 'approval_levels_actors' })
 export class ApprovalLevelActor {
+    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
     @PrimaryGeneratedColumn('uuid', { name: 'id' })
     id: string;
 
-    // Approval level this rule belongs to.
+    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
     @Column({ name: 'approval_level_id', type: 'uuid' })
     approval_level_id: string;
 
-    // Type of approver (MANAGER, SOI, TRAVEL AGENCY).
+    @ApiProperty({ example: 'MANAGER' })
     @Column({ name: 'actor_type', type: 'varchar' })
     actor_type: string;
 
-    // Indicates how target_id should be resolved (USER, ROLE, REQUEST_FIELD, etc.).
+    @ApiProperty({ example: 'USER', required: false, nullable: true })
     @Column({ name: 'target_type', type: 'varchar', nullable: true })
     target_type: string | null;
 
-    // Target object id when rule points to a specific approver source.
+    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false, nullable: true })
     @Column({ name: 'target_id', type: 'uuid', nullable: true })
     target_id: string | null;
 
-    // Indicates whether this actor rule is mandatory.
+    @ApiProperty({ example: true })
     @Column({ name: 'is_required', type: 'boolean', default: true })
     is_required: boolean;
 
-    // Minimum number of approvals needed for this actor group (if applicable).
+    @ApiProperty({ example: 1, required: false, nullable: true })
     @Column({ name: 'required_count', type: 'integer', nullable: true })
     required_count: number | null;
 
-    // Rule evaluation mode (for example: ANY, ALL, COUNT).
+    @ApiProperty({ example: 'any' })
     @Column({ name: 'selection_mode', type: 'varchar', default: 'any' })
     selection_mode: string;
 
-    // Optional cost center filter to narrow applicable approvers.
+    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false, nullable: true })
     @Column({ name: 'ceco_id', type: 'uuid', nullable: true })
     ceco_id: string | null;
 
-    // Escalation order inside the same approval level.
+    @ApiProperty({ example: 0 })
     @Column({ name: 'escalation_step', type: 'integer', default: 0 })
     escalation_step: number;
 
