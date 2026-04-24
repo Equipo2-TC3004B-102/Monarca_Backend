@@ -1,3 +1,11 @@
+/**
+ * Filename: create-request.dto.ts
+ * Description: DTO for creating a new request. It includes validation rules and API documentation for the request creation endpoint.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 23/04/2026 [Jin Sik Yoon] - Updated advance_money to be a decimal with validation for non-negative values.
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -9,6 +17,8 @@ import {
   IsInt,
   IsDate,
   ValidateNested,
+  IsNumber,
+  Min,
 } from 'class-validator';
 
 export class RequestDestinationtDto {
@@ -102,9 +112,11 @@ export class CreateRequestDto {
 
   @ApiProperty({
     description: 'Money asked for in advance for the trip',
-    example: 10000,
+    example: 10000.5,
   })
-  @IsInt()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   advance_money: number;
 
   @ApiProperty({

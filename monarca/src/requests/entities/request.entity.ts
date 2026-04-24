@@ -4,7 +4,7 @@
  *              can have many destinations associated to it.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Julio Rodríguez] Updated voucher inverse relation mapping for consistency.
+ * 23/04/2026 [Jin Sik Yoon] - Added id_company column and established relationship with Company entity.
  */
 
 import {
@@ -56,7 +56,7 @@ export class Request {
   @Column()
   motive: string;
 
-  @Column()
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   advance_money: number;
 
   @Column({ type: 'varchar', nullable: true })
@@ -65,7 +65,7 @@ export class Request {
   @Column({ type: 'float', nullable: true })
   exchange_rate: number | null;
 
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: 'decimal', nullable: true })
   unconverted_advance_money: number | null;
 
   @Column({ default: 'Pending Review' })
