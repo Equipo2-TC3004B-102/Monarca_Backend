@@ -5,19 +5,15 @@
  *              reservations, and exposes the entity shape as ReservationDto.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 24/04/2026 [Julio Rodriguez] Standardized validators for Swagger.
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
 import {
-  IsNotEmpty,
   IsString,
   IsNumber,
-  Length,
-  IsDateString,
-  isNotEmpty,
   IsOptional,
-  IsInstance,
+  IsUUID,
 } from 'class-validator';
 import { Reservation } from '../entity/reservations.entity';
 
@@ -27,44 +23,39 @@ export class CreateReservationDto {
     description: 'Title of the reservation that is being made',
     required: true,
   })
-  @IsNotEmpty()
   @IsString()
   title: string;
 
   @ApiProperty({
-    example:
-      'Taxi reservation made for the user John Doe, expected arrival at 10:00 AM',
+    example: 'Taxi reservation made for the user John Doe, expected arrival at 10:00 AM',
     description: 'Comments or notes about the reservation',
     required: true,
   })
-  @IsNotEmpty()
   @IsString()
   comments: string;
 
   @ApiProperty({
-    example:
-      '250.00',
+    example: 250.00,
     description: 'Price of the reservation',
     required: true,
   })
-  @IsNotEmpty()
+  @IsNumber()
   price: number;
 
   @ApiProperty({
-      description: 'pdf file of the reservation',
-      example: 'file',
-    })
-   @IsOptional()
-    file?: string;
-
+    description: 'pdf file of the reservation',
+    example: 'file',
+  })
+  @IsString()
+  @IsOptional()
+  file?: string;
 
   @ApiProperty({
     description: 'ID of the request destination',
     example: '123e4567-e89b-12d3-a456-426614174000',
     required: true,
   })
-  @IsNotEmpty()
-  @IsString()
+  @IsUUID()
   id_request_destination: string;
 }
 
