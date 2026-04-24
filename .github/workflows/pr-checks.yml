@@ -21,9 +21,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        working directory: /monarca
+        working directory: ./monarca
         run: npm ci
 
       - name: Build
-        working directory: /monarca
+        working directory: ./monarca
         run: npm run build
