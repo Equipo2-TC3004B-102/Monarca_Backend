@@ -100,7 +100,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
         ApprovalLevelActor,
         RequestApproval,
       ],
-      synchronize: false,
+      synchronize: false, // False for migrations.
       retryAttempts: 3,
       retryDelay: 3000,
     }),
