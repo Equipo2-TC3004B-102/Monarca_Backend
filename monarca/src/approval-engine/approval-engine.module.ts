@@ -4,7 +4,7 @@
  *              service, and controller for approval levels, actors, and request approvals.
  * Authors: DebugStudio Team
  * Last Modification: 
- * 21/04/2026 [Julio Rodríguez] Created approval engine module scaffold
+ * 23/04/2026 [Julio Rodríguez] Imported GuardsModule for flag-based authorization on endpoints.
  */
 
 import { Module } from '@nestjs/common';
@@ -14,10 +14,12 @@ import { ApprovalLevelActor } from './entities/approval-level-actor.entity';
 import { RequestApproval } from './entities/request-approval.entity';
 import { ApprovalEngineService } from './approval-engine.service';
 import { ApprovalEngineController } from './approval-engine.controller';
+import { GuardsModule } from 'src/guards/guards.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ApprovalLevel, ApprovalLevelActor, RequestApproval]),
+    GuardsModule,
   ],
   controllers: [ApprovalEngineController],
   providers: [ApprovalEngineService],

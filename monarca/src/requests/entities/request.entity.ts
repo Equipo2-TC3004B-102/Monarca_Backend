@@ -6,6 +6,7 @@
  * Last Modification made:
  * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
  *                            Added uuid type to FK columns for consistency.
+ *                            Added current_approval_level_id nullable FK to track active approval level.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -19,6 +20,7 @@ import {
   JoinColumn,
   CreateDateColumn,
 } from 'typeorm';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
@@ -66,8 +68,7 @@ export class Request {
   @Column()
   motive: string;
 
-  @ApiProperty({ example: 5000 })
-  @Column()
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   advance_money: number;
 
   @ApiProperty({ example: 'MXN', required: false, nullable: true })
@@ -78,17 +79,20 @@ export class Request {
   @Column({ type: 'float', nullable: true })
   exchange_rate: number | null;
 
-  @ApiProperty({ example: 5000, required: false, nullable: true })
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: 'decimal', nullable: true })
   unconverted_advance_money: number | null;
 
   @ApiProperty({ example: 'Pending Review' })
   @Column({ default: 'Pending Review' })
   status: string;
 
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false, nullable: true })
+  @Column({ name: 'current_approval_level_id', type: 'uuid', nullable: true, default: null })
+  current_approval_level_id: string | null;
+
   @ApiProperty({ example: 'Laptop required', required: false, nullable: true })
-  @Column({ nullable: true })
-  requirements?: string;
+  @Column({ name: 'requirements', type: 'varchar', nullable: true })
+  requirements: string | null;
 
   @ApiProperty({ example: 'High' })
   @Column()
@@ -100,41 +104,53 @@ export class Request {
 
   // Relationships
 
+  // One request can have many destinations, and if a request is deleted, its associated destinations will also be deleted (cascade).
   @OneToMany(() => RequestsDestination, (dest) => dest.request, {
     cascade: true,
   })
   requests_destinations: RequestsDestination[];
 
-  @OneToMany(() => RequestLog, (log) => log.request, {})
+  // One request can have many logs, and if a request is deleted, its associated logs will also be deleted.
+  @OneToMany(() => RequestLog, (log) => log.request, {
+    cascade: true,
+  })
   requestLogs: RequestLog[];
 
-  @OneToMany(() => Revision, (rev) => rev.request, {})
+  // One request can have many revisions, and if a request is deleted, its associated revisions will also be deleted.
+  @OneToMany(() => Revision, (rev) => rev.request, {
+    cascade: true,
+  })
   revisions: Revision[];
 
+  // Many requests can belong to one destination (origin city).
   @ManyToOne(() => Destination, (dest) => dest.requests, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'id_origin_city' })
   destination: Destination;
 
+  // Many requests can belong to one user.
   @ManyToOne(() => User, (usr) => usr.requests, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'id_user' })
   user: User;
 
+  // Many requests can be assigned to one admin, and if an admin is deleted, its associated requests will also be deleted.
   @ManyToOne(() => User, (usr) => usr.assigned_requests, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'id_admin' })
   admin: User;
 
+  // Many requests can be assigned to one SOI, and if a SOI is deleted, its associated requests will also be deleted.
   @ManyToOne(() => User, (usr) => usr.SOI_assigned_requests, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'id_SOI' })
   SOI: User;
 
+  // Many requests can belong to one travel agency, and if a travel agency is deleted, its associated requests will also be deleted. Pending to review.
   @ManyToOne(() => TravelAgency, (trva) => trva.requests, {
     onDelete: 'CASCADE',
   })
@@ -145,6 +161,11 @@ export class Request {
   @ManyToOne(() => Company, (company) => company.requests)
   @JoinColumn({ name: 'id_company' })
   company: Company;
+
+  // New relationship with ApprovalLevel entity to track the current approval level of the request. This is a ManyToOne relationship since many requests can be at the same approval level.
+  @ManyToOne(() => ApprovalLevel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'current_approval_level_id' })
+  current_approval_level: ApprovalLevel | null;
 
   // Updated inverse relation mapping for vouchers, One request can have many vouchers
   @OneToMany(() => Voucher, (voucher) => voucher.request, {})
