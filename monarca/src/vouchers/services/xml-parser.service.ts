@@ -6,6 +6,7 @@
  *              Classification (ST-4) and DB persistence (ST-6) are out of scope.
  * Authors: Fausto Izquierdo
  * Last Modification made:
+ * 22/04/2026 – Added ST-4 fiscal consistency validations.
  * 20/04/2026 – Extracted detailed CFDI fiscal fields for voucher integration.
  */
 
@@ -62,7 +63,9 @@ export class XmlParserService {
 
     // Step 4 – Extract all fiscal fields
     try {
-      return this.mapComprobante(comprobante, cfdiVersion);
+      const result = this.mapComprobante(comprobante, cfdiVersion);
+      this.validateFiscalConsistency(result);
+      return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new BadRequestException(
@@ -132,7 +135,9 @@ export class XmlParserService {
 
     // Date – CFDI uses "2024-01-15T12:30:00" without timezone suffix
     const rawDate = this.getAttribute(comprobante, 'Fecha') || '';
-    const isoDate = rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`;
+    const isoDate = rawDate
+      ? (rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`)
+      : '';
 
     return {
       cfdi_version: cfdiVersion,
@@ -142,7 +147,7 @@ export class XmlParserService {
       receiver_rfc: this.getAttribute(receptor, 'Rfc') || '',
       receiver_name: this.getAttribute(receptor, 'Nombre') || undefined,
       subtotal: this.parseNumber(this.getAttribute(comprobante, 'SubTotal')) || 0,
-      amount: this.parseNumber(this.getAttribute(comprobante, 'Total')) || 0,
+      amount: this.parseNumber(this.getAttribute(comprobante, 'Total')) ?? Number.NaN,
       currency: this.getAttribute(comprobante, 'Moneda') || 'MXN',
       exchange_rate: exchangeRate,
       discount,
@@ -154,6 +159,105 @@ export class XmlParserService {
       payment_method: paymentMethod,
       date: isoDate,
     };
+  }
+
+  private validateFiscalConsistency(data: ParsedCfdi): void {
+    const requiredFields: Array<{ key: string; value: unknown }> = [
+      { key: 'fiscal_uuid', value: data.fiscal_uuid },
+      { key: 'issuer_rfc', value: data.issuer_rfc },
+      { key: 'receiver_rfc', value: data.receiver_rfc },
+      { key: 'amount', value: data.amount },
+      { key: 'date', value: data.date },
+    ];
+
+    for (const field of requiredFields) {
+      const isMissingString =
+        typeof field.value === 'string' && field.value.trim().length === 0;
+      const isMissingNumber =
+        typeof field.value === 'number' && !Number.isFinite(field.value);
+      const isMissing =
+        field.value === null || field.value === undefined || isMissingString || isMissingNumber;
+
+      if (isMissing) {
+        throw new BadRequestException(
+          `Required fiscal field "${field.key}" is missing in the XML invoice.`,
+        );
+      }
+    }
+
+    const issuerLength = data.issuer_rfc.trim().length;
+    const receiverLength = data.receiver_rfc.trim().length;
+    if (![12, 13].includes(issuerLength)) {
+      throw new BadRequestException(
+        'The issuer RFC must be 12 or 13 characters long.',
+      );
+    }
+    if (![12, 13].includes(receiverLength)) {
+      throw new BadRequestException(
+        'The receiver RFC must be 12 or 13 characters long.',
+      );
+    }
+
+    const amount = data.amount;
+    const subtotal = data.subtotal || 0;
+    const discount = data.discount || 0;
+    const ivaTrasladado = data.iva_trasladado || 0;
+    const iepsTrasladado = data.ieps_trasladado || 0;
+    const isrRetenido = data.isr_retenido || 0;
+    const ivaRetenido = data.iva_retenido || 0;
+
+    const transferredTaxes = ivaTrasladado + iepsTrasladado;
+    const retainedTaxes = isrRetenido + ivaRetenido;
+    const expectedTotal = subtotal - discount + transferredTaxes - retainedTaxes;
+    const tolerance = 0.1;
+
+    if (Math.abs(expectedTotal - amount) > tolerance) {
+      throw new BadRequestException(
+        'The invoice total does not match the sum of subtotal and taxes.',
+      );
+    }
+
+    const currency = (data.currency || '').toUpperCase();
+    const exchangeRate = data.exchange_rate;
+
+    if (currency !== 'MXN') {
+      if (
+        exchangeRate === undefined ||
+        exchangeRate === null ||
+        !Number.isFinite(exchangeRate) ||
+        exchangeRate <= 1
+      ) {
+        throw new BadRequestException(
+          'A valid exchange rate greater than 1 is required for non-MXN invoices.',
+        );
+      }
+    } else if (
+      exchangeRate !== undefined &&
+      exchangeRate !== null &&
+      exchangeRate !== 1
+    ) {
+      throw new BadRequestException(
+        'For MXN invoices, the exchange rate must be 1 or omitted.',
+      );
+    }
+
+    const nonNegativeFields: Array<{ label: string; value: number }> = [
+      { label: 'amount', value: amount },
+      { label: 'subtotal', value: subtotal },
+      { label: 'discount', value: discount },
+      { label: 'iva_trasladado', value: ivaTrasladado },
+      { label: 'ieps_trasladado', value: iepsTrasladado },
+      { label: 'isr_retenido', value: isrRetenido },
+      { label: 'iva_retenido', value: ivaRetenido },
+    ];
+
+    for (const field of nonNegativeFields) {
+      if (field.value < 0) {
+        throw new BadRequestException(
+          `The field "${field.label}" cannot be negative.`,
+        );
+      }
+    }
   }
 
   private getNode(comprobante: Record<string, any>, key: string): Record<string, any> {

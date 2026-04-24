@@ -68,8 +68,7 @@ export class Request {
   @Column()
   motive: string;
 
-  @ApiProperty({ example: 5000 })
-  @Column()
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   advance_money: number;
 
   @ApiProperty({ example: 'MXN', required: false, nullable: true })
@@ -80,8 +79,7 @@ export class Request {
   @Column({ type: 'float', nullable: true })
   exchange_rate: number | null;
 
-  @ApiProperty({ example: 5000, required: false, nullable: true })
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: 'decimal', nullable: true })
   unconverted_advance_money: number | null;
 
   @ApiProperty({ example: 'Pending Review' })
