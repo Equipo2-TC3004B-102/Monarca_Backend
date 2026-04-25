@@ -1,18 +1,18 @@
 /**
  * FileName: xml-parser.service.ts
- * Description: Service that parses Mexican CFDI XML files (versions 3.3 and 4.0)
- *              using fast-xml-parser and maps the raw fiscal data into a ParsedCfdi
- *              object. Scoped to ST-3: structural validation and data extraction only.
- *              Classification (ST-4) and DB persistence (ST-6) are out of scope.
+ * Description: Service that parses Mexican CFDI XML files (versions 3.3 and 4.0),
+ *              validates fiscal consistency, and normalizes output to a structure
+ *              compatible with CreateVoucherDto.
  * Authors: Fausto Izquierdo
  * Last Modification made:
- * 22/04/2026 – Added ST-4 fiscal consistency validations.
+ * 23/04/2026 – Added ST-5 normalization integrated after ST-4 validation.
  * 20/04/2026 – Extracted detailed CFDI fiscal fields for voucher integration.
  */
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { XMLParser } from 'fast-xml-parser';
 import { ParsedCfdi } from '../interfaces/parsed-cfdi.interface';
+import { CreateVoucherDto } from '../dto/create-voucher-dto';
 
 @Injectable()
 export class XmlParserService {
@@ -33,24 +33,23 @@ export class XmlParserService {
 
   /**
    * parse - Receives the raw XML buffer, validates it as a CFDI, and returns
-   *         the extracted fiscal fields.
-   * Input: xmlBuffer (Buffer) – raw bytes of the uploaded XML file.
-   * Output: ParsedCfdi – object with all fiscal fields mapped to DTO properties.
-   * Throws BadRequestException if the XML is malformed or not a valid CFDI.
+   *         normalized fiscal fields compatible with CreateVoucherDto.
    */
-  parse(xmlBuffer: Buffer): ParsedCfdi {
+  parse(
+    xmlBuffer: Buffer,
+  ): Partial<CreateVoucherDto> & Pick<ParsedCfdi, 'cfdi_version'> {
     let parsed: Record<string, any>;
 
-    // Step 1 – Parse the XML into a JS object
+    // Step 1 – Parse XML
     try {
       parsed = this.parser.parse(xmlBuffer.toString('utf-8'));
-    } catch (error) {
+    } catch {
       throw new BadRequestException(
         'The uploaded file is not valid XML. Please verify the file and try again.',
       );
     }
 
-    // Step 2 – Locate the root Comprobante node
+    // Step 2 – Locate Comprobante root
     const comprobante = parsed?.Comprobante;
     if (!comprobante) {
       throw new BadRequestException(
@@ -58,14 +57,17 @@ export class XmlParserService {
       );
     }
 
-    // Step 3 – Detect CFDI version
+    // Step 3 – Detect version
     const cfdiVersion = this.detectVersion(comprobante);
 
-    // Step 4 – Extract all fiscal fields
+    // Step 4/5 – Extract, validate and normalize
     try {
-      const result = this.mapComprobante(comprobante, cfdiVersion);
-      this.validateFiscalConsistency(result);
-      return result;
+      const extracted = this.mapComprobante(comprobante, cfdiVersion);
+      this.validateFiscalConsistency(extracted);
+      return {
+        ...this.normalize(extracted),
+        cfdi_version: extracted.cfdi_version,
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new BadRequestException(
@@ -74,16 +76,45 @@ export class XmlParserService {
     }
   }
 
+  /**
+   * normalize - Converts ParsedCfdi fields into business-friendly values
+   *             compatible with CreateVoucherDto.
+   */
+  normalize(data: ParsedCfdi): Partial<CreateVoucherDto> {
+    const currency = (data.currency || 'MXN').toUpperCase();
+
+    return {
+      amount: this.roundTo(data.amount, 2),
+      currency,
+      date: this.toIsoDateString(data.date),
+
+      fiscal_uuid: data.fiscal_uuid,
+      issuer_rfc: data.issuer_rfc,
+      issuer_name: data.issuer_name,
+      receiver_rfc: data.receiver_rfc,
+      receiver_name: data.receiver_name,
+
+      subtotal: this.roundTo(data.subtotal, 2),
+      discount: this.roundOptional(data.discount, 2),
+      iva_trasladado: this.roundOptional(data.iva_trasladado, 2),
+      ieps_trasladado: this.roundOptional(data.ieps_trasladado, 2),
+      isr_retenido: this.roundOptional(data.isr_retenido, 2),
+      iva_retenido: this.roundOptional(data.iva_retenido, 2),
+
+      exchange_rate:
+        currency === 'MXN'
+          ? this.roundTo(1, 4)
+          : this.roundOptional(data.exchange_rate, 4),
+
+      payment_form: data.payment_form,
+      payment_method: data.payment_method,
+    };
+  }
+
   // ──────────────────────────────────────────────
   // Private helpers
   // ──────────────────────────────────────────────
 
-  /**
-   * detectVersion - Reads the Version attribute from the Comprobante node.
-   * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: string – '3.3' or '4.0'.
-   * Throws BadRequestException if version is not 3.3 or 4.0.
-   */
   private detectVersion(comprobante: Record<string, any>): string {
     const version = comprobante['@_Version'] || comprobante['@_version'];
     if (!version || !['3.3', '4.0'].includes(version)) {
@@ -94,25 +125,15 @@ export class XmlParserService {
     return version;
   }
 
-  /**
-   * mapComprobante - Maps all relevant CFDI attributes and child nodes into
-   *                  a flat ParsedCfdi object.
-   * Input: comprobante (Record<string, any>) – parsed Comprobante node;
-   *        cfdiVersion (string) – '3.3' or '4.0'.
-   * Output: ParsedCfdi – fully populated fiscal data object.
-   */
   private mapComprobante(
     comprobante: Record<string, any>,
     cfdiVersion: string,
   ): ParsedCfdi {
-    // Emisor & Receptor
     const emisor = this.getNode(comprobante, 'Emisor');
     const receptor = this.getNode(comprobante, 'Receptor');
 
-    // Complemento → TimbreFiscalDigital (UUID)
     const fiscalUuid = this.extractFiscalUuid(comprobante);
 
-    // Impuestos – detailed fiscal breakdown by SAT code
     const {
       ivaTrasladado,
       iepsTrasladado,
@@ -120,7 +141,6 @@ export class XmlParserService {
       ivaRetenido,
     } = this.extractTaxes(comprobante);
 
-    // Tipo de cambio (defaults to 1 for MXN invoices)
     const exchangeRate = this.parseNumber(
       this.getAttribute(comprobante, 'TipoCambio'),
     );
@@ -133,11 +153,8 @@ export class XmlParserService {
     const paymentMethod =
       this.getAttribute(comprobante, 'MetodoPago') || undefined;
 
-    // Date – CFDI uses "2024-01-15T12:30:00" without timezone suffix
     const rawDate = this.getAttribute(comprobante, 'Fecha') || '';
-    const isoDate = rawDate
-      ? (rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`)
-      : '';
+    const isoDate = rawDate.includes('T') ? rawDate : `${rawDate}T00:00:00`;
 
     return {
       cfdi_version: cfdiVersion,
@@ -147,7 +164,7 @@ export class XmlParserService {
       receiver_rfc: this.getAttribute(receptor, 'Rfc') || '',
       receiver_name: this.getAttribute(receptor, 'Nombre') || undefined,
       subtotal: this.parseNumber(this.getAttribute(comprobante, 'SubTotal')) || 0,
-      amount: this.parseNumber(this.getAttribute(comprobante, 'Total')) ?? Number.NaN,
+      amount: this.parseNumber(this.getAttribute(comprobante, 'Total')) || 0,
       currency: this.getAttribute(comprobante, 'Moneda') || 'MXN',
       exchange_rate: exchangeRate,
       discount,
@@ -260,11 +277,11 @@ export class XmlParserService {
     }
   }
 
-  private getNode(comprobante: Record<string, any>, key: string): Record<string, any> {
+  private getNode(source: Record<string, any>, key: string): Record<string, any> {
     return (
-      comprobante[key] ||
-      comprobante[`cfdi:${key}`] ||
-      comprobante[`tfd:${key}`] ||
+      source[key] ||
+      source[`cfdi:${key}`] ||
+      source[`tfd:${key}`] ||
       {}
     );
   }
@@ -291,20 +308,32 @@ export class XmlParserService {
     return Number.isNaN(parsed) ? undefined : parsed;
   }
 
-  /**
-   * extractFiscalUuid - Navigates the Complemento node to find the
-   *                     TimbreFiscalDigital UUID.
-   * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: string – the 36-character fiscal UUID.
-   * Throws Error if the UUID is not found.
-   */
+  private roundTo(value: number, decimals: number): number {
+    const factor = 10 ** decimals;
+    return Math.round((value + Number.EPSILON) * factor) / factor;
+  }
+
+  private roundOptional(value: number | undefined, decimals: number): number | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    return this.roundTo(value, decimals);
+  }
+
+  private toIsoDateString(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toISOString();
+  }
+
   private extractFiscalUuid(comprobante: Record<string, any>): string {
     const complemento = comprobante.Complemento;
     if (!complemento) {
       throw new Error('CFDI is missing the Complemento node.');
     }
 
-    // TimbreFiscalDigital can be a direct child or within an array
     const timbre =
       complemento.TimbreFiscalDigital ||
       complemento['tfd:TimbreFiscalDigital'] ||
@@ -324,12 +353,6 @@ export class XmlParserService {
     return uuid;
   }
 
-  /**
-   * extractTaxes - Sums all transferred and retained tax amounts from the
-   *                Impuestos node using SAT tax codes.
-   * Input: comprobante (Record<string, any>) – parsed Comprobante node.
-   * Output: detailed fiscal breakdown by tax code.
-   */
   private extractTaxes(comprobante: Record<string, any>): {
     ivaTrasladado: number;
     iepsTrasladado: number;
@@ -342,7 +365,6 @@ export class XmlParserService {
     let isrRetenido = 0;
     let ivaRetenido = 0;
 
-    // ── Traslados (transferred taxes: IVA, IEPS) ──
     const traslados = this.getNode(impuestos, 'Traslados').Traslado;
     if (traslados) {
       const trasladoList = Array.isArray(traslados) ? traslados : [traslados];
@@ -360,7 +382,6 @@ export class XmlParserService {
       }
     }
 
-    // ── Retenciones (retained taxes: ISR, retained IVA) ──
     const retenciones = this.getNode(impuestos, 'Retenciones').Retencion;
     if (retenciones) {
       const retencionList = Array.isArray(retenciones)
