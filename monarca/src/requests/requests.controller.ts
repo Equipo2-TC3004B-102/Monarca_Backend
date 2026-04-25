@@ -52,7 +52,7 @@ export class RequestsController {
   }
 
   @Get('to-approve')
-  @Permissions('view_assigned_requests_readonly')
+  @Permissions('approve_request')
   async findAssignedApprover(@Request() req: RequestInterface) {
     return this.requestsService.findByAdmin(req);
   }
