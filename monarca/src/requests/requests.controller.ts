@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added new GET endpoints for SOI and TA assigned requests
+ * 26/04/2026 [Julio Rodriguez]: Fixed permissions in 'to-approve' and 'to-approve-SOI' endpoints.
  */
 
 import {
