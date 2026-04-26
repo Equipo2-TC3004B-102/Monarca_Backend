@@ -1,19 +1,15 @@
-/**
- * FileName: notifications.module
- * Description: NestJS module that registers NotificationsController and NotificationsService.
- *              Exports NotificationsService so other modules can inject it to send emails.
- * Authors: Original Moncarca team
- * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
- */
-
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { NotificationLogsService } from './notification-logs.service';
+import { NotificationLogsController } from './notification-logs.controller';
+import { NotificationLog } from './entities/notification-log.entity';
 
 @Module({
-  controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  imports: [TypeOrmModule.forFeature([NotificationLog])],
+  controllers: [NotificationsController, NotificationLogsController],
+  providers: [NotificationsService, NotificationLogsService],
+  exports: [NotificationsService, NotificationLogsService],
 })
 export class NotificationsModule {}

@@ -42,6 +42,8 @@ import { join } from 'path';
 import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationLog } from './notifications/entities/notification-log.entity';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       serveRoot: '/files',
     }),
     NotificationsModule,
+    RolesModule,
     AuthModule,
     UsersModule,
     TravelAgenciesModule,
@@ -87,6 +90,7 @@ import { NotificationsModule } from './notifications/notifications.module';
         Voucher,
         UserLogs,
         Revision,
+        NotificationLog,
       ],
       synchronize: true,
     }),
@@ -107,6 +111,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       Voucher,
       UserLogs,
       Revision,
+      NotificationLog,
     ]),
 
   ],

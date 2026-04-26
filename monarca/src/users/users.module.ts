@@ -18,7 +18,7 @@ import { DepartmentsModule } from 'src/departments/departments.module';
 import { RolesModule } from 'src/roles/roles.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), DepartmentsModule, RolesModule],
+  imports: [TypeOrmModule.forFeature([User]), DepartmentsModule, forwardRef(() => RolesModule)],
   controllers: [UsersController],
   providers: [UserChecks, UsersService],
   exports: [UserChecks, UsersService],
