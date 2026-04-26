@@ -2,9 +2,11 @@
  * FileName: approval-engine.module.ts
  * Description: NestJS module for the approval engine feature. Registers entities,
  *              service, and controller for approval levels, actors, and request approvals.
+ *              Also registers admin service and controller for company and user management.
  * Authors: DebugStudio Team
- * Last Modification: 
+ * Last Modification:
  * 23/04/2026 [Julio Rodríguez] Imported GuardsModule for flag-based authorization on endpoints.
+ * 26/04/2026 [Julio Rodríguez] Added Company and User entities; registered AdminService and AdminController.
  */
 
 import { Module } from '@nestjs/common';
@@ -14,15 +16,25 @@ import { ApprovalLevelActor } from './entities/approval-level-actor.entity';
 import { RequestApproval } from './entities/request-approval.entity';
 import { ApprovalEngineService } from './approval-engine.service';
 import { ApprovalEngineController } from './approval-engine.controller';
+import { AdminService } from './admin.service';
+import { AdminController } from './admin.controller';
 import { GuardsModule } from 'src/guards/guards.module';
+import { Company } from 'src/companies/entity/company.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ApprovalLevel, ApprovalLevelActor, RequestApproval]),
+    TypeOrmModule.forFeature([
+      ApprovalLevel,
+      ApprovalLevelActor,
+      RequestApproval,
+      Company,
+      User,
+    ]),
     GuardsModule,
   ],
-  controllers: [ApprovalEngineController],
-  providers: [ApprovalEngineService],
-  exports: [ApprovalEngineService],
+  controllers: [ApprovalEngineController, AdminController],
+  providers: [ApprovalEngineService, AdminService],
+  exports: [ApprovalEngineService, AdminService],
 })
 export class ApprovalEngineModule {}
