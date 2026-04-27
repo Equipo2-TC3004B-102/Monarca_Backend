@@ -1,3 +1,14 @@
+/**
+ * FileName: notification-log.entity.ts
+ * Description: TypeORM entity representing the notification_logs table. Records each
+ *              email notification attempt with its recipient, subject, status
+ *              (pending/sent/failed/retrying), timestamp, and error details for
+ *              full traceability and audit support.
+ * Authors: Juan Pablo Narchi
+ * Last Modification made:
+ * 26/04/2026 [Juan Pablo Narchi] Created file with NotificationLog entity and NotificationStatus enum.
+ */
+
 import {
   Entity,
   PrimaryGeneratedColumn,

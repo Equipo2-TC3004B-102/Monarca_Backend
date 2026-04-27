@@ -1,3 +1,13 @@
+/**
+ * FileName: roles.dtos.ts
+ * Description: Data Transfer Objects for roles and permissions operations. Includes
+ *              CreateRoleDto, UpdateRoleDto, CreatePermissionDto, UpdatePermissionDto,
+ *              AssignPermissionToRoleDto, and AssignRoleToUserDto with validation decorators.
+ * Authors: Juan Pablo Narchi
+ * Last Modification made:
+ * 26/04/2026 [Juan Pablo Narchi] Created file with DTOs for roles/permissions CRUD and assignment endpoints.
+ */
+
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
 
