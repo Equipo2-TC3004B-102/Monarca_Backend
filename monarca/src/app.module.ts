@@ -44,6 +44,10 @@ import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
 import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
+import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
+import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
+import { RequestApproval } from './approval-engine/entities/request-approval.entity';
+import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
 
 @Module({
   imports: [
@@ -67,6 +71,7 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
     UserLogsModule,
     GuardsModule,
     CompaniesModule,
+    ApprovalRulesModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -91,6 +96,9 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
         Voucher,
         UserLogs,
         Revision,
+        ApprovalLevel,
+        ApprovalLevelActor,
+        RequestApproval,
       ],
       synchronize: true,
       retryAttempts: 3,
