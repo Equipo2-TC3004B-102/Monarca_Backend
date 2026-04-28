@@ -41,6 +41,9 @@ export class Voucher {
   @Column({ name: 'date', type: 'timestamptz' })
   date: Date;
 
+  @Column({ name: 'date_created', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  date_created: Date;
+
   @Column({ name: 'file_url_pdf', type: 'varchar', nullable: true })
   file_url_pdf: string | null;
 
