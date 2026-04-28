@@ -7,12 +7,12 @@
  *              - Replaces deprecated tax_amount/retention_amount with CFDI fiscal
  *                fields on vouchers (receiver_name, exchange_rate, discount,
  *                iva_trasladado, ieps_trasladado, isr_retenido, iva_retenido,
- *                payment_form, payment_method)
+ *                payment_form, payment_method, unconverted_amount)
  *              - Consolidates FK onDelete rules for users and cost_centers
  *              - Adds current_approval_level_id nullable FK to requests
  * Authors: DebugStudio Team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Consolidated from 5 individual migrations into Database_v2.
+ * 27/04/2026 [Julio Rodríguez] Added unconverted_amount to vouchers.
  */
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
@@ -55,6 +55,7 @@ export class DatabaseV21776988508043 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "vouchers" ADD "iva_retenido" numeric(12,2)`);
         await queryRunner.query(`ALTER TABLE "vouchers" ADD "payment_form" character varying`);
         await queryRunner.query(`ALTER TABLE "vouchers" ADD "payment_method" character varying`);
+        await queryRunner.query(`ALTER TABLE "vouchers" ADD "unconverted_amount" numeric(12,2)`);
         await queryRunner.query(`ALTER TABLE "request_approvals" ALTER COLUMN "amount_snapshot" TYPE numeric`);
         await queryRunner.query(`ALTER TABLE "approval_levels" ALTER COLUMN "min_amount_mon" TYPE numeric`);
         await queryRunner.query(`ALTER TABLE "approval_levels" ALTER COLUMN "max_amount_mon" TYPE numeric`);
@@ -97,6 +98,7 @@ export class DatabaseV21776988508043 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "approval_levels" ALTER COLUMN "max_amount_mon" TYPE numeric`);
         await queryRunner.query(`ALTER TABLE "approval_levels" ALTER COLUMN "min_amount_mon" TYPE numeric`);
         await queryRunner.query(`ALTER TABLE "request_approvals" ALTER COLUMN "amount_snapshot" TYPE numeric`);
+        await queryRunner.query(`ALTER TABLE "vouchers" DROP COLUMN "unconverted_amount"`);
         await queryRunner.query(`ALTER TABLE "vouchers" DROP COLUMN "payment_method"`);
         await queryRunner.query(`ALTER TABLE "vouchers" DROP COLUMN "payment_form"`);
         await queryRunner.query(`ALTER TABLE "vouchers" DROP COLUMN "iva_retenido"`);
