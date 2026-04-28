@@ -17,6 +17,7 @@ import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 @Injectable()
 export class VouchersService {
   constructor(
@@ -24,6 +25,8 @@ export class VouchersService {
     private readonly voucherRepo: Repository<Voucher>,
     @InjectRepository(Request)
     private readonly rRepo: Repository<Request>,
+    @InjectRepository(RequestsDestination)
+    private readonly rdRepo: Repository<RequestsDestination>,
   ) {}
 
   /**
@@ -51,6 +54,30 @@ export class VouchersService {
       throw new BadRequestException(
         `User ${id_user} is not authorized to create a voucher for this request`,
       );
+    }
+    const [firstDestination, lastDestination] = await Promise.all([
+      this.rdRepo.findOne({
+        where: { id_request: data.id_request },
+        order: { destination_order: 'ASC' },
+      }),
+      this.rdRepo.findOne({
+        where: { id_request: data.id_request, is_last_destination: true },
+      }),
+    ]);
+    if (firstDestination && lastDestination) {
+      const voucherDate = new Date(data.date);
+      const tripStart = new Date(firstDestination.arrival_date).getTime();
+      const deadlineMs = new Date(lastDestination.departure_date).getTime() + 7 * 24 * 60 * 60 * 1000;
+      if (voucherDate.getTime() < tripStart) {
+        throw new BadRequestException(
+          `Voucher date cannot be before the trip start date`,
+        );
+      }
+      if (voucherDate.getTime() > deadlineMs) {
+        throw new BadRequestException(
+          `Voucher date cannot be more than 7 days after the trip departure date`,
+        );
+      }
     }
     const voucher = this.voucherRepo.create({
       id_request: data.id_request, // Using the correct DTO property

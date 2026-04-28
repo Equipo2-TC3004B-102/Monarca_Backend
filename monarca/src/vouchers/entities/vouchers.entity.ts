@@ -5,8 +5,9 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
+ * 27/04/2026 [S0Borjas] Added date_created timestamp column to track when each voucher record was created.
  */
+
 
 import {
   Entity,

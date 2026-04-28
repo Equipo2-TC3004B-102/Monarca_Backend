@@ -15,9 +15,10 @@ import { XmlParserService } from './services/xml-parser.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 import { GuardsModule } from 'src/guards/guards.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([Voucher,Request ]),
+  imports: [TypeOrmModule.forFeature([Voucher, Request, RequestsDestination]),
   GuardsModule
 
 ],
