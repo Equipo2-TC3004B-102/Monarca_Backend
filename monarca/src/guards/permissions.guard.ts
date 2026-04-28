@@ -60,6 +60,7 @@ export class PermissionsGuard implements CanActivate {
       is_approver: user.is_approver,
       is_soi: user.is_soi,
       is_travelAgent: user.is_travelAgent,
+      is_company_admin: user.is_company_admin,
     };
     // console.log(`request.sessionInfo.id: ${request.sessionInfo.id}`)
 

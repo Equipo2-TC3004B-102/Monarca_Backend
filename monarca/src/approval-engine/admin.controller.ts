@@ -7,7 +7,7 @@
  *              runs in addition to the class-level guards and restricts those endpoints
  *              to system admins exclusively.
  * Authors: DebugStudio Team
- * Last Modification: 26/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
+ * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
  */
 
 import {
@@ -32,7 +32,7 @@ import { SystemAdminGuard } from 'src/guards/system-admin.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { FindUsersQueryDto, SetCompanyAdminDto } from './dto/admin.dto';
+import { FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
 
 @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
 @Controller('admin')
@@ -159,6 +159,20 @@ export class AdminController {
     @Req() req: RequestInterface,
   ) {
     return this.adminService.updateUserInCompany(companyId, userId, dto, req.userInfo);
+  }
+
+  /**
+   * setUserFlags — Updates role flags for a user in a company.
+   * Input: companyId, userId path params (uuid), body with SetUserFlagsDto.
+   * Output: updated User entity.
+   */
+  @Patch('companies/:companyId/users/:userId/flags')
+  async setUserFlags(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Body() dto: SetUserFlagsDto,
+  ) {
+    return this.adminService.setUserFlags(companyId, userId, dto);
   }
 
   /**

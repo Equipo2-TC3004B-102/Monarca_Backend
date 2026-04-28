@@ -5,7 +5,6 @@
  *              Also registers admin service and controller for company and user management.
  * Authors: DebugStudio Team
  * Last Modification:
- * 23/04/2026 [Julio Rodríguez] Imported GuardsModule for flag-based authorization on endpoints.
  * 26/04/2026 [Julio Rodríguez] Added Company and User entities; registered AdminService and AdminController.
  */
 

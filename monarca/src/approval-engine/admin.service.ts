@@ -6,7 +6,7 @@
  *              and cannot set the is_system_admin flag on users.
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
- * Last Modification: 26/04/2026 [Julio Rodríguez] Created AdminService with company CRUD and user management.
+ * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminService with company CRUD and user management.
  */
 
 import {
@@ -20,7 +20,7 @@ import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { FindUsersQueryDto, SetCompanyAdminDto } from './dto/admin.dto';
+import { FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 
 @Injectable()
@@ -243,6 +243,18 @@ export class AdminService {
     }
 
     await this.userRepository.update(userId, data);
+    return this.findUserInCompany(companyId, userId);
+  }
+
+  /**
+   * setUserFlags — Updates role flags for a user scoped to the given company.
+   * Only modifies flags present in the dto; omitted flags are left unchanged.
+   * Input: company id, user id, SetUserFlagsDto.
+   * Output: updated User entity.
+   */
+  async setUserFlags(companyId: string, userId: string, dto: SetUserFlagsDto): Promise<User> {
+    await this.findUserInCompany(companyId, userId);
+    await this.userRepository.update(userId, dto);
     return this.findUserInCompany(companyId, userId);
   }
 
