@@ -4,24 +4,16 @@
  *              findAll (GET /request-logs) and findOne (GET /request-logs/:id).
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Julio Rodríguez] Removed unused imports to align with backend coding standard.
  */
 
 import {
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
-  Delete,
-  Res,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { RequestLogsService } from './request-logs.service';
-import { CreateRequestLogDto } from './dto/create-request-log.dto';
-import { UpdateRequestLogDto } from './dto/update-request-log.dto';
 
 @Controller('request-logs')
 export class RequestLogsController {

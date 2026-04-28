@@ -46,11 +46,14 @@ export class NotificationsService {
     try {
       await this.transporter.sendMail({ from: fromAddress, to, subject, text, html });
       await this.logsService.markSent(log.id);
-    } catch (error) {
-      await this.logsService.markFailed(log.id, error.message);
-      console.error('Error enviando correo:', error.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown email error';
+      await this.logsService.markFailed(log.id, errorMessage);
+      console.error('Error enviando correo:', errorMessage);
     }
   }
+
 
   /**
    * sendNotification - Convenience wrapper around sendMail for structured notification calls.

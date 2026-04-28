@@ -2,10 +2,12 @@
  * FileName: vouchers.controller
  * Description: REST controller for Voucher operations. Exposes endpoints for
  *              uploading, retrieving, updating, approving, and denying vouchers.
+ *              Also exposes a parse-only endpoint (ST-3) for XML extraction testing.
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 19/04/2026 [Fausto Izquierdo] Added POST /vouchers/parse-xml endpoint for ST-3
+ *                               XML extraction testing (no DB persistence).
  */
 
 import {
@@ -14,13 +16,16 @@ import {
   Post,
   Body,
   Param,
-  Put,
-  Delete,
   Patch,
   Req,
-  UseGuards
+  UseGuards,
+  HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
+import * as fs from 'fs';
 import { VouchersService } from './vouchers.service';
+import { XmlParserService } from './services/xml-parser.service';
+import { ParsedCfdi } from './interfaces/parsed-cfdi.interface';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -30,12 +35,39 @@ import { UseInterceptors, UploadedFiles, InternalServerErrorException } from '@n
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard, PermissionsGuard)
 @ApiTags('Vouchers') // Swagger documentation tag for the controller
 @Controller('vouchers')
 export class VouchersController {
-  constructor(private readonly vouchersService: VouchersService) {}
+  constructor(
+    private readonly vouchersService: VouchersService,
+    private readonly xmlParserService: XmlParserService,
+  ) {}
+
+  /**
+   * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
+   *            and returns the extracted ParsedCfdi JSON without saving anything.
+   * Input: files – multipart upload with field name 'file_url_xml'.
+   * Output: Promise<ParsedCfdi> – the raw fiscal data extracted from the CFDI.
+   * Throws BadRequestException if no XML file is provided or parsing fails.
+   */
+  @UseInterceptors(UploadPdfInterceptor())
+  @Post('parse-xml')
+  @HttpCode(200)
+  async parseXml(
+    @UploadedFiles()
+    files: { file_url_xml?: Express.Multer.File[] },
+  ): Promise<ParsedCfdi> {
+    const xmlFile = files?.file_url_xml?.[0];
+    if (!xmlFile) {
+      throw new BadRequestException('An XML file is required in the file_url_xml field.');
+    }
+    // Multer uses diskStorage so the file is on disk, not in memory
+    const buffer = fs.readFileSync(xmlFile.path);
+    return this.xmlParserService.parse(buffer);
+  }
 
   /**
    * uploadVoucher - Handles PDF/XML file upload and creates a new voucher record.
@@ -46,6 +78,8 @@ export class VouchersController {
    */
   @UseInterceptors(UploadPdfInterceptor())
   @Post('upload')
+  @Permissions('upload_vouchers') // Add appropriate permission for uploading vouchers.
+  @HttpCode(200)
   async uploadVoucher(
     @Req() req: RequestInterface,
     @UploadedFiles()
@@ -62,7 +96,7 @@ export class VouchersController {
       throw new InternalServerErrorException('DOWNLOAD_LINK not configured');
     }
 
-    const id_user = req.sessionInfo.id; 
+    const id_user = req.sessionInfo.id;
     const fileMap: Record<string, string> = {};
 
     // flatten both arrays into one list
@@ -92,6 +126,7 @@ export class VouchersController {
    * Output: Promise<Voucher[]> - array of all voucher records.
    */
   @Get()
+  @Permissions('view_assigned_requests_readonly') // Add appropriate permission for retrieving vouchers.
   async findAll(): Promise<Voucher[]> {
     return this.vouchersService.findAll();
   }
@@ -102,12 +137,13 @@ export class VouchersController {
    * Output: Promise<Voucher[]> - array of vouchers associated with the given request ID.
    */
   @Get(':requestId')
+  @Permissions('view_assigned_requests_readonly') // Add appropriate permission for retrieving vouchers.
   async findByRequest(
     @Param('requestId') requestId: string
   ): Promise<Voucher[]> {
     return this.vouchersService.findByRequest(requestId);
   }
-  
+
 
   /**
    * update - Partially updates an existing voucher's fields by its UUID.
@@ -116,6 +152,7 @@ export class VouchersController {
    * Output: Promise<Voucher> - the updated voucher record.
    */
   @Patch(':id')
+  @Permissions('upload_vouchers') // Add appropriate permission for updating vouchers.
   async update(
     @Param('id') id: string,
     @Body() updateVoucherDto: UpdateVoucherDto,
@@ -130,6 +167,7 @@ export class VouchersController {
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/approve')
+  @Permissions('approve_vouchers') // Add appropriate permission for approving vouchers.
   async approve(
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {
@@ -142,6 +180,7 @@ export class VouchersController {
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/deny')
+  @Permissions('deny_vouchers') // Add appropriate permission for denying vouchers.
   async deny(
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {

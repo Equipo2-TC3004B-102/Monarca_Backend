@@ -1,14 +1,17 @@
 /**
  * FileName: destinations.service.ts
  * Description: Service handling destination business logic. Provides CRUD operations
- *              against the destinations table. Throws NotFoundException when a
+ *              against the destinations table. Throws BadRequestException when a
  *              destination is not found by ID.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy.
+ * 20/04/2026 [Diego de la Vega] Ensured create/update operations persist
+ *                             iata_code and airport_name fields.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Destination } from './entities/destination.entity';
@@ -24,6 +27,8 @@ export class DestinationsService {
 
   async create(data: CreateDestinationDto): Promise<Destination> {
     const dest = this.destRepo.create({
+      iata_code: data.iata_code,
+      airport_name: data.airport_name,
       country: data.country,
       city: data.city,
     });
@@ -37,13 +42,17 @@ export class DestinationsService {
   async findOne(id: string): Promise<Destination> {
     const dest = await this.destRepo.findOneBy({ id });
     if (!dest) {
-      throw new NotFoundException(`Destination ${id} not found`);
+      throw new BadRequestException(`Destination ${id} not found`);
     }
     return dest;
   }
 
   async update(id: string, data: UpdateDestinationDto): Promise<Destination> {
     await this.destRepo.update(id, {
+      ...(data.iata_code !== undefined && { iata_code: data.iata_code }),
+      ...(data.airport_name !== undefined && {
+        airport_name: data.airport_name,
+      }),
       ...(data.country !== undefined && { country: data.country }),
       ...(data.city !== undefined && { city: data.city }),
     });

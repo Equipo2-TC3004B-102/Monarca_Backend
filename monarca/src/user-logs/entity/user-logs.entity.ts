@@ -5,7 +5,7 @@
  *              Belongs to a User via id_user.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 17/04/2026 [Julio Rodríguez] Updated UUID typing and relationship mapping with User.
  */
 
 import {
@@ -22,20 +22,20 @@ export class UserLogs {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  id_user: number;
+  @Column({ name: 'id_user', type: 'uuid' })
+  id_user: string;
 
-  // TODO: update relationship once user entity is finalized
-  @ManyToOne(() => User, (user) => user.id)
+  // Updated relationship mapping to User entity for consistency with User entity's primary key type
+  @ManyToOne(() => User, (user) => user.user_logs, { onDelete: 'CASCADE'})
   @JoinColumn({ name: 'id_user' })
   user: User;
 
-  @Column()
+  @Column({ name: 'date', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   date: Date;
 
-  @Column()
+  @Column({ name: 'ip', type: 'varchar' })
   ip: string;
 
-  @Column()
+  @Column({ name: 'report', type: 'varchar' })
   report: string;
 }

@@ -1,18 +1,17 @@
 /**
  * FileName: users.service.ts
  * Description: Service handling user business logic. Provides CRUD operations
- *              against the users table. Throws NotFoundException when a user
- *              is not found by ID, and ForbiddenException in findById when
- *              used for internal lookups with role and permission relations.
+ *              against the users table. Throws BadRequestException when a user
+ *              is not found by ID, including findById internal lookups with
+ *              role and permission relations.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 16/04/2026 [Julio Rodriguez] Added role handdler with flags for permissions for access certain resources, added company_id to separate users by company.
  */
 
 import {
-  ForbiddenException,
+  BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -33,7 +32,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ForbiddenException('User not found');
+      throw new BadRequestException('User not found');
     }
 
     return user;
@@ -43,8 +42,14 @@ export class UsersService {
     return await this.repo.find();
   }
 
+  // Added create, update and delete methods for user management
   async create(data: CreateUserDto): Promise<User> {
-    const ent = this.repo.create(data);
+    const ent = this.repo.create({
+      ...data,
+      user_name: data.user_name ?? data.email.split('@')[0],
+      creation_date: data.creation_date ?? new Date(),
+    });
+
     return this.repo.save(ent);
   }
 
@@ -53,12 +58,13 @@ export class UsersService {
       where: { id },
       relations: { travel_agency: true },
     });
-    if (!ent) throw new NotFoundException(`User ${id} not found`);
+    if (!ent) throw new BadRequestException(`User ${id} not found`);
     return ent;
   }
 
   async update(id: string, data: UpdateUserDto): Promise<UserDto> {
     await this.repo.update(id, data);
+
     return this.findOne(id);
   }
 

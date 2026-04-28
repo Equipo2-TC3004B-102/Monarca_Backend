@@ -4,7 +4,7 @@
  *              country and city are strings with a length between 2 and 100 characters.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 15/04/2026 [Jin Sik Yoon] Added airport-related fields for multidestination support and CSV migration.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -12,7 +12,23 @@ import { IsString, Length } from 'class-validator';
 
 export class CreateDestinationDto {
   @ApiProperty({
-    description: 'Country of Destination',
+    description: 'IATA code of destination airport',
+    example: 'MAD',
+  })
+  @IsString()
+  @Length(3, 10)
+  iata_code: string;
+
+  @ApiProperty({
+    description: 'Airport name of destination',
+    example: 'Adolfo Suárez Madrid-Barajas Airport',
+  })
+  @IsString()
+  @Length(2, 255)
+  airport_name: string;
+
+  @ApiProperty({
+    description: 'Country of destination',
     example: 'Spain',
   })
   @IsString()

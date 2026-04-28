@@ -5,9 +5,10 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationLogsService } from './notification-logs.service';
 import { NotificationLogsController } from './notification-logs.controller';
 import { NotificationLog } from './entities/notification-log.entity';
+import { GuardsModule } from 'src/guards/guards.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NotificationLog])],
+  imports: [TypeOrmModule.forFeature([NotificationLog]), GuardsModule],
   controllers: [NotificationsController, NotificationLogsController],
   providers: [NotificationsService, NotificationLogsService],
   exports: [NotificationsService, NotificationLogsService],

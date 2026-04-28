@@ -1,7 +1,17 @@
+/**
+ * FileName: seed.service.ts
+ * Description: Service for seeding and resetting the database. Loads initial data
+ *              from JSON files in /seeds. Handles password hashing for users and
+ *              backwards-compatible field normalization (id_ceco, user_name).
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 23/04/2026 [Julio Rodríguez] Fixed header; added approval_levels tables to truncate list.
+ */
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Company } from 'src/companies/entity/company.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
-import { Department } from './src/departments/entity/department.entity';
 import { Destination } from 'src/destinations/entities/destination.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
@@ -26,12 +36,21 @@ interface SeedData {
     entityName: string;
 }
 
+type UserSeed = Partial<User> & {
+    id_ceco?: string;
+    id_department?: string;
+};
+
+type CostCenterSeed = Partial<CostCenter> & {
+    description?: string;
+};
+
 @Injectable()
 export class SeedService {
     private readonly logger = new Logger(SeedService.name);
 
     constructor(
-        @InjectRepository(Department) private readonly departmentRepo: Repository<Department>,
+        @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
         @InjectRepository(CostCenter) private readonly costCenterRepo: Repository<CostCenter>,
         @InjectRepository(Destination) private readonly destinationRepo: Repository<Destination>,
         @InjectRepository(User) private readonly userRepo: Repository<User>,
@@ -50,8 +69,8 @@ export class SeedService {
 
     async run() {
         const seedData: SeedData[] = [
+            { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
-            { repo: this.departmentRepo, file: 'departments.json', entityName: 'Department' },
             { repo: this.permissionRepo, file: 'permissions.json', entityName: 'Permission' },
             { repo: this.destinationRepo, file: 'destinations.json', entityName: 'Destination' },
             { repo: this.travelAgencyRepo, file: 'travel-agencies.json', entityName: 'TravelAgency' },
@@ -99,19 +118,36 @@ export class SeedService {
 
             for (const entity of entities) {
                 if (entityName === 'User') {
+                    const userSeed = entity as UserSeed;
+                    // Added fallback logic for user_name to ensure it is always populated, using email prefix if user_name is not provided.
+                    const fallbackUserName =
+                        userSeed.user_name ??
+                        (typeof userSeed.email === 'string'
+                            ? userSeed.email.split('@')[0]
+                            : undefined);
+
+                    const normalizedUser = {
+                        ...userSeed,
+                        id_ceco: userSeed.id_ceco ?? userSeed.id_department,
+                        user_name: fallbackUserName,
+                    };
+
+                    delete normalizedUser.id_department;
+
                     let user: User | undefined;
-                    user = await hashPasswords(entity as User);
+                    user = await hashPasswords(normalizedUser as User);
                     await repo.save(user);
-                } else if (entityName === 'Department') {
-                    const costCenter = await this.costCenterRepo.findOneByOrFail({ id: entity.cost_center_id });
-                    
-                    const department = this.departmentRepo.create({
-                        id: entity.id,
-                        name: entity.name,
-                        cost_center: costCenter,
-                    });
-                
-                    await this.departmentRepo.save(department);
+                } else if (entityName === 'CostCenter') {
+                    const costCenterSeed = entity as CostCenterSeed;
+                    const normalizedCostCenter = {
+                        ...costCenterSeed,
+                        name: costCenterSeed.description ?? costCenterSeed.name,
+                    };
+
+                    delete normalizedCostCenter.description;
+
+                    const newEntity = repo.create(normalizedCostCenter);
+                    await repo.save(newEntity);
                 } else {
                     const newEntity = repo.create(entity);
                     await repo.save(newEntity);
@@ -130,7 +166,7 @@ export class SeedService {
     async truncate() {
         this.logger.log('🔄 Starting manual truncate without disabling FK constraints...');
 
-        const connection = this.departmentRepo.manager.connection;
+        const connection = this.companyRepo.manager.connection;
         const queryRunner = connection.createQueryRunner();
         await queryRunner.connect();
 
@@ -150,9 +186,12 @@ export class SeedService {
                 'roles',
                 'travel_agencies',
                 'destinations',
+                'exchange_rates',
                 'permissions',
-                'departments',
-                'cost_centers'
+                'cost_centers',
+                'approval_levels_actors',
+                'approval_levels',
+                'companies',
             ];
 
             for (const table of tables) {
@@ -173,7 +212,7 @@ export class SeedService {
 
 
     async dropAllTables() {
-        const connection = this.departmentRepo.manager.connection;
+        const connection = this.companyRepo.manager.connection;
         const queryRunner = connection.createQueryRunner();
         await queryRunner.connect();
 

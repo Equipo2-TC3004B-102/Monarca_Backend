@@ -1,13 +1,14 @@
 /**
  * FileName: register.controller.ts
- * Description: Controller for user registration. Exposes a single POST /register endpoint
- *              that receives a CreateUserDto and delegates to RegisterService.
+ * Description: Controller for user registration. Exposes POST /register
+ *              and delegates creation logic to RegisterService.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
+ *                              registration endpoint and aligned header format.
  */
 
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { RegisterService } from '../services/register.service';
 import { CreateUserDto } from 'src/users/dto/user.dtos';
 
@@ -27,6 +28,7 @@ export class RegisterController {
 */
 
   @Post()
+  @HttpCode(200)
   register(@Body() data: CreateUserDto) {
     return this.registerService.register(data);
   }

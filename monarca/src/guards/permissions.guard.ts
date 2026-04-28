@@ -1,16 +1,24 @@
+/**
+ * FileName: permissions.guard.ts
+ * Description: Guard for enforcing user permissions on protected routes. Checks
+ *              if the authenticated user has the required permissions defined
+ *              by endpoint metadata.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 18/04/2026 [Julio Rodriguez] Added new attributes to userInfo for better access control and logging.
+ */
+
 import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './decorators/permission.decorator';
 import { Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionInfoInterface } from './interfaces/sessionInfo.interface';
-import { UserInfoInterface } from './interfaces/userInfo.interface';
 import { RequestInterface } from './interfaces/request.interface';
 
 @Injectable()
@@ -25,11 +33,11 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestInterface>();
 
     const userId = request.sessionInfo?.id;
-    if (!userId) throw new ForbiddenException('User session not found');
+    if (!userId) throw new BadRequestException('User session not found');
 
     const user = await this.findById(userId);
     if (!user || !user.role || !user.role.permissions) {
-      throw new ForbiddenException('User or permissions not found');
+      throw new BadRequestException('User or permissions not found');
     }
 
     // console.log('User found:', user.id);
@@ -41,9 +49,17 @@ export class PermissionsGuard implements CanActivate {
       name: user.name,
       last_name: user.last_name,
       status: user.status,
-      id_department: user.id_department,
+      id_ceco: user.id_ceco,
       id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
+      id_company: user.id_company, // Added company ID to userInfo for access control based on company association
+      manager_id: user.manager_id,
+      is_system_admin: user.is_system_admin,
+      is_first_login: user.is_first_login,
+      is_requester: user.is_requester,
+      is_approver: user.is_approver,
+      is_soi: user.is_soi,
+      is_travelAgent: user.is_travelAgent,
     };
     // console.log(`request.sessionInfo.id: ${request.sessionInfo.id}`)
 
@@ -62,7 +78,7 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Permission denied');
+      throw new BadRequestException('Permission denied');
     }
 
     return true;
@@ -75,7 +91,7 @@ export class PermissionsGuard implements CanActivate {
     });
 
     if (!user) {
-      throw new ForbiddenException('User not found');
+      throw new BadRequestException('User not found');
     }
 
     return user;

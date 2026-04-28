@@ -5,22 +5,22 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 25/02/2026 [Santiago Coronado Hernández] Changed synchronize value to false 
  */
 
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
+import { CompaniesModule } from './companies/company-module';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DepartmentsModule } from './departments/departments.module';
 import { Roles } from './roles/entity/roles.entity';
 import { TravelAgenciesModule } from './travel-agencies/travel-agencies.module';
 import { RequestsModule } from './requests/requests.module';
 import { RequestLogsModule } from './request-logs/request-logs.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { User } from './users/entities/user.entity';
+import { Company } from './companies/entity/company.entity';
 import { UserLogs } from './user-logs/entity/user-logs.entity';
-import { Department } from './departments/entity/department.entity';
 import { Destination } from './destinations/entities/destination.entity';
 import { Request } from './requests/entities/request.entity';
 import { Reservation } from './reservations/entity/reservations.entity';
@@ -44,6 +44,12 @@ import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { NotificationLog } from './notifications/entities/notification-log.entity';
 import { RolesModule } from './roles/roles.module';
+import { HealthModule } from './health/health.module';
+import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
+import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
+import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
+import { RequestApproval } from './approval-engine/entities/request-approval.entity';
+import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
 @Module({
   imports: [
@@ -53,11 +59,11 @@ import { RolesModule } from './roles/roles.module';
     }),
     NotificationsModule,
     RolesModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     TravelAgenciesModule,
     Roles,
-    DepartmentsModule,
     CostCentersModule,
     RequestsModule,
     RequestLogsModule,
@@ -67,6 +73,8 @@ import { RolesModule } from './roles/roles.module';
     DestinationsModule,
     UserLogsModule,
     GuardsModule,
+    CompaniesModule,
+    ApprovalEngineModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -76,9 +84,10 @@ import { RolesModule } from './roles/roles.module';
       database: process.env.POSTGRES_DATABASE,
       entities: [
         User,
-        Department,
+        Company,
         CostCenter,
         Destination,
+        ExchangeRate,
         Request,
         RequestsDestination,
         Roles,
@@ -91,15 +100,20 @@ import { RolesModule } from './roles/roles.module';
         UserLogs,
         Revision,
         NotificationLog,
+        ApprovalLevel,
+        ApprovalLevelActor,
+        RequestApproval,
       ],
-      synchronize: true,
+      synchronize: false, // False for migrations.
+      retryAttempts: 3,
+      retryDelay: 3000,
     }),
 
     TypeOrmModule.forFeature([
       User,
-      Department,
       CostCenter,
       Destination,
+      ExchangeRate,
       Request,
       RequestsDestination,
       Roles,
@@ -112,10 +126,13 @@ import { RolesModule } from './roles/roles.module';
       UserLogs,
       Revision,
       NotificationLog,
+      ApprovalLevel,
+      ApprovalLevelActor,
+      RequestApproval,
     ]),
 
   ],
   controllers: [],
   providers: [SeedService],
 })
-export class AppModule {}
+export class AppModule { }

@@ -1,14 +1,15 @@
 /**
  * FileName: travel-agencies.service.ts
  * Description: Service handling travel agency business logic. Provides CRUD operations
- *              against the travel_agencies table. Throws NotFoundException when a
+ *              against the travel_agencies table. Throws BadRequestException when a
  *              travel agency is not found by ID. Note: remove() is not yet implemented.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CreateTravelAgencyDto,
   TravelAgencyDto,
@@ -51,7 +52,7 @@ export class TravelAgenciesService {
       where: { id },
       relations: { users: true },
     });
-    if (!ent) throw new NotFoundException(`Travel agency ${id} not found`);
+    if (!ent) throw new BadRequestException(`Travel agency ${id} not found`);
     return ent;
   }
 }
