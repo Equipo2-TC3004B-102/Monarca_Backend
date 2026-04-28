@@ -5,7 +5,8 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added new GET endpoints for SOI and TA assigned requests
+ * 26/04/2026 [Julio Rodriguez]: Fixed permissions in 'to-approve' and 'to-approve-SOI' endpoints.
+ * 26/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
  */
 
 import {
@@ -52,7 +53,7 @@ export class RequestsController {
   }
 
   @Get('to-approve')
-  @Permissions('view_assigned_requests_readonly')
+  @Permissions('approve_request')
   async findAssignedApprover(@Request() req: RequestInterface) {
     return this.requestsService.findByAdmin(req);
   }
@@ -77,6 +78,12 @@ export class RequestsController {
   @Get('all')
   @Permissions('view_assigned_requests_readonly')
   async findAll() {
+    return this.requestsService.findAll();
+  }
+
+  @Get('approved-history')
+  @Permissions('view_approved_request_history')
+  async findApprovedHistory() {
     return this.requestsService.findAll();
   }
 

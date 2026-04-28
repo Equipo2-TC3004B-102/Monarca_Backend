@@ -5,9 +5,10 @@
  *              via the roles_permissions join table.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 22/04/2026 [Julio Rodríguez] Fixed id type from number to string to match UUID primary key.
  */
 
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -21,9 +22,11 @@ import { Permission } from './permissions.entity';
 
 @Entity('roles')
 export class Roles {
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @PrimaryGeneratedColumn('uuid')
-  id: number;
+  id: string;
 
+  @ApiProperty({ example: 'Approver' })
   @Column()
   name: string;
 

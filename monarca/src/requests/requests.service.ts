@@ -556,7 +556,7 @@ export class RequestsService {
       entity.currency = data.currency;
       entity.id_origin_city = data.id_origin_city;
       entity.motive = data.motive;
-      entity.requirements = data.requirements;
+      entity.requirements = data.requirements ?? null;
       entity.priority = data.priority;
 
       //Overhaul de requests_destinations

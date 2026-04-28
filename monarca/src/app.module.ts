@@ -48,6 +48,7 @@ import { ApprovalLevel } from './approval-engine/entities/approval-level.entity'
 import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
 import { RequestApproval } from './approval-engine/entities/request-approval.entity';
 import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
+import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
     GuardsModule,
     CompaniesModule,
     ApprovalRulesModule,
+    ApprovalEngineModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -100,7 +102,7 @@ import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
         ApprovalLevelActor,
         RequestApproval,
       ],
-      synchronize: true,
+      synchronize: false, // False for migrations.
       retryAttempts: 3,
       retryDelay: 3000,
     }),
@@ -121,6 +123,9 @@ import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
       Voucher,
       UserLogs,
       Revision,
+      ApprovalLevel,
+      ApprovalLevelActor,
+      RequestApproval,
     ]),
 
   ],
