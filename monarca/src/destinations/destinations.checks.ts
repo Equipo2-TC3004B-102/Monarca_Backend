@@ -4,15 +4,14 @@
  *              to check if a destination exists by ID and to retrieve a city name by ID.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy and aligned header documentation.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Destination } from './entities/destination.entity';
-import { CreateDestinationDto } from './dto/create-destination.dto';
-import { UpdateDestinationDto } from './dto/update-destination.dto';
 
 @Injectable()
 export class DestinationsChecks {

@@ -1,7 +1,19 @@
+/**
+ * FileName: requests.controller.ts
+ * Description: Controller for travel request endpoints. Exposes create, read,
+ *              and update operations for requests, including role-specific list
+ *              queries. All routes are protected by AuthGuard and PermissionsGuard.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 26/04/2026 [Julio Rodriguez]: Fixed permissions in 'to-approve' and 'to-approve-SOI' endpoints.
+ * 26/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
+ */
+
 import {
   Controller,
   Get,
   Post,
+  HttpCode,
   Body,
   Patch,
   Param,
@@ -17,52 +29,66 @@ import { UpdateRequestDto } from './dto/update-request.dto';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard, PermissionsGuard)
 @Controller('requests')
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(private readonly requestsService: RequestsService) { }
 
   @Post()
+  @Permissions('create_request')
+  @HttpCode(200)
   async create(
     @Request() req: RequestInterface,
     @Body() data: CreateRequestDto,
   ) {
-    const result = await this.requestsService.create(req, data);
-    return result;
+    return this.requestsService.create(req, data);
   }
 
   @Get('user')
+  @Permissions('request_history')
   async findByUser(@Request() req: RequestInterface) {
     return this.requestsService.findByUser(req);
   }
 
   @Get('to-approve')
+  @Permissions('approve_request')
   async findAssignedApprover(@Request() req: RequestInterface) {
     return this.requestsService.findByAdmin(req);
   }
 
   @Get('to-approve-SOI')
+  @Permissions('check_budgets')
   async findAssignedSOI(@Request() req: RequestInterface) {
     return this.requestsService.findBySOI(req);
   }
-  // Para jalar todos los requests en estatus de Pending Refund Approval asignados a un SOI
   @Get('refund-to-approve-SOI')
+  @Permissions('check_budgets')
   async findPendingRefundApproval(@Request() req: RequestInterface) {
     return this.requestsService.findPendingRefundApproval(req);
   }
 
   @Get('to-reserve')
+  @Permissions('submit_reservations')
   async findAssignedTA(@Request() req: RequestInterface) {
     return this.requestsService.findByTA(req);
   }
 
   @Get('all')
+  @Permissions('view_assigned_requests_readonly')
   async findAll() {
     return this.requestsService.findAll();
   }
 
+  @Get('approved-history')
+  @Permissions('view_approved_request_history')
+  async findApprovedHistory() {
+    return this.requestsService.findAll();
+  }
+
   @Get(':id')
+  @Permissions('view_assigned_requests_readonly')
   async findOne(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -71,6 +97,8 @@ export class RequestsController {
   }
 
   @Put(':id')
+  @Permissions('edit_request')
+  @HttpCode(200)
   async updateRequest(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() data: UpdateRequestDto,

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante
+  xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+  xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  Version="4.0"
+  Fecha="2026-04-10T14:30:00"
+  SubTotal="1000.00"
+  Total="1085.00"
+  Descuento="50.00"
+  Moneda="MXN"
+  TipoCambio="1"
+  FormaPago="01"
+  MetodoPago="PUE"
+  TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="AAA010101AAA" Nombre="Empresa Ejemplo S.A. de C.V." RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="BBB020202BBB" Nombre="Ditta Consulting S.A. de C.V." UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="78101802" Cantidad="1" ClaveUnidad="E48" Descripcion="Servicio de transporte" ValorUnitario="1000.00" Importe="1000.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="160.00" TotalImpuestosRetenidos="25.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="160.00"/>
+      <cfdi:Traslado Impuesto="003" TipoFactor="Tasa" TasaOCuota="0.080000" Importe="0.00"/>
+    </cfdi:Traslados>
+    <cfdi:Retenciones>
+      <cfdi:Retencion Impuesto="001" TipoFactor="Tasa" TasaOCuota="0.100000" Importe="25.00"/>
+    </cfdi:Retenciones>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital UUID="6F29A520-4C2A-4D3B-9E1F-8A7B6C5D4E3F" FechaTimbrado="2026-04-10T14:35:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

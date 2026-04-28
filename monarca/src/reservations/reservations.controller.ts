@@ -5,7 +5,7 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 18/04/2026 [Julio Rodriguez] Added file upload handling to the create endpoint.
  */
 
 import {
@@ -16,6 +16,7 @@ import {
   Patch,
   Delete,
   Body,
+  HttpCode,
   ParseUUIDPipe,
   UseGuards,
   Request,
@@ -31,6 +32,7 @@ import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { UploadPdfInterceptor } from 'src/utils/uploadPdf.middleware';
+import { Permissions } from 'src/guards/decorators/permission.decorator';
 
 @UseGuards(AuthGuard,PermissionsGuard)
 @Controller('reservations')
@@ -48,6 +50,8 @@ export class ReservationsController {
    */
   @UseInterceptors(UploadPdfInterceptor())
   @Post()
+  @Permissions('submit_reservations') // Add appropriate permission for creating reservations.
+  @HttpCode(200)
   async createReservation(
     @Request() req : RequestInterface,
     @UploadedFiles()
@@ -69,13 +73,13 @@ export class ReservationsController {
       if (file.fieldname === 'file') {
         fileMap.link = publicUrl;
       } }
-    return this.reservationsService.createReservation(req, 
+    return this.reservationsService.createReservation(req,
       {
         ...createReservationDto,
         ...fileMap,
       } as CreateReservationDto
     );
-    
+
   }
 
   /**
@@ -84,6 +88,7 @@ export class ReservationsController {
    * Output: Promise<Reservation[]> - array of all reservation records.
    */
   @Get()
+  @Permissions('send_reservation_receipts') // Add appropriate permission for retrieving reservations.
   async findAll() {
     return this.reservationsService.findAll();
   }
@@ -94,6 +99,7 @@ export class ReservationsController {
    * Output: Promise<Reservation> - the matching reservation record.
    */
   @Get(':id')
+  @Permissions('send_reservation_receipts') // Add appropriate permission for retrieving reservations.
   async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.reservationsService.findOne(id);
   }
@@ -105,6 +111,7 @@ export class ReservationsController {
    * Output: Promise<UpdateResult> - TypeORM update result.
    */
   @Patch(':id')
+  @Permissions('submit_reservations') // Add appropriate permission for updating reservations.
   async update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateReservationDto: UpdateReservationDto,
@@ -118,6 +125,7 @@ export class ReservationsController {
    * Output: Promise<{ message: string; status: boolean }> - confirmation message and success flag.
    */
   @Delete(':id')
+  @Permissions('submit_reservations') // Add appropriate permission for deleting reservations.
   async remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.reservationsService.remove(id);
   }

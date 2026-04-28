@@ -1,11 +1,17 @@
+/**
+ * FileName: requests.service.ts
+ * Description: Service for travel request business logic. Handles request creation,
+ *              role-based retrieval, updates, and status changes with auditing.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 20/04/2026 [Diego de la Vega] Added default provider support metadata for
+ *                             requests_destinations on create and update.
+ */
+
 import {
   Injectable,
-  NotFoundException,
-  HttpException,
-  HttpStatus,
+  InternalServerErrorException,
   BadRequestException,
-  UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
@@ -19,6 +25,20 @@ import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
+const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
+  USD: 'SF43718',
+  EUR: 'SF46410',
+  JPY: 'SF46406',
+  GBP: 'SF46407',
+  CAD: 'SF60632',
+  CHF: 'SF46405',
+  CNY: 'SF290383',
+  BRL: 'SF290312',
+  ARS: 'SF290311',
+  CLP: 'SF290351',
+  COP: 'SF290382',
+};
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -28,7 +48,55 @@ export class RequestsService {
     private readonly destinationChecks: DestinationsChecks,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
+
+  private async fetchBanxicoRate(currency: string): Promise<number | null> {
+    const banxicoId = BANXICO_CURRENCY_MAPPING[currency];
+    if (!banxicoId) return null;
+
+    const bmxToken = process.env['BMX-TOKEN'];
+    if (!bmxToken) {
+      console.warn('BMX-TOKEN is not set in environment.');
+      return null;
+    }
+
+    try {
+      const url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${banxicoId}/datos/oportuno`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Bmx-Token': bmxToken,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`Banxico API error: ${response.statusText}`);
+        return null;
+      }
+
+      const rawData = await response.json();
+      const series = rawData?.bmx?.series?.[0];
+      const data = series?.datos?.[0];
+      
+      if (data && data.dato) {
+        const rate = parseFloat(data.dato);
+        return isNaN(rate) ? null : rate;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch from Banxico API:', error);
+      return null;
+    }
+  }
+
+  private clientError(message: string, code: string) {
+    return new BadRequestException({ message, code });
+  }
+
+  private serverError(message: string, code: string) {
+    return new InternalServerErrorException({ message, code });
+  }
 
   private async getCityName(id: string): Promise<string> {
     return await this.destinationChecks.getCityNameById(id);
@@ -70,43 +138,127 @@ export class RequestsService {
     const userId = req.sessionInfo.id;
     //VALIDAR VALIDEZ DE CIUDADES
     if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-      throw new BadRequestException('Invalid id_origin_city.');
+      throw this.clientError(
+        'Invalid id_origin_city.',
+        'REQUESTS_INVALID_ORIGIN_CITY',
+      );
     }
 
     for (const rd of data.requests_destinations) {
       if (!(await this.destinationChecks.isValid(rd.id_destination)))
-        throw new BadRequestException('Invalid id_destination.');
+        throw this.clientError(
+          'Invalid id_destination.',
+          'REQUESTS_INVALID_DESTINATION',
+        );
     }
 
     //ASIGNAR APROVADOR
-    const id_department = req.userInfo.id_department;
-    const adminId = await this.userChecks.getRandomApproverIdFromSameDepartment(
-      id_department,
-      userId,
-    );
-    if (!adminId) {
-      throw new HttpException(
-        'There is no admin available to assign the request.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
+    const id_ceco = req.userInfo.id_ceco;
+    if (!id_ceco) {
+      throw this.clientError(
+        'The requester is not linked to any cost center.',
+        'REQUESTS_REQUESTER_CECO_REQUIRED',
       );
     }
 
-    //ASIGNAR SOI
+    let id_company = req.userInfo.id_company;
+    if (!id_company) {
+      const rows = await this.dataSource.query(
+        `SELECT id_company FROM cost_centers WHERE id = $1 LIMIT 1`,
+        [id_ceco],
+      );
+      id_company = rows?.[0]?.id_company;
+    }
+
+    if (!id_company) {
+      throw this.clientError(
+        'The requester is not linked to any company.',
+        'REQUESTS_REQUESTER_COMPANY_REQUIRED',
+      );
+    }
+
+    let adminId = await this.userChecks.getApproverIdFromManagerChain(
+      userId,
+      2,
+    );
+    if (!adminId) {
+      adminId = await this.userChecks.getApproverIdByCompany(
+        id_company,
+        userId,
+      );
+    }
+    if (!adminId) {
+      adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
+        id_ceco,
+        userId,
+      );
+    }
+    if (!adminId) {
+      throw this.serverError(
+        'There is no approver available to assign the request.',
+        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      );
+    }
+
+    // Assign SOI user globally (SOI is not company-scoped)
     const SOIId = await this.userChecks.getRandomSOIID();
     if (!SOIId) {
-      throw new HttpException(
+      throw this.serverError(
         'There is no SOI available to assign the request.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
+        'REQUESTS_ASSIGN_SOI_UNAVAILABLE',
       );
+    }
+
+    let finalAdvanceMoney: number = 0;
+    let finalExchangeRate: number | null = null;
+    let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+
+    if (data.currency === 'MXN') {
+      finalAdvanceMoney = data.advance_money;
+    } else if (data.currency) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const rates = await this.dataSource.query(
+        `SELECT exchange_rate FROM exchange_rates WHERE currency = $1 AND update_date = $2`,
+        [data.currency, todayStr],
+      );
+
+      if (rates && rates.length > 0) {
+        const rate = Number(rates[0].exchange_rate);
+        finalExchangeRate = rate;
+        finalAdvanceMoney = Math.round(data.advance_money * rate);
+      } else {
+        console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
+        const fetchedRate = await this.fetchBanxicoRate(data.currency);
+        
+        if (fetchedRate !== null) {
+          finalExchangeRate = fetchedRate;
+          finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
+          
+          await this.dataSource.query(
+            `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
+            [data.currency, fetchedRate, todayStr]
+          );
+        } else {
+          console.log(`Could not fetch exchange rate for currency ${data.currency}. Proceeding with default (0).`);
+        }
+      }
     }
 
     const request = this.requestsRepo.create({
+      ...data,
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
-      ...data,
+      id_company,
+      advance_money: finalAdvanceMoney,
+      unconverted_advance_money: finalUnconvertedAdvanceMoney,
+      exchange_rate: finalExchangeRate,
       requests_destinations: data.requests_destinations.map((destDto) => ({
         ...destDto,
+        provider_support_status: 'pending_provider',
+        provider_support_reason: null,
+        provider_support_checked_at: null,
       })),
     });
 
@@ -126,18 +278,21 @@ export class RequestsService {
       },
     );
 
-    const admin = await this.userChecks.getUserById(saved.id_admin);
+    const approver = await this.userChecks.getUserById(saved.id_admin);
 
-    if (!admin) {
-      throw new NotFoundException(`Admin with ID ${saved.id_admin} not found.`);
+    if (!approver) {
+      throw this.serverError(
+        `Approver with ID ${saved.id_admin} not found.`,
+        'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
+      );
     }
 
-    // Mandar mail de notificación al admin asignado
+    // Mandar mail de notificación al aprobador asignado
     await this.notificationsService.notify(
-      admin.email,
+      approver.email,
       `Nueva solicitud asignada`,
       `Se te ha asignado una nueva solicitud de viaje con ID: ${saved.id}. Por favor, revisa los detalles en el sistema.`,
-      `<p>Hola ${admin.name},</p>
+      `<p>Hola ${approver.name},</p>
 <p>Se te ha asignado una nueva solicitud de viaje con ID: <strong>${saved.id}</strong>.</p>
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
@@ -181,7 +336,8 @@ export class RequestsService {
         'requests_destinations.reservations',
       ],
     });
-    if (!request) throw new NotFoundException(`Request ${id} not found`);
+    if (!request)
+      throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
     // VALIDAR QUE PUEDE ACCEDER REQUEST
     const id_travel_agency = req.userInfo.id_travel_agency;
@@ -192,7 +348,7 @@ export class RequestsService {
       userId !== request.id_SOI &&
       !(id_travel_agency && id_travel_agency === request.id_travel_agency) //Testear mas
     )
-      throw new UnauthorizedException('Cannot access this request.');
+      throw this.clientError('Cannot access this request.', 'REQUESTS_ACCESS_DENIED');
 
     return request;
   }
@@ -214,37 +370,39 @@ export class RequestsService {
     return list;
   }
 
-async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
-  const userId = req.sessionInfo.id;
+  async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
+    const userId = req.sessionInfo.id;
 
-  return this.requestsRepo
-    .createQueryBuilder('r')
-    .leftJoinAndSelect('r.requests_destinations', 'rd')
-    .leftJoinAndSelect('rd.destination', 'd')
-    .leftJoinAndSelect('r.revisions', 'rev')
-    .leftJoinAndSelect('r.user', 'u')
-    .leftJoinAndSelect('u.department', 'dept')
-    .leftJoinAndSelect('r.admin', 'adm')
-    .leftJoinAndSelect('r.SOI', 'soi')
-    .leftJoinAndSelect('r.destination', 'dest')
-    .where('r.id_admin = :userId', { userId })
-    .andWhere('r.status = :status', { status: 'Pending Review' })
-    .orderBy(
-      `CASE r.priority
+    return this.requestsRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.requests_destinations', 'rd')
+      .leftJoinAndSelect('rd.destination', 'd')
+      .leftJoinAndSelect('r.revisions', 'rev')
+      .leftJoinAndSelect('r.user', 'u')
+      .leftJoinAndSelect('r.admin', 'adm')
+      .leftJoinAndSelect('r.SOI', 'soi')
+      .leftJoinAndSelect('r.destination', 'dest')
+      .where('r.id_admin = :userId', { userId })
+      .andWhere('r.status = :status', { status: 'Pending Review' })
+      .orderBy(
+        `CASE r.priority
          WHEN 'alta' THEN 1
          WHEN 'media' THEN 2
          WHEN 'baja' THEN 3
        END`,
-      'ASC'
-    )
-    .getMany();
-}
+        'ASC'
+      )
+      .getMany();
+  }
 
 
   async findBySOI(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
-      where: { id_SOI: userId },
+      where: {
+        id_SOI: userId,
+        status: 'Pending Accounting Approval',
+      },
       relations: [
         'requests_destinations',
         'requests_destinations.destination',
@@ -262,7 +420,7 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
   async findPendingRefundApproval(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
     const list = await this.requestsRepo.find({
-      where: { 
+      where: {
         status: 'Pending Refund Approval',
         id_SOI: userId
       },
@@ -284,7 +442,10 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     const travelAgencyId = req.userInfo.id_travel_agency;
 
     if (!travelAgencyId)
-      throw new UnauthorizedException('Cannot access this endpoint.');
+      throw this.clientError(
+        'Cannot access this endpoint.',
+        'REQUESTS_TRAVEL_AGENCY_REQUIRED',
+      );
 
     const list = await this.requestsRepo.find({
       where: {
@@ -317,41 +478,96 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
         where: { id },
         relations: ['requests_destinations'],
       });
-      if (!entity) throw new NotFoundException(`Request ${id} not found`);
+      if (!entity)
+        throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
       if (req.sessionInfo.id !== entity.id_user)
-        throw new UnauthorizedException('Unable to edit this request.');
+        throw this.clientError(
+          'Unable to edit this request.',
+          'REQUESTS_UPDATE_NOT_ALLOWED',
+        );
 
       //Un request solo puede ser editado si esta en estos estados
       if (
         entity.status !== 'Pending Review' &&
         entity.status !== 'Changes Needed'
       )
-        throw new ConflictException(
+        throw this.clientError(
           'Unable to edit this request beacuse of its current status.',
+          'REQUESTS_UPDATE_INVALID_STATE',
         );
 
       //VALIDAR VALIDEZ DE CIUDADES
       if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
-        throw new BadRequestException('Invalid id_origin_city.');
+        throw this.clientError(
+          'Invalid id_origin_city.',
+          'REQUESTS_INVALID_ORIGIN_CITY',
+        );
       }
 
       for (const rd of data.requests_destinations) {
         if (!(await this.destinationChecks.isValid(rd.id_destination)))
-          throw new BadRequestException('Invalid id_destination.');
+          throw this.clientError(
+            'Invalid id_destination.',
+            'REQUESTS_INVALID_DESTINATION',
+          );
       }
 
       //Update informacion general
-      entity.advance_money = data.advance_money;
+      let finalAdvanceMoney: number = 0;
+      let finalExchangeRate: number | null = null;
+      let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+
+      if (data.currency === 'MXN') {
+        finalAdvanceMoney = data.advance_money;
+      } else if (data.currency) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const rates = await manager.query(
+          `SELECT exchange_rate FROM exchange_rates WHERE currency = $1 AND update_date = $2`,
+          [data.currency, todayStr],
+        );
+
+        if (rates && rates.length > 0) {
+          const rate = Number(rates[0].exchange_rate);
+          finalExchangeRate = rate;
+          finalAdvanceMoney = Math.round(data.advance_money * rate);
+        } else {
+          console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
+          const fetchedRate = await this.fetchBanxicoRate(data.currency);
+          
+          if (fetchedRate !== null) {
+            finalExchangeRate = fetchedRate;
+            finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
+            
+            await manager.query(
+              `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
+              [data.currency, fetchedRate, todayStr]
+            );
+          } else {
+            console.log(`Could not fetch exchange rate for currency ${data.currency}. Proceeding with default (0).`);
+          }
+        }
+      }
+
+      entity.unconverted_advance_money = finalUnconvertedAdvanceMoney;
+      entity.exchange_rate = finalExchangeRate;
+      entity.advance_money = finalAdvanceMoney;
+      entity.currency = data.currency;
       entity.id_origin_city = data.id_origin_city;
       entity.motive = data.motive;
-      entity.requirements = data.requirements;
+      entity.requirements = data.requirements ?? null;
       entity.priority = data.priority;
 
       //Overhaul de requests_destinations
       const destRepo = manager.getRepository(RequestsDestination);
       entity.requests_destinations = data.requests_destinations.map((d) =>
-        destRepo.create({ ...d }),
+        destRepo.create({
+          ...d,
+          provider_support_status: 'pending_provider',
+          provider_support_reason: null,
+          provider_support_checked_at: null,
+        }),
       );
 
       //Update status
@@ -369,15 +585,18 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
       );
 
       // Notificar al admin asignado
-      const admin = await this.userChecks.getUserById(updated.id_admin);
-      if (!admin) {
-        throw new NotFoundException(`Admin with ID ${updated.id_admin} not found.`);
+      const approver = await this.userChecks.getUserById(updated.id_admin);
+      if (!approver) {
+        throw this.serverError(
+          `Approver with ID ${updated.id_admin} not found.`,
+          'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
+        );
       }
       await this.notificationsService.notify(
-        admin.email,
+        approver.email,
         `Solicitud actualizada`,
         `La solicitud de viaje con ID: ${updated.id} ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
-        `<p>Hola ${admin.name},</p>
+        `<p>Hola ${approver.name},</p>
 <p>La solicitud de viaje con ID: <strong>${updated.id}</strong> ha sido actualizada.</p>
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
@@ -393,7 +612,10 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
       where: { id },
     });
     if (!request) {
-      throw new NotFoundException(`Request with ID ${id} not found.`);
+      throw this.clientError(
+        `Request with ID ${id} not found.`,
+        'REQUESTS_INVALID_ID',
+      );
     }
     return request;
   }
@@ -402,7 +624,7 @@ async findByAdmin(req: RequestInterface): Promise<RequestEntity[]> {
     const request = await this.requestsRepo.findOne({ where: { id } });
 
     if (!request) {
-      throw new Error('Request not found');
+      throw this.clientError('Request not found', 'REQUESTS_INVALID_ID');
     }
     const previousStatus = request.status;
     request.status = newStatus;

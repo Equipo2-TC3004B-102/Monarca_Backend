@@ -4,11 +4,27 @@
   "description": "",
   "author": "",
   "private": true,
+  "engines": {
+    "node": "22.14.x",
+    "npm": "10.x"
+  },
+  "volta": {
+    "node": "22.14.0",
+    "npm": "10.9.2"
+  },
   "license": "UNLICENSED",
   "scripts": {
+    "setup": "npm run setup:env && npm run check:env",
+    "setup:env": "node scripts/setup-env.cjs",
+    "check:env": "node scripts/setup-env.cjs --check",
     "db:seed": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --seed",
+    "db:import": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./src/scripts/import-destinations.ts",
     "db:truncate": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --truncate",
     "db:drop": "ts-node -r tsconfig-paths/register -r source-map-support/register -r dotenv/config ./seed.ts --drop",
+    "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:generate ./migrations/%npm_config_name%",
+    "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:run",
+    "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:revert",
+    "migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./migrations/%npm_config_name%",
     "build": "nest build && npm run copy-templates",
     "copy-templates": "copyfiles -u 1 src/notifications/templates/*.html dist/src/notifications/templates",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -22,7 +38,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:migration:volume": "jest --config ./test/jest-e2e.json --runInBand --testPathPattern=migration-volume.e2e-spec.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -37,8 +54,11 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.6.1",
+    "fast-xml-parser": "^5.7.0",
     "handlebars": "^4.7.8",
+    "i18n-iso-countries": "^7.14.0",
     "multer": "^1.4.5-lts.2",
     "nodemailer": "^7.0.3",
     "pg": "^8.14.1",
@@ -91,6 +111,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
+    
   }
 }

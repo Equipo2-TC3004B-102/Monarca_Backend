@@ -1,12 +1,17 @@
+/**
+ * FileName: requests.status.service.ts
+ * Description: Service for request status transitions and related notifications.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 18/04/2026 [Julio Rodriguez] Updated the solicitation approval, first Approvers, then SOI and finally a travel agent.
+ */
+
 import {
   Injectable,
-  NotFoundException,
   BadRequestException,
-  UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsService } from './requests.service';
@@ -27,6 +32,10 @@ export class RequestsStatusService {
     private readonly travelAgenciesChecks: TravelAgenciesChecks,
   ) {}
 
+  private clientError(message: string, code: string) {
+    return new BadRequestException({ message, code });
+  }
+
   async approve(
     req: RequestInterface,
     id_request: string,
@@ -36,21 +45,28 @@ export class RequestsStatusService {
     const id_travel_agency = data.id_travel_agency;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
-      relations: ['user'],
+      relations: ['user', 'SOI'],
     });
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
-    if (!request) throw new NotFoundException('Invalid request id');
-
-    //CHECAR SI ES VALIDO EL TRAVEL AGENCY ID
-    if (!(await this.travelAgenciesChecks.Exists(id_travel_agency)))
-      throw new BadRequestException('Invalid travel agency id.');
+    // Validate travel agency id
+    if (!(await this.travelAgenciesChecks.exists(id_travel_agency)))
+      throw this.clientError(
+        'Invalid travel agency id.',
+        'REQUEST_STATUS_INVALID_TRAVEL_AGENCY',
+      );
 
     if (request.id_admin !== id_user)
-      throw new UnauthorizedException('Unable to approve request.');
+      throw this.clientError(
+        'Unable to approve request.',
+        'REQUEST_STATUS_APPROVE_NOT_ALLOWED',
+      );
 
     if (request.status !== 'Pending Review')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to approve because of the requests current status.',
+        'REQUEST_STATUS_APPROVE_INVALID_STATE',
       );
 
     await this.requestsRepo.update(
@@ -61,33 +77,29 @@ export class RequestsStatusService {
     await this.notificationsService.notify(
       request.user.email,
       'Solicitud de viaje aprobada',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de reservaciones.`,
+      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de reservaciones.</p>
-<p>Por favor, espera a que se realicen las reservaciones necesarias.</p>
+<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
+<p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
 
-    // notify to the travel agents
-    const agents = await this.travelAgenciesChecks.getTravelAgencyUsers(id_travel_agency);
-
-    for (const agent of agents) {
-      await this.notificationsService.notify(
-        agent.email,
-        'Nueva solicitud de viaje aprobada',
-        `La solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de reservaciones.`,
-        `<p>Hola ${agent.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de reservaciones.</p>
-<p>Por favor, revisa los detalles de la solicitud y procede con las reservaciones necesarias.</p>
+    // Notify SOI to review budget before reservations.
+    await this.notificationsService.notify(
+      request.SOI.email,
+      'Solicitud de viaje pendiente de aprobación de presupuesto',
+      `La solicitud de viaje con el título "${request.title}" fue aprobada y está pendiente de tu revisión de presupuesto.`,
+      `<p>Hola ${request.SOI.name},</p>
+<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada y está pendiente de tu revisión de presupuesto.</p>
+<p>Por favor, revisa la información para continuar el flujo.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
-      );
-    }
+    );
 
     return await this.requestsService.updateStatus(
       id_request,
-      'Pending Reservations',
+      'Pending Accounting Approval',
     );
   }
 
@@ -97,15 +109,19 @@ export class RequestsStatusService {
       where: { id: id_request },
       relations: ['user'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
     if (request.id_admin !== id_user)
-      throw new UnauthorizedException('Unable to deny request.');
+      throw this.clientError(
+        'Unable to deny request.',
+        'REQUEST_STATUS_DENY_NOT_ALLOWED',
+      );
 
     if (request.status !== 'Pending Review')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to deny because of the requests current status.',
+        'REQUEST_STATUS_DENY_INVALID_STATE',
       );
 
     await this.notificationsService.notify(
@@ -128,18 +144,22 @@ export class RequestsStatusService {
       where: { id: id_request },
       relations: ['user'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
     if (request.id_user !== id_user)
-      throw new UnauthorizedException('Unable to cancel request.');
+      throw this.clientError(
+        'Unable to cancel request.',
+        'REQUEST_STATUS_CANCEL_NOT_ALLOWED',
+      );
 
     if (
       request.status !== 'Pending Review' &&
       request.status !== 'Changes Needed'
     )
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to cancel because of the requests current status.',
+        'REQUEST_STATUS_CANCEL_INVALID_STATE',
       );
 
       await this.notificationsService.notify(
@@ -161,33 +181,32 @@ export class RequestsStatusService {
 
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
-      relations: ['SOI'],
+      relations: ['user'],
     });
 
-    if (!request) throw new NotFoundException('Invalid request id');
-
-    
-    // console.log("Scenario 1: ")
-    // console.log (`(!(id_travel_agency && id_travel_agency === request.id_travel_agency)) ${(!(id_travel_agency && id_travel_agency === request.id_travel_agency))}`)
-    // console.log("Scenario 2: ")
-    // console.log (` (!!id_travel_agency && id_travel_agency !== request.id_travel_agency) ${ (!!id_travel_agency && id_travel_agency !== request.id_travel_agency)}`)
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
     
     if  (!(id_travel_agency && id_travel_agency === request.id_travel_agency)) //Testear mas
-      throw new UnauthorizedException('Unable to change requests status.')
-
-    if (request.status !== 'Pending Reservations')
-      throw new ConflictException(
-        'Unable to change status because of the requests current status.',
+      throw this.clientError(
+        'Unable to change requests status.',
+        'REQUEST_STATUS_TRANSITION_NOT_ALLOWED',
       );
 
-    // Notify SOI
+    if (request.status !== 'Pending Reservations')
+      throw this.clientError(
+        'Unable to change status because of the requests current status.',
+        'REQUEST_STATUS_TRANSITION_INVALID_STATE',
+      );
+
+    // Notify user once reservations are completed.
     await this.notificationsService.notify(
-      request.SOI.email,
-      'Solicitud de viaje pendiente de aprobación contable',
-      `La solicitud de viaje con el título "${request.title}" ha finalizado las reservaciones y está pendiente de tu aprobación contable.`,
-      `<p>Hola ${request.SOI.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha finalizado las reservaciones y está pendiente de tu aprobación contable.</p>
-<p>Por favor, revisa los detalles de la solicitud y espera la aprobación contable.</p>
+      request.user.email,
+      'Reservaciones de viaje completadas',
+      `La agencia de viajes completó las reservaciones de la solicitud "${request.title}".`,
+      `<p>Hola ${request.user.name},</p>
+<p>La agencia de viajes completó las reservaciones de tu solicitud "<strong>${request.title}</strong>".</p>
+<p>Tu solicitud pasa ahora a estado de viaje en progreso.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
@@ -195,7 +214,7 @@ export class RequestsStatusService {
 
     return await this.requestsService.updateStatus(
       id_request,
-      'Pending Accounting Approval',
+      'In Progress',
     );
   }
 
@@ -205,32 +224,62 @@ export class RequestsStatusService {
       where: { id: id_request },
       relations: ['user'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
 
     if (request.id_SOI !== id_user)
-      throw new UnauthorizedException('Unable to approve request.');
+      throw this.clientError(
+        'Unable to approve request.',
+        'REQUEST_STATUS_SOI_APPROVE_NOT_ALLOWED',
+      );
 
     if (request.status !== 'Pending Accounting Approval')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to change status because of the requests current status.',
+        'REQUEST_STATUS_SOI_APPROVE_INVALID_STATE',
+      );
+
+    if (!request.id_travel_agency)
+      throw this.clientError(
+        'Unable to route request because travel agency is not assigned.',
+        'REQUEST_STATUS_TRAVEL_AGENCY_REQUIRED',
       );
 
     // Notify user
     await this.notificationsService.notify(
       request.user.email,
       'Solicitud de viaje aprobada contablemente',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada contablemente.`,
+      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada contablemente y será enviada a reservaciones.`,
       `<p>Hola ${request.user.name},</p>
 <p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada contablemente.</p>
-<p>Ya puedes descargar tus reservaciones y llevar a cabo tu viaje.</p>
-<p>Una vez concluyas el viaje, puedes iniciar la comprobación de gastos.</p>
+<p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
     );
 
-    return await this.requestsService.updateStatus(id_request, 'In Progress');
+    // Notify travel agents to start reservations after SOI budget approval.
+    const agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
+      request.id_travel_agency,
+    );
+
+    for (const agent of agents) {
+      await this.notificationsService.notify(
+        agent.email,
+        'Solicitud lista para reservaciones',
+        `La solicitud de viaje con el título "${request.title}" fue aprobada por SOI y está lista para reservaciones.`,
+        `<p>Hola ${agent.name},</p>
+<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada por SOI y está lista para reservaciones.</p>
+<p>Por favor, revisa la solicitud y procede con la reservación.</p>
+<p>Saludos,</p>
+<p>Equipo de Monarca</p>`,
+      );
+    }
+
+    return await this.requestsService.updateStatus(
+      id_request,
+      'Pending Reservations',
+    );
   }
 
   async finishedUploadingVouchers(req: RequestInterface, id_request: string) {
@@ -239,15 +288,19 @@ export class RequestsStatusService {
       where: { id: id_request },
       relations: ['admin'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
     if (request.id_user !== id_user)
-      throw new UnauthorizedException('Unable to change status on request.');
+      throw this.clientError(
+        'Unable to change status on request.',
+        'REQUEST_STATUS_UPLOAD_VOUCHERS_NOT_ALLOWED',
+      );
 
     if (request.status !== 'In Progress')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to change status because of the requests current status.',
+        'REQUEST_STATUS_UPLOAD_VOUCHERS_INVALID_STATE',
       );
 
     // Notify admin
@@ -267,23 +320,27 @@ export class RequestsStatusService {
       'Pending Vouchers Approval',
     );
   }
-
-  // Se cambia el estatus final de Completed a Pending Refund Approval
+  
+  // Changes final status from Completed to Pending Refund Approval.
   async finishedApprovingVouchers(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
       relations: ['user', 'SOI'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
     if (request.id_admin !== id_user)
-      throw new UnauthorizedException('Unable to change status on request.');
+      throw this.clientError(
+        'Unable to change status on request.',
+        'REQUEST_STATUS_APPROVE_VOUCHERS_NOT_ALLOWED',
+      );
 
     if (request.status !== 'Pending Vouchers Approval')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to change status because of the requests current status.',
+        'REQUEST_STATUS_APPROVE_VOUCHERS_INVALID_STATE',
       );
 
     // Notify user
@@ -313,22 +370,26 @@ export class RequestsStatusService {
     return await this.requestsService.updateStatus(id_request, 'Pending Refund Approval');
   }
 
-  //finsihedRegisteringRequest
+  // Finished request registration flow
   async finsihedRegisteringRequest(req: RequestInterface, id_request: string) {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
       relations: ['user'],
     });
-
-    if (!request) throw new NotFoundException('Invalid request id');
+    if (!request)
+      throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
     if (request.id_SOI !== id_user)
-      throw new UnauthorizedException('Unable to change status on request.');
+      throw this.clientError(
+        'Unable to change status on request.',
+        'REQUEST_STATUS_COMPLETE_NOT_ALLOWED',
+      );
 
     if (request.status !== 'Pending Refund Approval')
-      throw new ConflictException(
+      throw this.clientError(
         'Unable to change status because of the requests current status.',
+        'REQUEST_STATUS_COMPLETE_INVALID_STATE',
       );
 
     // Notify user

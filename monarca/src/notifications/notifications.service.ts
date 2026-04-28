@@ -49,10 +49,20 @@ export class NotificationsService {
     try {
       await this.transporter.sendMail(mailOptions);
       console.log('Correo enviado correctamente');
-    } catch (error) {
-      console.error('Error enviando correo:', error.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown email error';
+      console.error('Error enviando correo:', errorMessage);
     }
   }
+    // BYPASS EMAILS FOR NOW
+    /** try {
+      return await this.transporter.sendMail(mailOptions);
+    } catch (error: any) {
+      console.warn(`[Local Dev] Ignored email to ${to} (${subject}). Error:`, error.message);
+      return null;
+    } */
+   
 
   /**
    * sendNotification - Convenience wrapper around sendMail for structured notification calls.

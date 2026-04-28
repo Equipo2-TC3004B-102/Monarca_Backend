@@ -6,14 +6,14 @@
  *              to 'Changes Needed'.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
+ *                              BadRequestException for HTTP 400 policy and
+ *                              aligned header documentation.
  */
 
 import {
+  BadRequestException,
   Injectable,
-  NotFoundException,
-  UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { CreateRevisionDto } from './dto/create-revision.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -44,25 +44,25 @@ export class RevisionsService {
    * Input: req (RequestInterface) - session info containing the authenticated user ID;
    *        data (CreateRevisionDto) - revision fields: id_request and comment.
    * Output: Promise<Revision> - the newly saved revision entity.
-   * Throws NotFoundException if the request or user does not exist.
-   * Throws UnauthorizedException if the caller is not the request admin or
+   * Throws BadRequestException if the request or user does not exist.
+   * Throws BadRequestException if the caller is not the request admin or
    *        the request is not in a revisable status.
    */
   async create(req: RequestInterface, data: CreateRevisionDto) {
     const userId = req.sessionInfo.id;
 
     if (!(await this.requestChecks.requestExists(data.id_request))) {
-      throw new NotFoundException('Invalid request id.');
+      throw new BadRequestException('Invalid request id.');
     }
 
     if (!(await this.requestChecks.isRequestsAdmin(data.id_request, userId))) {
-      throw new UnauthorizedException('Unable to write to that request.');
+      throw new BadRequestException('Unable to write to that request.');
     }
 
     const requestStatus = await this.requestChecks.getRequestStatus(data.id_request)
     if (requestStatus !== 'Pending Review' &&
         requestStatus !== 'Changes Needed') {
-      throw new UnauthorizedException('Unable to create a revision because of the requets status.');
+      throw new BadRequestException('Unable to create a revision because of the requets status.');
     }
 
     const revision = this.revisionRepository.create({
@@ -72,12 +72,12 @@ export class RevisionsService {
 
     const user = await this.userChecks.getUserById(userId);
     if (!user) {
-      throw new NotFoundException('User not found.');
+      throw new BadRequestException('User not found.');
     }
 
     const request = await this.requestService.getRequestById(data.id_request);
     if (!request) {
-      throw new NotFoundException('Request not found.');
+      throw new BadRequestException('Request not found.');
     }
 
     // Notify the user that a revision has been created

@@ -5,14 +5,12 @@
  *              belonging to a travel agency.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 11/04/2026 [Julio Rodriguez] Standardized client error handling to BadRequestException for HTTP 400 policy and aligned header documentation.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
-  CreateTravelAgencyDto,
   TravelAgencyDto,
-  UpdateTravelAgencyDto,
 } from './dto/travel-agency.dtos';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TravelAgency } from './entities/travel-agency.entity';
@@ -39,10 +37,10 @@ export class TravelAgenciesChecks {
       relations: ['users'],
     });
     if (!travel_agency) {
-      throw new NotFoundException('Travel agency not found');
+      throw new BadRequestException('Travel agency not found');
     }
     if (travel_agency.users.length === 0) {
-      throw new NotFoundException('No users found for this travel agency');
+      throw new BadRequestException('No users found for this travel agency');
     }
     return travel_agency.users;
   }

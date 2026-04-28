@@ -1,0 +1,30 @@
+name: Backend PR Checks
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ./monarca/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./monarca
+        run: npm ci
+
+      - name: Build
+        working-directory: ./monarca
+        run: npm run build
