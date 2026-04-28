@@ -570,13 +570,31 @@ npm run db:import
 
 **Available users (all with the password: `password`):**
 
+**Monarca Mexico** (`11111111-1111-4111-8111-111111111111`)
+
 | Role | Email | Password |
 |-----|-------|------------|
 | Requester (Solicitante) | `requester1@monarca.com` | `password` |
 | Requester (Solicitante) | `requester2@monarca.com` | `password` |
 | Approver (Aprobador) | `approver1@monarca.com` | `password` |
+| SOI (Coordinator) | `soi1@monarcamx.com` | `password` |
+| Company Admin | `admin@monarcamx.com` | `password` |
+
+**Monarca US** (`22222222-2222-4222-8222-222222222222`)
+
+| Role | Email | Password |
+|-----|-------|------------|
+| Requester (Solicitante) | `requester1@monarcaus.com` | `password` |
+| Approver (Aprobador) | `approver1@monarcaus.com` | `password` |
 | SOI (Coordinator) | `soi1@monarca.com` | `password` |
-| Travel Agent (Agent) | `travelagent1@monarca.com` | `password` |
+| Travel Agent (Agente) | `travelagent1@monarca.com` | `password` |
+| Company Admin | `admin@monarcaus.com` | `password` |
+
+**Global (Ditta)**
+
+| Role | Email | Password |
+|-----|-------|------------|
+| System Admin | `admin@ditta.com` | `password` |
 
 ---
 
