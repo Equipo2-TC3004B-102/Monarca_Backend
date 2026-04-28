@@ -15,9 +15,10 @@ import { UserChecks } from './user.checks.service';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { RolesModule } from 'src/roles/roles.module';
+import { GuardsModule } from 'src/guards/guards.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), RolesModule],
+  imports: [TypeOrmModule.forFeature([User]), RolesModule, GuardsModule],
   controllers: [UsersController],
   providers: [UserChecks, UsersService],
   exports: [UserChecks, UsersService],

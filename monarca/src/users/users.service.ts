@@ -17,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto, UpdateUserDto, UserDto } from './dto/user.dtos';
+import { ImportUserDto } from './dto/import-user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -74,25 +75,41 @@ export class UsersService {
     return { status: true, message: `User ${id} deleted` };
   }
 
-  async importUsers(users: CreateUserDto[]): Promise<{ created: number; errors: string[] }> {
+  async importUsers(users: ImportUserDto[]): Promise<{ created: number; errors: string[] }> {
     const errors: string[] = [];
     let created = 0;
+    const REQUESTER_ROLE_ID = 'b0d4211d-457e-4d84-b8a4-320af380683f';
 
+    // Create users in batch, skipping those that fail and collecting errors
     for (const userData of users) {
-      try {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(userData.password, salt);
+      try { 
+        const rawPassword = userData.employee_num ?? 'password';
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
         const ent = this.repo.create({
           ...userData,
+          last_name: '',
           password: hashedPassword,
+          id_role: REQUESTER_ROLE_ID,
+          is_requester: true,
           user_name: userData.user_name ?? userData.email.split('@')[0],
           creation_date: userData.creation_date ?? new Date(),
         });
         await this.repo.save(ent);
         created++;
-      } catch (err) {
-        errors.push(`${userData.email}: ${err.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`${userData.email}: ${message}`);
       }
+    }
+
+    // Users referenced as managers in the batch become approvers
+    // Also assigns the Approver role — temporary until RBAC-to-flags migration is complete
+    const APPROVER_ROLE_ID = '8f28d424-2d93-483a-9018-f568cf6bc13a';
+    const managerIds = [...new Set(
+      users.filter((u) => u.manager_id).map((u) => u.manager_id as string),
+    )];
+    for (const managerId of managerIds) {
+      await this.repo.update(managerId, { is_approver: true, id_role: APPROVER_ROLE_ID });
     }
 
     return { created, errors };

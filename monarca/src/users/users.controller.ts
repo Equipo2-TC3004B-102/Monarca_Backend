@@ -13,13 +13,19 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dtos';
+import { ImportUserDto } from './dto/import-user.dto';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { PermissionsGuard } from 'src/guards/permissions.guard';
+import { CompanyAdminGuard } from 'src/guards/company-admin.guard';
 
 @Controller('users')
 export class UsersController {
@@ -49,7 +55,9 @@ export class UsersController {
   }
 
   @Post('import')
-  importUsers(@Body() users: CreateUserDto[]) {
+  @HttpCode(200)
+  @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
+  importUsers(@Body() users: ImportUserDto[]) {
     return this.usersService.importUsers(users);
   }
 }
