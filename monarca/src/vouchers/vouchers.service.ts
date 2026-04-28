@@ -263,45 +263,35 @@ export class VouchersService {
       finalAmount = Math.round(voucherData.amount * exchangeRate * 100) / 100;
     }
 
-    try {
-      const voucher = this.voucherRepo.create({
-        id_request: voucherData.id_request,
-        class: voucherData.class,
-        amount: finalAmount,        
-        unconverted_amount: unconvertedAmount,        
-        currency: voucherData.currency,
-        tax_type: voucherData.tax_type,
-        date: new Date(voucherData.date),
-        file_url_pdf: voucherData.file_url_pdf ?? null,
-        file_url_xml: voucherData.file_url_xml ?? null,
-        status: voucherData.status,
-        id_approver: voucherData.id_approver,
-        fiscal_uuid: voucherData.fiscal_uuid ?? null,
-        issuer_rfc: voucherData.issuer_rfc ?? null,
-        issuer_name: voucherData.issuer_name ?? null,
-        receiver_rfc: voucherData.receiver_rfc ?? null,
-        receiver_name: voucherData.receiver_name ?? null,
-        exchange_rate: voucherData.exchange_rate ?? null,
-        subtotal: voucherData.subtotal ?? null,
-        discount: voucherData.discount ?? null,
-        iva_trasladado: voucherData.iva_trasladado ?? null,
-        ieps_trasladado: voucherData.ieps_trasladado ?? null,
-        isr_retenido: voucherData.isr_retenido ?? null,
-        iva_retenido: voucherData.iva_retenido ?? null,
-        payment_form: voucherData.payment_form ?? null,
-        payment_method: voucherData.payment_method ?? null,
-      });
+    const voucher = this.voucherRepo.create({
+      id_request: voucherData.id_request,
+      class: voucherData.class,
+      amount: finalAmount,
+      unconverted_amount: unconvertedAmount,
+      currency: voucherData.currency,
+      tax_type: voucherData.tax_type,
+      date: new Date(voucherData.date),
+      file_url_pdf: voucherData.file_url_pdf ?? null,
+      file_url_xml: voucherData.file_url_xml ?? null,
+      status: voucherData.status,
+      id_approver: voucherData.id_approver,
+      fiscal_uuid: voucherData.fiscal_uuid ?? null,
+      issuer_rfc: voucherData.issuer_rfc ?? null,
+      issuer_name: voucherData.issuer_name ?? null,
+      receiver_rfc: voucherData.receiver_rfc ?? null,
+      receiver_name: voucherData.receiver_name ?? null,
+      exchange_rate: voucherData.exchange_rate ?? null,
+      subtotal: voucherData.subtotal ?? null,
+      discount: voucherData.discount ?? null,
+      iva_trasladado: voucherData.iva_trasladado ?? null,
+      ieps_trasladado: voucherData.ieps_trasladado ?? null,
+      isr_retenido: voucherData.isr_retenido ?? null,
+      iva_retenido: voucherData.iva_retenido ?? null,
+      payment_form: voucherData.payment_form ?? null,
+      payment_method: voucherData.payment_method ?? null,
+    });
 
-      return await this.voucherRepo.save(voucher);
-    } catch (error) {
-      if (this.isForeignKeyViolation(error)) {
-        throw new InternalServerErrorException(
-          `Failed to create voucher for request ${data.id_request}`,
-        );
-      }
-
-      throw error;
-    }
+    return await this.voucherRepo.save(voucher);
   }
 
   private isForeignKeyViolation(error: unknown): boolean {
