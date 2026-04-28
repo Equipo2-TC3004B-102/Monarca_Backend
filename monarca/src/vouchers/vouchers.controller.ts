@@ -25,7 +25,6 @@ import {
 import * as fs from 'fs';
 import { VouchersService } from './vouchers.service';
 import { XmlParserService } from './services/xml-parser.service';
-import { ParsedCfdi } from './interfaces/parsed-cfdi.interface';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -59,7 +58,7 @@ export class VouchersController {
   async parseXml(
     @UploadedFiles()
     files: { file_url_xml?: Express.Multer.File[] },
-  ): Promise<ParsedCfdi> {
+  ): Promise<ReturnType<XmlParserService['parse']>> {
     const xmlFile = files?.file_url_xml?.[0];
     if (!xmlFile) {
       throw new BadRequestException('An XML file is required in the file_url_xml field.');
@@ -114,9 +113,17 @@ export class VouchersController {
       }
     }
 
+    let xmlBuffer: Buffer | undefined;
+    const xmlFile = files.file_url_xml?.[0];
+    if (xmlFile) {
+      xmlBuffer = fs.readFileSync(xmlFile.path);
+    }
+
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap}
+      dto,
+      xmlBuffer,
+      fileMap
     );
   }
 
