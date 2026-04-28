@@ -75,27 +75,44 @@ export class UsersService {
     return { status: true, message: `User ${id} deleted` };
   }
 
-  async importUsers(users: ImportUserDto[]): Promise<{ created: number; errors: string[] }> {
+  async importUsers(
+    users: ImportUserDto[],
+    callerCompanyId: string | null,
+  ): Promise<{ created: number; updated: number; errors: string[] }> {
     const errors: string[] = [];
-    let created = 0;
+    let created = 0; // Count for new users in the sistem
+    let updated = 0; // Count for existing users that were updated with new data from the batch.
     const REQUESTER_ROLE_ID = 'b0d4211d-457e-4d84-b8a4-320af380683f';
 
-    // Create users in batch, skipping those that fail and collecting errors
     for (const userData of users) {
-      try { 
-        const rawPassword = userData.employee_num ?? 'password';
-        const hashedPassword = await bcrypt.hash(rawPassword, 10);
-        const ent = this.repo.create({
-          ...userData,
-          last_name: '',
-          password: hashedPassword,
-          id_role: REQUESTER_ROLE_ID,
-          is_requester: true,
-          user_name: userData.user_name ?? userData.email.split('@')[0],
-          creation_date: userData.creation_date ?? new Date(),
-        });
-        await this.repo.save(ent);
-        created++;
+      try {
+        // If there is no Employee number it uses the email to find the user, if there is an employee number it looks for both employee number and company id to avoid conflicts between companies with the same employee numbers.
+        const existing = userData.employee_num && callerCompanyId
+          ? await this.repo.findOne({ where: { employee_num: userData.employee_num, id_company: callerCompanyId } })
+          : await this.repo.findOne({ where: { email: userData.email } });
+
+        if (existing) {
+          await this.repo.update(existing.id, {
+            ...userData,
+            id_company: callerCompanyId ?? existing.id_company,
+            user_name: userData.user_name ?? existing.user_name,
+          });
+          updated++;
+        } else {
+          const hashedPassword = await bcrypt.hash('password', 10);
+          const ent = this.repo.create({
+            ...userData,
+            last_name: '',
+            password: hashedPassword,
+            id_role: REQUESTER_ROLE_ID,
+            id_company: callerCompanyId,
+            is_requester: true,
+            user_name: userData.user_name ?? userData.email.split('@')[0],
+            creation_date: userData.creation_date ?? new Date(),
+          });
+          await this.repo.save(ent);
+          created++;
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         errors.push(`${userData.email}: ${message}`);
@@ -112,6 +129,6 @@ export class UsersService {
       await this.repo.update(managerId, { is_approver: true, id_role: APPROVER_ROLE_ID });
     }
 
-    return { created, errors };
+    return { created, updated, errors };
   }
 }
