@@ -47,6 +47,7 @@ import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
 import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
 import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
 import { RequestApproval } from './approval-engine/entities/request-approval.entity';
+import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
 import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
 @Module({
@@ -71,6 +72,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
     UserLogsModule,
     GuardsModule,
     CompaniesModule,
+    ApprovalRulesModule,
     ApprovalEngineModule,
     TypeOrmModule.forRoot({
       type: 'postgres',

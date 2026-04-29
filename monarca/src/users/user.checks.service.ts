@@ -47,7 +47,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'email', 'last_name', 'role'],
+      select: ['id', 'name', 'email', 'last_name', 'role', 'is_system_admin'],
       relations: ['role', 'role.permissions'],
     });
 

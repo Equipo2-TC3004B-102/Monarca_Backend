@@ -16,9 +16,10 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/user.dtos';
+import { CreateUserDto, UpdateUserDto } from './dto/user.dtos';
 
 @Controller('users')
 export class UsersController {
@@ -45,5 +46,10 @@ export class UsersController {
   @Delete(':id')
   remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.usersService.delete(id);
+  }
+
+  @Post('import')
+  importUsers(@Body() users: CreateUserDto[]) {
+    return this.usersService.importUsers(users);
   }
 }
