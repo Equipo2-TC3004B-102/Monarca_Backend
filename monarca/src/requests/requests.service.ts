@@ -4,8 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [Diego de la Vega] Added default provider support metadata for
- *                             requests_destinations on create and update.
+ * 29/04/2026 [Julio Rodriguez] Passed id_company to approver chain and cost-center fallback methods to enforce company scoping.
  */
 
 import {
@@ -152,7 +151,7 @@ export class RequestsService {
         );
     }
 
-    //ASIGNAR APROVADOR
+    //ASING APPROVER
     const id_ceco = req.userInfo.id_ceco;
     if (!id_ceco) {
       throw this.clientError(
@@ -177,21 +176,9 @@ export class RequestsService {
       );
     }
 
-    let adminId = await this.userChecks.getApproverIdFromManagerChain(
-      userId,
-      2,
-    );
+    let adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
     if (!adminId) {
-      adminId = await this.userChecks.getApproverIdByCompany(
-        id_company,
-        userId,
-      );
-    }
-    if (!adminId) {
-      adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
-        id_ceco,
-        userId,
-      );
+      adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
     }
     if (!adminId) {
       throw this.serverError(

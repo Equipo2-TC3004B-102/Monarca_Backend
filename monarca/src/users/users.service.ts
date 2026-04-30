@@ -6,7 +6,7 @@
  *              role and permission relations.
  * Authors: Original Monarca team
  * Last Modification made:
- * 16/04/2026 [Julio Rodriguez] Added role handdler with flags for permissions for access certain resources, added company_id to separate users by company.
+ * 29/04/2026 [Julio Rodriguez] Fixed importUsers: resolve manager_id as employee_num → UUID scoped to id_company; set is_approver flag; removed RBAC role assignment.
  */
 
 import {
@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateUserDto, UpdateUserDto, UserDto } from './dto/user.dtos';
 import { ImportUserDto } from './dto/import-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -86,14 +86,18 @@ export class UsersService {
 
     for (const userData of users) {
       try {
+        // manager_id in ImportUserDto is an employee_num string, not a UUID — strip it from
+        // the DB spread. It is resolved to a real UUID FK in the second pass below.
+        const { manager_id: _managerEmployeeNum, ...userDataRest } = userData;
+
         // If there is no Employee number it uses the email to find the user, if there is an employee number it looks for both employee number and company id to avoid conflicts between companies with the same employee numbers.
         const existing = userData.employee_num && callerCompanyId
           ? await this.repo.findOne({ where: { employee_num: userData.employee_num, id_company: callerCompanyId } })
           : await this.repo.findOne({ where: { email: userData.email } });
 
-        if (existing) {
+        if (existing) { // Update existing user with new data in the JSON
           await this.repo.update(existing.id, {
-            ...userData,
+            ...userDataRest,
             id_company: callerCompanyId ?? existing.id_company,
             user_name: userData.user_name ?? existing.user_name,
           });
@@ -101,7 +105,7 @@ export class UsersService {
         } else {
           const hashedPassword = await bcrypt.hash('password', 10);
           const ent = this.repo.create({
-            ...userData,
+            ...userDataRest,
             last_name: '',
             password: hashedPassword,
             id_role: REQUESTER_ROLE_ID,
@@ -119,14 +123,46 @@ export class UsersService {
       }
     }
 
-    // Users referenced as managers in the batch become approvers
-    // Also assigns the Approver role — temporary until RBAC-to-flags migration is complete
-    const APPROVER_ROLE_ID = '8f28d424-2d93-483a-9018-f568cf6bc13a';
-    const managerIds = [...new Set(
-      users.filter((u) => u.manager_id).map((u) => u.manager_id as string),
-    )];
-    for (const managerId of managerIds) {
-      await this.repo.update(managerId, { is_approver: true, id_role: APPROVER_ROLE_ID });
+    // Manager_id qill be handdled by employee_nums, UUIDs scoped to callerCompanyId,
+    // promote those users to approver, and update the manager_id FK on imported users.
+    const managerEmployeeNums = [ // Filters the users that are in manager_id field and creates a unique list of employee numbers to look up their UUIDs later.
+      ...new Set(users.filter((u) => u.manager_id).map((u) => u.manager_id as string)),
+    ];
+
+    // Creates a manager list for requests approvals
+    if (managerEmployeeNums.length > 0) {
+      const whereCondition = callerCompanyId // Company id for searching approvers in the same company.
+        ? { employee_num: In(managerEmployeeNums), id_company: callerCompanyId }
+        : { employee_num: In(managerEmployeeNums) };
+
+      const managers = await this.repo.find({ // Creates the list of managers to be updated with approver permissions later.
+        where: whereCondition,
+        select: ['id', 'employee_num'],
+      });
+
+      const managerUUIDMap = new Map(managers.map((m) => [m.employee_num, m.id])); // Creates a map of employee_num to UUID for the managers found, to update the manager_id field on the imported users later.
+
+      for (const manager of managers) {
+        await this.repo.update(manager.id, { is_approver: true }); // Updates the manager users with approver permissions to allow them to approve requests.
+      }
+
+      // Updates the manager_id field on the imported users with the corresponding manager UUIDs found by employee_num.
+      for (const userData of users.filter((u) => u.manager_id)) { // Gets 
+        const managerUUID = managerUUIDMap.get(userData.manager_id!);
+        if (!managerUUID) continue;
+
+        const importedUser = 
+          userData.employee_num && callerCompanyId
+            ? await this.repo.findOne({
+                where: { employee_num: userData.employee_num, id_company: callerCompanyId },
+                select: ['id'],
+              })
+            : await this.repo.findOne({ where: { email: userData.email }, select: ['id'] });
+
+        if (importedUser) {
+          await this.repo.update(importedUser.id, { manager_id: managerUUID });
+        }
+      }
     }
 
     return { created, updated, errors };

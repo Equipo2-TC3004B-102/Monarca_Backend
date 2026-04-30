@@ -8,6 +8,7 @@
  *              to system admins exclusively.
  * Authors: DebugStudio Team
  * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
+ * 29/04/2026 [Julio Rodriguez] Added POST /admin/companies/setup endpoint.
  */
 
 import {
@@ -32,7 +33,7 @@ import { SystemAdminGuard } from 'src/guards/system-admin.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
+import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
 
 @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
 @Controller('admin')
@@ -40,6 +41,18 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // Companies (system admin)
+
+  /**
+   * setupCompany — Creates a company and its initial company admin user. System admin only.
+   * Input: body with CompanySetupDto (company fields + admin user fields).
+   * Output: created company and admin user without password.
+   */
+  @Post('companies/setup')
+  @HttpCode(200)
+  @UseGuards(SystemAdminGuard)
+  async setupCompany(@Body() dto: CompanySetupDto) {
+    return this.adminService.setupCompany(dto);
+  }
 
   /**
    * createCompany — Creates a new company. System admin only.

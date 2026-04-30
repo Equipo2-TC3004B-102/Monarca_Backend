@@ -6,7 +6,8 @@
  *              and cannot set the is_system_admin flag on users.
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
- * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminService with company CRUD and user management.
+ * Last Modification: 
+ * 29/04/2026 [Julio Rodriguez] Added setupCompany: creates company and company admin user in one operation.
  */
 
 import {
@@ -20,7 +21,7 @@ import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
+import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 
 @Injectable()
@@ -270,5 +271,43 @@ export class AdminService {
     await this.findUserInCompany(companyId, userId);
     await this.userRepository.delete(userId);
     return { status: true, message: `User ${userId} deleted from company ${companyId}` };
+  }
+
+  /**
+   * setupCompany — Creates a company and its initial company admin user in one operation.
+   * The admin user gets is_company_admin: true, id_company scoped to the new company,
+   * and a bcrypt-hashed default password.
+   * Input: CompanySetupDto with company fields and admin user fields.
+   * Output: created company and admin user (without password).
+   */
+  async setupCompany(
+    dto: CompanySetupDto,
+  ): Promise<{ company: Company; admin: Omit<User, 'password'> }> {
+    const company = await this.companyRepository.save(
+      this.companyRepository.create({ name: dto.name, local_currency: dto.local_currency }),
+    );
+
+    const hashedPassword = await bcrypt.hash('password', 10);
+    const adminEntity = this.userRepository.create({
+      name: dto.admin.name,
+      last_name: dto.admin.last_name ?? '',
+      email: dto.admin.email,
+      employee_num: dto.admin.employee_num,
+      user_name: dto.admin.email.split('@')[0],
+      password: hashedPassword,
+      id_company: company.id,
+      is_company_admin: true,
+      is_requester: false,
+      is_approver: false,
+      is_soi: false,
+      is_travelAgent: false,
+      is_system_admin: false,
+      creation_date: new Date(),
+    });
+
+    const savedAdmin = await this.userRepository.save(adminEntity);
+    const { password, ...adminWithoutPassword } = savedAdmin;
+
+    return { company, admin: adminWithoutPassword };
   }
 }

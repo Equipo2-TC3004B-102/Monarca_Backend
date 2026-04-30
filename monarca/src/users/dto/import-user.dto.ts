@@ -4,12 +4,12 @@
  *              defined by the admin import format. Password, role, and flags
  *              are derived automatically by the import service.
  * Authors: DebugStudio Team
- * Last Modification: 28/04/2026 [Julio Rodríguez] Created ImportUserDto for JSON bulk import.
+ * 29/04/2026 [Julio Rodriguez] manager_id → IsString (employee_num ref); removed id_ceco — assigned via admin UI.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDate, IsOptional, IsString } from 'class-validator';
 
 export class ImportUserDto {
   @ApiProperty({ example: 'EMP-001', required: false })
@@ -30,8 +30,8 @@ export class ImportUserDto {
   @IsString()
   email: string;
 
-  @ApiProperty({ example: '00000001-0000-4000-8000-000000000002', required: false })
-  @IsUUID()
+  @ApiProperty({ example: 'EMP-002', required: false })
+  @IsString()
   @IsOptional()
   manager_id?: string | null;
 
@@ -39,11 +39,6 @@ export class ImportUserDto {
   @IsString()
   @IsOptional()
   provider?: string | null;
-
-  @ApiProperty({ example: 'a1f4e0e1-1b89-4ccf-9e57-43f4b3d1a001', required: false })
-  @IsUUID()
-  @IsOptional()
-  id_ceco?: string | null;
 
   @ApiProperty({ example: 'active' })
   @IsString()
