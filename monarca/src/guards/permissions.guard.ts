@@ -5,7 +5,7 @@
  *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 28/04/2026 [Julio Rodriguez] Refactored to derive permissions from FLAG_PERMISSIONS map instead of roles_permissions join. Changed .every() to .some() for OR logic on multi-permission endpoints.
+ * 30/04/2026 [Julio Rodriguez] Added map for permissions with flags
  */
 
 import {
@@ -81,6 +81,9 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!permissionsRequired) return true;
+
+    // System admins bypass all permission checks — they have access to every business endpoint.
+    if (user.is_system_admin) return true;
 
     const hasPermission = permissionsRequired.some((permission) =>
       userPermissions.includes(permission),
