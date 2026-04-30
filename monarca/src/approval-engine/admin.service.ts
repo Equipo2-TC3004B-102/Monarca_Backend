@@ -7,7 +7,7 @@
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
  * Last Modification: 
- * 29/04/2026 [Julio Rodriguez] Added setupCompany: creates company and company admin user in one operation.
+ * 30/04/2026 [Julio Rodriguez] Added status 'active' to admin entity and used a placeholder for approver role for company admin.
  */
 
 import {
@@ -19,6 +19,7 @@ import { ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Roles } from 'src/roles/entity/roles.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
 import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
@@ -32,6 +33,9 @@ export class AdminService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(Roles)
+    private readonly rolesRepository: Repository<Roles>,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -287,6 +291,13 @@ export class AdminService {
       this.companyRepository.create({ name: dto.name, local_currency: dto.local_currency }),
     );
 
+    // id_role is a legacy NOT NULL column — use any existing role as a placeholder until the column is made nullable in a future migration.
+    const placeholderRole = await this.rolesRepository.findOne({ where: { name: 'Aprobador' } })
+      ?? await this.rolesRepository.findOne({ where: {} });
+    if (!placeholderRole) {
+      throw this.clientError('No roles found in DB — run seeds before creating companies', 'SETUP_NO_ROLES');
+    }
+
     const hashedPassword = await bcrypt.hash('password', 10);
     const adminEntity = this.userRepository.create({
       name: dto.admin.name,
@@ -295,6 +306,8 @@ export class AdminService {
       employee_num: dto.admin.employee_num,
       user_name: dto.admin.email.split('@')[0],
       password: hashedPassword,
+      status: 'active',
+      id_role: placeholderRole.id,
       id_company: company.id,
       is_company_admin: true,
       is_requester: false,
