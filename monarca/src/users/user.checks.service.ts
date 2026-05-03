@@ -6,6 +6,7 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 03/05/2026 [Julio Rodriguez] Added is_company_admin to getUserById select so profile endpoint returns the flag.
+ *                              Removed getRandomApproverID and getRandomApproverIdFromSameCostCenter.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -55,33 +56,6 @@ export class UserChecks {
   }
 
   /**
-   * getRandomApproverID, selects a random approver from all available approver users.
-   * Input: none.
-   * Output: Approver user id when available, otherwise null.
-   */
-  async getRandomApproverID(): Promise<string | null> {
-    const approvers = await this.userRepository.find({
-      where: {
-        role: {
-          name: 'Aprobador',
-        },
-      },
-      select: ['id'],
-      relations: [],
-    });
-
-    // console.log(approvers)
-
-    if (approvers.length === 0) {
-      return null;
-    }
-
-    const randomIndex = Math.floor(Math.random() * approvers.length);
-
-    return approvers[randomIndex].id;
-  }
-
-  /**
    * getApproverIdFromManagerChain, resolves an approver using manager hierarchy.
    * Input: id_user (string), max_levels (number) hierarchy depth to evaluate, id_company (string) company scope.
    * Output: Approver user id when found in hierarchy within the same company, otherwise null.
@@ -128,34 +102,6 @@ export class UserChecks {
     }
 
     return null;
-  }
-
-  /**
-   * getRandomApproverIdFromSameCostCenter, resolves an approver from the same CeCo scoped to a company.
-   * Input: id_cost_center (string), id_user (string), id_company (string) company scope.
-   * Output: Approver user id when available, otherwise null.
-   */
-  async getRandomApproverIdFromSameCostCenter(
-    id_cost_center: string,
-    id_user: string,
-    id_company: string,
-  ): Promise<string | null> {
-    const approvers = await this.userRepository
-      .createQueryBuilder('u')
-      .where('u.id != :id_user', { id_user })
-      .andWhere('u.id_ceco = :id_cost_center', { id_cost_center })
-      .andWhere('u.is_approver = :isApprover', { isApprover: true })
-      .andWhere('u.id_company = :id_company', { id_company })
-      .orderBy('u.created_at', 'ASC')
-      .addOrderBy('u.id', 'ASC')
-      .select('u.id', 'id')
-      .getRawMany<{ id: string }>();
-
-    if (approvers.length === 0) {
-      return null;
-    }
-
-    return approvers[0].id;
   }
 
   /**
