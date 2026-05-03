@@ -7,8 +7,10 @@
  *              runs in addition to the class-level guards and restricts those endpoints
  *              to system admins exclusively.
  * Authors: DebugStudio Team
- * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
+ * Last Modification:
+ * 03/05/2026 [Julio Rodriguez] GET /admin/users now accessible to both admins; results scoped by service.
  * 29/04/2026 [Julio Rodriguez] Added POST /admin/companies/setup endpoint.
+ * 28/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
  */
 
 import {
@@ -204,15 +206,15 @@ export class AdminController {
   // Global user management (system admin)
 
   /**
-   * findAllUsers — Returns all users in the system. System admin only.
+   * findAllUsers — Returns users visible to the caller.
+   * System admins see all users; company admins see only their own company's users.
    * Supports optional filters: name, email, employee_num.
    * Input: optional query params.
    * Output: User array.
    */
   @Get('users')
-  @UseGuards(SystemAdminGuard)
-  async findAllUsers(@Query() query: FindUsersQueryDto) {
-    return this.adminService.findAllUsers(query);
+  async findAllUsers(@Query() query: FindUsersQueryDto, @Req() req: RequestInterface) {
+    return this.adminService.findAllUsers(query, req.userInfo);
   }
 
   /**

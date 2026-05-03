@@ -6,8 +6,8 @@
  *              and cannot set the is_system_admin flag on users.
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
- * Last Modification: 
- * 30/04/2026 [Julio Rodriguez] Added status 'active' to admin entity and used a placeholder for approver role for company admin.
+ * Last Modification:
+ * 03/05/2026 [Julio Rodriguez] findAllUsers now scopes results to caller's company when caller is not system admin.
  */
 
 import {
@@ -102,12 +102,16 @@ export class AdminService {
   // Global user management (system admin only)
 
   /**
-   * findAllUsers — Returns all users in the system with optional filters.
-   * Input: optional query filters (name, email, employee_num).
+   * findAllUsers — Returns users visible to the caller.
+   * System admins receive all users; company admins receive only their own company's users.
+   * Input: optional query filters (name, email, employee_num), caller userInfo.
    * Output: User array.
    */
-  async findAllUsers(query: FindUsersQueryDto): Promise<User[]> {
+  async findAllUsers(query: FindUsersQueryDto, caller: UserInfoInterface): Promise<User[]> {
     const where: Record<string, unknown> = {};
+    if (!caller.is_system_admin && caller.id_company) {
+      where.id_company = caller.id_company;
+    }
     if (query.name) where.name = ILike(`%${query.name}%`);
     if (query.email) where.email = ILike(`%${query.email}%`);
     if (query.employee_num) where.employee_num = ILike(`%${query.employee_num}%`);
@@ -310,8 +314,8 @@ export class AdminService {
       id_role: placeholderRole.id,
       id_company: company.id,
       is_company_admin: true,
-      is_requester: false,
-      is_approver: false,
+      is_requester: true,
+      is_approver: true,
       is_soi: false,
       is_travelAgent: false,
       is_system_admin: false,

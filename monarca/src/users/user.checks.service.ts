@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 29/04/2026 [Julio Rodriguez] Replaced role-join queries with is_approver flag check; added id_company filter to all approver lookup methods.
+ * 03/05/2026 [Julio Rodriguez] Added is_company_admin to getUserById select so profile endpoint returns the flag.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -45,7 +45,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'email', 'last_name', 'role', 'is_system_admin'],
+      select: ['id', 'name', 'email', 'last_name', 'role', 'is_system_admin', 'is_company_admin'],
       relations: ['role', 'role.permissions'],
     });
 
