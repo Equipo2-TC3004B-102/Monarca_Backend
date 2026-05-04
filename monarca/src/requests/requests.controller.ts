@@ -46,7 +46,7 @@ export class RequestsController {
   }
 
   @Get('user')
-  @Permissions('request_history')
+  @Permissions('view_own_requests')
   async findByUser(@Request() req: RequestInterface) {
     return this.requestsService.findByUser(req);
   }

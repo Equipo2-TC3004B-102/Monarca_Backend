@@ -42,6 +42,8 @@ import { join } from 'path';
 import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationLog } from './notifications/entities/notification-log.entity';
+import { RolesModule } from './roles/roles.module';
 import { HealthModule } from './health/health.module';
 import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
 import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
@@ -57,6 +59,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
       serveRoot: '/files',
     }),
     NotificationsModule,
+    RolesModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -98,6 +101,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
         Voucher,
         UserLogs,
         Revision,
+        NotificationLog,
         ApprovalLevel,
         ApprovalLevelActor,
         RequestApproval,
@@ -123,6 +127,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
       Voucher,
       UserLogs,
       Revision,
+      NotificationLog,
       ApprovalLevel,
       ApprovalLevelActor,
       RequestApproval,

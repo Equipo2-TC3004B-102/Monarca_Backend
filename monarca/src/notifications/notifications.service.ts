@@ -1,68 +1,59 @@
 /**
- * FileName: notifications.service
+ * FileName: notifications.service.ts
  * Description: Service responsible for sending transactional emails via Nodemailer.
  *              Configures the SMTP transporter from environment variables and exposes
- *              methods for raw mail sending, structured notifications, and HTML-wrapped notifications.
- * Authors: Original Moncarca team
+ *              methods for raw mail sending, structured notifications, and HTML-wrapped
+ *              notifications. Each send attempt is automatically recorded in the
+ *              notification_logs table via NotificationLogsService for full traceability.
+ * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
+ * 26/04/2026 [Juan Pablo Narchi] Integrated NotificationLogsService to auto-log every send attempt with status tracking.
  */
 
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import * as fs from 'fs';
-import * as Handlebars from 'handlebars';
-import { join } from 'path';
+import { NotificationLogsService } from './notification-logs.service';
 
 @Injectable()
 export class NotificationsService {
   private transporter: nodemailer.Transporter;
 
-  constructor() {
+  constructor(private readonly logsService: NotificationLogsService) {
     this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
       auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD
-      }
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
     });
   }
 
   /**
    * sendMail - Sends a raw email using the configured Nodemailer transporter.
+   *            Creates a notification log entry before sending and updates it to
+   *            SENT on success or FAILED with error details on failure.
    * Input: to (string) - recipient email address;
    *        subject (string) - email subject line;
    *        text (string) - plain-text body;
    *        html (string, optional) - HTML body to override plain text in capable clients.
-   * Output: Promise<SentMessageInfo> - Nodemailer send result with message ID and response.
+   * Output: Promise<void>
    */
   async sendMail(to: string, subject: string, text: string, html?: string) {
+    const log = await this.logsService.create(to, subject);
+
     const fromAddress = `"Sistema Monarca" <${process.env.EMAIL_USER}>`;
-    const mailOptions: nodemailer.SendMailOptions = {
-      from: fromAddress,
-      to,
-      subject,
-      text,
-      html,
-    };
     try {
-      await this.transporter.sendMail(mailOptions);
-      console.log('Correo enviado correctamente');
+      await this.transporter.sendMail({ from: fromAddress, to, subject, text, html });
+      await this.logsService.markSent(log.id);
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown email error';
+      await this.logsService.markFailed(log.id, errorMessage);
       console.error('Error enviando correo:', errorMessage);
     }
   }
-    // BYPASS EMAILS FOR NOW
-    /** try {
-      return await this.transporter.sendMail(mailOptions);
-    } catch (error: any) {
-      console.warn(`[Local Dev] Ignored email to ${to} (${subject}). Error:`, error.message);
-      return null;
-    } */
-   
+
 
   /**
    * sendNotification - Convenience wrapper around sendMail for structured notification calls.
@@ -70,22 +61,11 @@ export class NotificationsService {
    *        subject (string) - email subject line;
    *        text (string) - plain-text body;
    *        html (string, optional) - HTML body.
-   * Output: Promise<SentMessageInfo> - Nodemailer send result.
+   * Output: Promise<void>
    */
-  async sendNotification(
-    to: string,
-    subject: string,
-    text: string,
-    html?: string
-  ) {
-    return this.sendMail(
-      to, 
-      subject, 
-      text, 
-      html
-  );
+  async sendNotification(to: string, subject: string, text: string, html?: string) {
+    return this.sendMail(to, subject, text, html);
   }
-
 
   /**
    * notify - Sends an HTML-wrapped email notification. Escapes the message text to prevent
@@ -95,16 +75,9 @@ export class NotificationsService {
    *        subject (string) - email subject line;
    *        message (string) - plain-text version of the notification body;
    *        html (string, optional) - inner HTML partial to embed in the full HTML wrapper.
-   * Output: Promise<SentMessageInfo> - Nodemailer send result.
+   * Output: Promise<void>
    */
-  async notify(
-  to: string,
-  subject: string,
-  message: string,
-  html?: string
-) {
-  
-  // Si deseas escapar texto plano a HTML seguro, implementa un escape sencillo:
+  async notify(to: string, subject: string, message: string, html?: string) {
     const escapeHtml = (str: string) =>
       str
         .replace(/&/g, '&amp;')
@@ -113,26 +86,7 @@ export class NotificationsService {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    // Supongamos que el caller pasa texto plano: "Hola, este es mi mensaje"
-    // Para permitir HTML opcional, podrías distinguir: si detectas etiquetas HTML, no escapar.
-    // Aquí un enfoque simple: siempre tratamos message como texto plano:
-    const safeText = escapeHtml(message);
-
-    // Generar HTML sencillo, con estilo inline mínimo si quieres:
-    const htmlComplete = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>${escapeHtml(subject)}</title>
-      </head>
-      <body>
-        ${html}
-      </body>
-      </html>
-    `;
-
+    const htmlComplete = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(subject)}</title></head><body>${html ?? escapeHtml(message)}</body></html>`;
     return this.sendMail(to, subject, message, htmlComplete);
-}
-
+  }
 }
