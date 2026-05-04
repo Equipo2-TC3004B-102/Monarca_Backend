@@ -6,7 +6,8 @@
  *              and cannot set the is_system_admin flag on users.
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
- * Last Modification: 28/04/2026 [Julio Rodríguez] Created AdminService with company CRUD and user management.
+ * Last Modification:
+ * 03/05/2026 [Julio Rodriguez] findAllUsers now scopes results to caller's company when caller is not system admin.
  */
 
 import {
@@ -18,9 +19,10 @@ import { ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Roles } from 'src/roles/entity/roles.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
+import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 
 @Injectable()
@@ -31,6 +33,9 @@ export class AdminService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(Roles)
+    private readonly rolesRepository: Repository<Roles>,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -97,12 +102,16 @@ export class AdminService {
   // Global user management (system admin only)
 
   /**
-   * findAllUsers — Returns all users in the system with optional filters.
-   * Input: optional query filters (name, email, employee_num).
+   * findAllUsers — Returns users visible to the caller.
+   * System admins receive all users; company admins receive only their own company's users.
+   * Input: optional query filters (name, email, employee_num), caller userInfo.
    * Output: User array.
    */
-  async findAllUsers(query: FindUsersQueryDto): Promise<User[]> {
+  async findAllUsers(query: FindUsersQueryDto, caller: UserInfoInterface): Promise<User[]> {
     const where: Record<string, unknown> = {};
+    if (!caller.is_system_admin && caller.id_company) {
+      where.id_company = caller.id_company;
+    }
     if (query.name) where.name = ILike(`%${query.name}%`);
     if (query.email) where.email = ILike(`%${query.email}%`);
     if (query.employee_num) where.employee_num = ILike(`%${query.employee_num}%`);
@@ -270,5 +279,52 @@ export class AdminService {
     await this.findUserInCompany(companyId, userId);
     await this.userRepository.delete(userId);
     return { status: true, message: `User ${userId} deleted from company ${companyId}` };
+  }
+
+  /**
+   * setupCompany — Creates a company and its initial company admin user in one operation.
+   * The admin user gets is_company_admin: true, id_company scoped to the new company,
+   * and a bcrypt-hashed default password.
+   * Input: CompanySetupDto with company fields and admin user fields.
+   * Output: created company and admin user (without password).
+   */
+  async setupCompany(
+    dto: CompanySetupDto,
+  ): Promise<{ company: Company; admin: Omit<User, 'password'> }> {
+    const company = await this.companyRepository.save(
+      this.companyRepository.create({ name: dto.name, local_currency: dto.local_currency }),
+    );
+
+    // id_role is a legacy NOT NULL column — use any existing role as a placeholder until the column is made nullable in a future migration.
+    const placeholderRole = await this.rolesRepository.findOne({ where: { name: 'Aprobador' } })
+      ?? await this.rolesRepository.findOne({ where: {} });
+    if (!placeholderRole) {
+      throw this.clientError('No roles found in DB — run seeds before creating companies', 'SETUP_NO_ROLES');
+    }
+
+    const hashedPassword = await bcrypt.hash('password', 10);
+    const adminEntity = this.userRepository.create({
+      name: dto.admin.name,
+      last_name: dto.admin.last_name ?? '',
+      email: dto.admin.email,
+      employee_num: dto.admin.employee_num,
+      user_name: dto.admin.email.split('@')[0],
+      password: hashedPassword,
+      status: 'active',
+      id_role: placeholderRole.id,
+      id_company: company.id,
+      is_company_admin: true,
+      is_requester: true,
+      is_approver: true,
+      is_soi: false,
+      is_travelAgent: false,
+      is_system_admin: false,
+      creation_date: new Date(),
+    });
+
+    const savedAdmin = await this.userRepository.save(adminEntity);
+    const { password, ...adminWithoutPassword } = savedAdmin;
+
+    return { company, admin: adminWithoutPassword };
   }
 }

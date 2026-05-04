@@ -5,9 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Authentication logging cleanup and consistency updates.
- *                              Added comments for better documentation and maintainability.   
- *                              Modified getRandomApproverIdFromSameCostCenter to prioritize older approvers for better load distribution.
+ * 04/05/2026 [Julio Rodriguez] Added all role flags (is_requester, is_approver, is_soi, is_travelAgent) to getUserById select so FLAG_PERMISSIONS filter in profile() works correctly.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -47,7 +45,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'email', 'last_name', 'role', 'is_system_admin'],
+      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent'],
       relations: ['role', 'role.permissions'],
     });
 
@@ -57,40 +55,14 @@ export class UserChecks {
   }
 
   /**
-   * getRandomApproverID, selects a random approver from all available approver users.
-   * Input: none.
-   * Output: Approver user id when available, otherwise null.
-   */
-  async getRandomApproverID(): Promise<string | null> {
-    const approvers = await this.userRepository.find({
-      where: {
-        role: {
-          name: 'Aprobador',
-        },
-      },
-      select: ['id'],
-      relations: [],
-    });
-
-    // console.log(approvers)
-
-    if (approvers.length === 0) {
-      return null;
-    }
-
-    const randomIndex = Math.floor(Math.random() * approvers.length);
-
-    return approvers[randomIndex].id;
-  }
-
-  /**
    * getApproverIdFromManagerChain, resolves an approver using manager hierarchy.
-   * Input: id_user (string), max_levels (number) hierarchy depth to evaluate.
-   * Output: Approver user id when found in hierarchy, otherwise null.
+   * Input: id_user (string), max_levels (number) hierarchy depth to evaluate, id_company (string) company scope.
+   * Output: Approver user id when found in hierarchy within the same company, otherwise null.
    */
   async getApproverIdFromManagerChain(
     id_user: string,
     max_levels: number = 2,
+    id_company?: string,
   ): Promise<string | null> {
     let currentUserId: string | null = id_user;
 
@@ -109,14 +81,17 @@ export class UserChecks {
         return null;
       }
 
-      const managerAsApprover = await this.userRepository
+      const query = this.userRepository
         .createQueryBuilder('u')
-        .innerJoin('u.role', 'role')
         .where('u.id = :managerId', { managerId })
-        .andWhere('role.name = :roleName', { roleName: 'Aprobador' })
-        .andWhere('LOWER(u.status) = :status', { status: 'active' })
-        .select('u.id', 'id')
-        .getRawOne<{ id: string }>();
+        .andWhere('u.is_approver = :isApprover', { isApprover: true })
+        .andWhere('LOWER(u.status) = :status', { status: 'active' });
+
+      if (id_company) {
+        query.andWhere('u.id_company = :id_company', { id_company });
+      }
+
+      const managerAsApprover = await query.select('u.id', 'id').getRawOne<{ id: string }>();
 
       if (managerAsApprover?.id) {
         return managerAsApprover.id;
@@ -126,40 +101,6 @@ export class UserChecks {
     }
 
     return null;
-  }
-
-  /**
-   * getRandomApproverIdFromSameCostCenter, resolves an approver from the same CeCo with optional company filter.
-   * Input: id_cost_center (string), id_user (string), id_company (string, optional).
-   * Output: Approver user id when available, otherwise null.
-   */
-  async getRandomApproverIdFromSameCostCenter(
-    id_cost_center: string,
-    id_user: string,
-    id_company?: string,
-  ): Promise<string | null> {
-    const query = this.userRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.role', 'role')
-      .where('u.id != :id_user', { id_user })
-      .andWhere('u.id_ceco = :id_cost_center', { id_cost_center })
-      .andWhere('role.name = :roleName', { roleName: 'Aprobador' });
-
-    if (id_company) {
-      query.andWhere('u.id_company = :id_company', { id_company });
-    }
-
-    const approvers = await query
-      .orderBy('u.created_at', 'ASC')
-      .addOrderBy('u.id', 'ASC')
-      .select('u.id', 'id')
-      .getRawMany<{ id: string }>();
-
-    if (approvers.length === 0) {
-      return null;
-    }
-
-    return approvers[0].id;
   }
 
   /**
@@ -173,10 +114,9 @@ export class UserChecks {
   ): Promise<string | null> {
     const approvers = await this.userRepository
       .createQueryBuilder('u')
-      .innerJoin('u.role', 'role')
       .where('u.id != :id_user', { id_user })
       .andWhere('u.id_company = :id_company', { id_company })
-      .andWhere('role.name = :roleName', { roleName: 'Aprobador' })
+      .andWhere('u.is_approver = :isApprover', { isApprover: true })
       .orderBy('u.created_at', 'ASC')
       .addOrderBy('u.id', 'ASC')
       .select('u.id', 'id')

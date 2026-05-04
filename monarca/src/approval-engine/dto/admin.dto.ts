@@ -1,14 +1,17 @@
 /**
  * FileName: admin.dto.ts
  * Description: DTOs for admin-specific operations not covered by existing entity DTOs.
- *              Includes SetCompanyAdminDto for toggling the is_company_admin flag and
- *              FindUsersQueryDto for filtering user lists by name, email, or employee_num.
+ *              Includes SetCompanyAdminDto for toggling the is_company_admin flag,
+ *              FindUsersQueryDto for filtering user lists, and CompanySetupDto for
+ *              creating a company with its initial admin user in one operation.
  * Authors: DebugStudio Team
- * Last Modification: 28/04/2026 [Julio Rodríguez] Created admin DTOs for user management endpoints.
+ * Last Modification:
+ * 29/04/2026 [Julio Rodriguez] Added CompanySetupAdminDto and CompanySetupDto.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 // Class used for setting user flags (is_requester, is_approver, etc.) in user management endpoints
 export class SetUserFlagsDto {
@@ -56,4 +59,41 @@ export class FindUsersQueryDto {
   @IsString()
   @IsOptional()
   employee_num?: string;
+}
+
+// Creates the initial company admin user as part of the company setup process. The admin user is created with the is_company_admin flag set to true and approver permissions by default.
+export class CompanySetupAdminDto {
+  @ApiProperty({ example: 'Roberto' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'García', required: false })
+  @IsString()
+  @IsOptional()
+  last_name?: string;
+
+  @ApiProperty({ example: 'admin@monarcamx.com' })
+  @IsString()
+  email: string;
+
+  @ApiProperty({ example: 'EMP-ADMIN-01', required: false })
+  @IsString()
+  @IsOptional()
+  employee_num?: string;
+}
+
+// Only for Ditta admin use, creates a company and its initial admin user in one operation.
+export class CompanySetupDto {
+  @ApiProperty({ example: 'Monarca México' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'MXN' })
+  @IsString()
+  local_currency: string;
+
+  @ApiProperty({ type: CompanySetupAdminDto })
+  @ValidateNested()
+  @Type(() => CompanySetupAdminDto)
+  admin: CompanySetupAdminDto;
 }

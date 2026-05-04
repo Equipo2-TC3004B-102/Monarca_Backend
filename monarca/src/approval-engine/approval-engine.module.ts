@@ -20,6 +20,7 @@ import { AdminController } from './admin.controller';
 import { GuardsModule } from 'src/guards/guards.module';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Roles } from 'src/roles/entity/roles.entity';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { User } from 'src/users/entities/user.entity';
       RequestApproval,
       Company,
       User,
+      Roles,
     ]),
     GuardsModule,
   ],
