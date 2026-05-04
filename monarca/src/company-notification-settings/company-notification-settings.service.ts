@@ -1,3 +1,10 @@
+/*
+ * Filename: company-notification-settings.service.ts
+ * Description: Service file for handling business logic related to company notification settings.
+ * Authors: DebugStudio team
+ * Last Modification made: [04/05/2026] [Jinsik Yoon] Initial creation of the service file.
+ */
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

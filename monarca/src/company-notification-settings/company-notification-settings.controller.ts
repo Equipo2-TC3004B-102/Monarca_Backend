@@ -1,3 +1,10 @@
+/*
+ * Filename: company-notification-setting.controller.ts
+ * Description: Controller file for handling API requests related to company notification settings.
+ * Authors: DebugStudio team
+ * Last Modification made: [04/05/2026] [Jinsik Yoon] Initial creation of the controller file.
+ */
+
 import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { CompanyNotificationSettingsService } from './company-notification-settings.service';
 

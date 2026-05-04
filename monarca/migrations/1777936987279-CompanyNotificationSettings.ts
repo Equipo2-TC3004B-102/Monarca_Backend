@@ -1,3 +1,10 @@
+/*
+ * Filename: 1777936987279-CompanyNotificationSettings.ts
+ * Description: Migration file to create the company_notification_settings table, which stores notification preferences for each company.
+ * Authors: DebugStudio team
+ * Last Modification made: [04/05/2026] [Jinsik Yoon] Initial creation of the migration file.
+ */
+
 import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CompanyNotificationSettings1777936987279 implements MigrationInterface {

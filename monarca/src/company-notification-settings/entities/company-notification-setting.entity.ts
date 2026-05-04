@@ -1,3 +1,10 @@
+/*
+ * Filename: company-notification-setting.entity.ts
+ * Description: Entity file for the company_notification_settings table, which stores notification preferences for each company.
+ * Authors: DebugStudio team
+ * Last Modification made: [04/05/2026] [Jinsik Yoon] Initial creation of the entity file.
+ */
+
 import {
   Column,
   CreateDateColumn,

@@ -5,7 +5,7 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Santiago Coronado Hernández] Changed synchronize value to false 
+ * [04/05/2026] [Jinsik Yoon] Added CompanyNotificationSetting to TypeORM configuration and imports.
  */
 
 import { Module } from '@nestjs/common';
