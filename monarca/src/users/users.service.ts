@@ -6,7 +6,7 @@
  *              role and permission relations.
  * Authors: Original Monarca team
  * Last Modification made:
- * 03/05/2026 [Julio Rodriguez] importUsers: pass 0 upserts cost centers by name for the caller's company; ceco_name resolves to id_ceco; last_name supported.
+ * 04/05/2026 [Julio Rodriguez] importUsers: role flags (is_requester, is_soi, is_travelAgent, is_approver) read from JSON; defaults to is_requester when no flag is set.
  */
 
 import {
@@ -121,13 +121,19 @@ export class UsersService {
           updated++;
         } else {
           const hashedPassword = await bcrypt.hash('password', 10);
+          // Default to is_requester only when no role flag is explicitly provided in the JSON.
+          const noFlagSet =
+            userData.is_requester === undefined &&
+            userData.is_approver === undefined &&
+            userData.is_soi === undefined &&
+            userData.is_travelAgent === undefined;
           const ent = this.repo.create({
             ...userDataRest,
             last_name: userData.last_name ?? '',
             password: hashedPassword,
-            id_role: REQUESTER_ROLE_ID,
+            id_role: REQUESTER_ROLE_ID, // Placeholder
             id_company: callerCompanyId,
-            is_requester: true,
+            is_requester: userData.is_requester ?? noFlagSet,
             user_name: userData.user_name ?? userData.email.split('@')[0],
             creation_date: userData.creation_date ?? new Date(),
           });
@@ -140,7 +146,7 @@ export class UsersService {
       }
     }
 
-    // Manager_id qill be handdled by employee_nums, UUIDs scoped to callerCompanyId,
+    // Manager_id will be handdled by employee_nums, UUIDs scoped to callerCompanyId,
     // promote those users to approver, and update the manager_id FK on imported users.
     const managerEmployeeNums = [ // Filters the users that are in manager_id field and creates a unique list of employee numbers to look up their UUIDs later.
       ...new Set(users.filter((u) => u.manager_id).map((u) => u.manager_id as string)),

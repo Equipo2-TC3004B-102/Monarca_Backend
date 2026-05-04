@@ -1,16 +1,16 @@
 /**
  * FileName: import-user.dto.ts
  * Description: DTO for bulk user import from JSON. Accepts only the fields
- *              defined by the admin import format. Password, role, and flags
- *              are derived automatically by the import service.
+ *              defined by the admin import format. Password defaults to "password".
+ *              If no role flag is provided, is_requester defaults to true.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 03/05/2026 [Julio Rodriguez] Added last_name and ceco_name; ceco_name resolves to id_ceco by name in the import service.
+ * 04/05/2026 [Julio Rodriguez] Added role flags (is_requester, is_approver, is_soi, is_travelAgent) and id_travel_agency so all user types can be imported from JSON.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDate, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ImportUserDto {
   @ApiProperty({ example: 'EMP-001', required: false })
@@ -60,4 +60,29 @@ export class ImportUserDto {
   @Type(() => Date)
   @IsOptional()
   creation_date?: Date;
+
+  @ApiProperty({ example: true, required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_requester?: boolean;
+
+  @ApiProperty({ example: false, required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_approver?: boolean;
+
+  @ApiProperty({ example: false, required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_soi?: boolean;
+
+  @ApiProperty({ example: false, required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_travelAgent?: boolean;
+
+  @ApiProperty({ example: '24169971-6d7f-4bf7-982c-dad1aebac579', required: false })
+  @IsUUID()
+  @IsOptional()
+  id_travel_agency?: string;
 }
