@@ -10,9 +10,10 @@
  *                payment_form, payment_method, unconverted_amount)
  *              - Consolidates FK onDelete rules for users and cost_centers
  *              - Adds current_approval_level_id nullable FK to requests
+ *              - Changes cost_centers.id and users.id_ceco from uuid to varchar (human-readable ceco codes)
  * Authors: DebugStudio Team
  * Last Modification made:
- * 27/04/2026 [Julio Rodríguez] Added unconverted_amount to vouchers.
+ * 04/05/2026 [Julio Rodríguez] Also convert approval_levels_actors.ceco_id to varchar; drop/re-add its FK around the ALTER.
  */
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
@@ -42,6 +43,14 @@ export class DatabaseV21776988508043 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "roles_permissions" DROP CONSTRAINT "FK_5525d5fe12604a2d0994d35cbd2"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_5525d5fe12604a2d0994d35cbd"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_507d63eb2d694cea010feac80e"`);
+
+        // 4b. Change cost_centers.id and users.id_ceco to varchar for human-readable ceco codes
+        // Must also drop the approval_levels_actors.ceco_id FK before altering cost_centers.id
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" DROP CONSTRAINT "FK_c7a3c3095313086193eddf7bbf4"`);
+        await queryRunner.query(`ALTER TABLE "cost_centers" ALTER COLUMN "id" TYPE character varying USING id::character varying`);
+        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "id_ceco" TYPE character varying USING id_ceco::character varying`);
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" ALTER COLUMN "ceco_id" TYPE character varying USING ceco_id::character varying`);
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" ADD CONSTRAINT "FK_c7a3c3095313086193eddf7bbf4" FOREIGN KEY ("ceco_id") REFERENCES "cost_centers"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
 
         // 4. CFDI fiscal fields on vouchers
         await queryRunner.query(`ALTER TABLE "vouchers" DROP COLUMN "tax_amount"`);
@@ -81,6 +90,13 @@ export class DatabaseV21776988508043 implements MigrationInterface {
         // 5 reversed
         await queryRunner.query(`ALTER TABLE "requests" DROP CONSTRAINT "FK_requests_current_approval_level"`);
         await queryRunner.query(`ALTER TABLE "requests" DROP COLUMN "current_approval_level_id"`);
+
+        // 4b reversed (note: will fail if non-UUID values exist in cost_centers.id or ceco_id)
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" DROP CONSTRAINT "FK_c7a3c3095313086193eddf7bbf4"`);
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" ALTER COLUMN "ceco_id" TYPE uuid USING ceco_id::uuid`);
+        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "id_ceco" TYPE uuid USING id_ceco::uuid`);
+        await queryRunner.query(`ALTER TABLE "cost_centers" ALTER COLUMN "id" TYPE uuid USING id::uuid`);
+        await queryRunner.query(`ALTER TABLE "approval_levels_actors" ADD CONSTRAINT "FK_c7a3c3095313086193eddf7bbf4" FOREIGN KEY ("ceco_id") REFERENCES "cost_centers"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
 
         // 4 reversed — drop new constraints
         await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "FK_b9e12c28cda5eb73ffbab4a663a"`);

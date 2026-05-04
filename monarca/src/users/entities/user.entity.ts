@@ -69,8 +69,8 @@ export class User {
   @Column({ name: 'creation_date', type: 'date', default: () => 'CURRENT_DATE' })
   creation_date: Date;
 
-  @ApiProperty({ example: 1 })
-  @Column({ name: 'id_ceco', type: 'uuid', nullable: true })
+  @ApiProperty({ example: 'TEC-001' })
+  @Column({ name: 'id_ceco', type: 'varchar', nullable: true })
   id_ceco: string | null;
 
   @ApiProperty({ example: 2 })

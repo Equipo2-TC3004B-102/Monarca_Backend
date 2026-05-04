@@ -3,7 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Updated the solicitation approval, first Approvers, then SOI and finally a travel agent.
+ * 04/05/2026 [Julio Rodríguez] cancel() now blocks users who are the assigned approver (id_admin) even if they also have is_requester.
  */
 
 import {
@@ -150,6 +150,13 @@ export class RequestsStatusService {
     if (request.id_user !== id_user)
       throw this.clientError(
         'Unable to cancel request.',
+        'REQUEST_STATUS_CANCEL_NOT_ALLOWED',
+      );
+
+    // Approvers cannot cancel a request assigned to them, even if they also have is_requester.
+    if (request.id_admin === id_user)
+      throw this.clientError(
+        'Unable to cancel a request assigned for your approval.',
         'REQUEST_STATUS_CANCEL_NOT_ALLOWED',
       );
 

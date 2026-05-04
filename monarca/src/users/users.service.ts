@@ -6,7 +6,7 @@
  *              role and permission relations.
  * Authors: Original Monarca team
  * Last Modification made:
- * 29/04/2026 [Julio Rodriguez] Fixed importUsers: resolve manager_id as employee_num → UUID scoped to id_company; set is_approver flag; removed RBAC role assignment.
+ * 03/05/2026 [Julio Rodriguez] importUsers: pass 0 upserts cost centers by name for the caller's company; ceco_name resolves to id_ceco; last_name supported.
  */
 
 import {
@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { In, Repository } from 'typeorm';
 import { CreateUserDto, UpdateUserDto, UserDto } from './dto/user.dtos';
 import { ImportUserDto } from './dto/import-user.dto';
@@ -25,6 +26,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly repo: Repository<User>,
+    @InjectRepository(CostCenter)
+    private readonly cecoRepo: Repository<CostCenter>,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -84,10 +87,24 @@ export class UsersService {
     let updated = 0; // Count for existing users that were updated with new data from the batch.
     const REQUESTER_ROLE_ID = 'b0d4211d-457e-4d84-b8a4-320af380683f';
 
+    // Pass 0: upsert cost centers referenced in the JSON for the caller's company.
+    // id_ceco in the JSON IS the primary key — create the row directly with that value.
+    if (callerCompanyId) {
+      const cecoIds = [
+        ...new Set(users.map((u) => u.id_ceco).filter((n): n is string => !!n)),
+      ];
+      for (const cecoId of cecoIds) {
+        const existingCeco = await this.cecoRepo.findOne({ where: { id: cecoId, id_company: callerCompanyId } });
+        if (!existingCeco) {
+          await this.cecoRepo.save(this.cecoRepo.create({ id: cecoId, name: cecoId, id_company: callerCompanyId }));
+        }
+      }
+    }
+
     for (const userData of users) {
       try {
-        // manager_id in ImportUserDto is an employee_num string, not a UUID — strip it from
-        // the DB spread. It is resolved to a real UUID FK in the second pass below.
+        // manager_id is an employee_num string — strip it from the DB spread.
+        // id_ceco is the PK of cost_centers and can be assigned directly.
         const { manager_id: _managerEmployeeNum, ...userDataRest } = userData;
 
         // If there is no Employee number it uses the email to find the user, if there is an employee number it looks for both employee number and company id to avoid conflicts between companies with the same employee numbers.
@@ -106,7 +123,7 @@ export class UsersService {
           const hashedPassword = await bcrypt.hash('password', 10);
           const ent = this.repo.create({
             ...userDataRest,
-            last_name: '',
+            last_name: userData.last_name ?? '',
             password: hashedPassword,
             id_role: REQUESTER_ROLE_ID,
             id_company: callerCompanyId,

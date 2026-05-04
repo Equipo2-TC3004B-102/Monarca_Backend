@@ -6,7 +6,7 @@
  *              for safe responses.
  * Authors: Original Monarca team
  * Last Modification made:
- * 24/04/2026 [Julio Rodriguez] Standardized validators for Swagger.
+ * 03/05/2026 [Julio Rodriguez] Changed type from ceco_id
  */
 
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
@@ -45,8 +45,8 @@ export class CreateUserDto {
   @IsUUID()
   id_role: string;
 
-  @ApiProperty({ example: 'a1f4e0e1-1b89-4ccf-9e57-43f4b3d1a001', required: false })
-  @IsUUID()
+  @ApiProperty({ example: 'TEC-001', required: false })
+  @IsString()
   @IsOptional()
   id_ceco?: string;
 

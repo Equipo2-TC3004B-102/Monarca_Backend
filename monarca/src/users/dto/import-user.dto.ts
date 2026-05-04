@@ -4,7 +4,8 @@
  *              defined by the admin import format. Password, role, and flags
  *              are derived automatically by the import service.
  * Authors: DebugStudio Team
- * 29/04/2026 [Julio Rodriguez] manager_id → IsString (employee_num ref); removed id_ceco — assigned via admin UI.
+ * Last Modification made:
+ * 03/05/2026 [Julio Rodriguez] Added last_name and ceco_name; ceco_name resolves to id_ceco by name in the import service.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -20,6 +21,11 @@ export class ImportUserDto {
   @ApiProperty({ example: 'Carlos' })
   @IsString()
   name: string;
+
+  @ApiProperty({ example: 'López', required: false })
+  @IsString()
+  @IsOptional()
+  last_name?: string;
 
   @ApiProperty({ example: 'clopez', required: false })
   @IsString()
@@ -39,6 +45,11 @@ export class ImportUserDto {
   @IsString()
   @IsOptional()
   provider?: string | null;
+
+  @ApiProperty({ example: 'TEC-001', required: false })
+  @IsString()
+  @IsOptional()
+  id_ceco?: string;
 
   @ApiProperty({ example: 'active' })
   @IsString()
