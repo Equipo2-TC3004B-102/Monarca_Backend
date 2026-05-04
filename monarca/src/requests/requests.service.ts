@@ -5,6 +5,7 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 29/04/2026 [Julio Rodriguez] Passed id_company to approver chain and cost-center fallback methods to enforce company scoping.
+ * 04/05/2026 [Julio Rodriguez] Pass id_company to getRandomSOIID so SOI assignment is scoped to the requester's company.
  */
 
 import {
@@ -187,8 +188,7 @@ export class RequestsService {
       );
     }
 
-    // Assign SOI user globally (SOI is not company-scoped)
-    const SOIId = await this.userChecks.getRandomSOIID();
+    const SOIId = await this.userChecks.getRandomSOIID(id_company);
     if (!SOIId) {
       throw this.serverError(
         'There is no SOI available to assign the request.',

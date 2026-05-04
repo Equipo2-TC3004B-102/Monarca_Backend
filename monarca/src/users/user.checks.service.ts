@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodriguez] Added all role flags (is_requester, is_approver, is_soi, is_travelAgent) to getUserById select so FLAG_PERMISSIONS filter in profile() works correctly.
+ * 04/05/2026 [Julio Rodriguez] getRandomSOIID: replaced RBAC innerJoin with is_soi flag + company scope; added status=active filter to getApproverIdByCompany.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -104,7 +104,7 @@ export class UserChecks {
   }
 
   /**
-   * getApproverIdByCompany, resolves an approver inside the requester's company.
+   * getApproverIdByCompany, resolves an active approver inside the requester's company.
    * Input: id_company (string), id_user (string).
    * Output: Approver user id when available, otherwise null.
    */
@@ -117,6 +117,7 @@ export class UserChecks {
       .where('u.id != :id_user', { id_user })
       .andWhere('u.id_company = :id_company', { id_company })
       .andWhere('u.is_approver = :isApprover', { isApprover: true })
+      .andWhere('LOWER(u.status) = :status', { status: 'active' })
       .orderBy('u.created_at', 'ASC')
       .addOrderBy('u.id', 'ASC')
       .select('u.id', 'id')
@@ -130,17 +131,21 @@ export class UserChecks {
   }
 
   /**
-   * getRandomSOIID, selects a SOI user without company filtering (SOI is global).
-   * Input: none.
+   * getRandomSOIID, selects an active SOI user scoped to the given company when provided.
+   * Input: id_company (string, optional) company scope.
    * Output: SOI user id when available, otherwise null.
    */
-  async getRandomSOIID(): Promise<string | null> {
-    const sois = await this.userRepository
+  async getRandomSOIID(id_company?: string): Promise<string | null> {
+    const query = this.userRepository
       .createQueryBuilder('u')
-      .innerJoin('u.role', 'role')
-      .where('role.name = :roleName', { roleName: 'SOI' })
-      .select('u.id', 'id')
-      .getRawMany<{ id: string }>();
+      .where('u.is_soi = :isSoi', { isSoi: true })
+      .andWhere('LOWER(u.status) = :status', { status: 'active' });
+
+    if (id_company) {
+      query.andWhere('u.id_company = :id_company', { id_company });
+    }
+
+    const sois = await query.select('u.id', 'id').getRawMany<{ id: string }>();
 
     if (sois.length === 0) {
       return null;
