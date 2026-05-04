@@ -4,8 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [Diego de la Vega] Added default provider support metadata for
- *                             requests_destinations on create and update.
+ * 29/04/2026 [Julio Rodriguez] Passed id_company to approver chain and cost-center fallback methods to enforce company scoping.
  */
 
 import {
@@ -152,7 +151,7 @@ export class RequestsService {
         );
     }
 
-    //ASIGNAR APROVADOR
+    //ASING APPROVER
     const id_ceco = req.userInfo.id_ceco;
     if (!id_ceco) {
       throw this.clientError(
@@ -177,21 +176,9 @@ export class RequestsService {
       );
     }
 
-    let adminId = await this.userChecks.getApproverIdFromManagerChain(
-      userId,
-      2,
-    );
+    let adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
     if (!adminId) {
-      adminId = await this.userChecks.getApproverIdByCompany(
-        id_company,
-        userId,
-      );
-    }
-    if (!adminId) {
-      adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
-        id_ceco,
-        userId,
-      );
+      adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
     }
     if (!adminId) {
       throw this.serverError(
@@ -498,14 +485,14 @@ export class RequestsService {
         );
 
       //VALIDAR VALIDEZ DE CIUDADES
-      if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
+      if (!(await this.destinationChecks.isValid(data.id_origin_city!))) {
         throw this.clientError(
           'Invalid id_origin_city.',
           'REQUESTS_INVALID_ORIGIN_CITY',
         );
       }
 
-      for (const rd of data.requests_destinations) {
+      for (const rd of data.requests_destinations!) {
         if (!(await this.destinationChecks.isValid(rd.id_destination)))
           throw this.clientError(
             'Invalid id_destination.',
@@ -516,10 +503,10 @@ export class RequestsService {
       //Update informacion general
       let finalAdvanceMoney: number = 0;
       let finalExchangeRate: number | null = null;
-      let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+      let finalUnconvertedAdvanceMoney: number | null = data.advance_money ?? null;
 
       if (data.currency === 'MXN') {
-        finalAdvanceMoney = data.advance_money;
+        finalAdvanceMoney = data.advance_money!;
       } else if (data.currency) {
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -531,15 +518,15 @@ export class RequestsService {
         if (rates && rates.length > 0) {
           const rate = Number(rates[0].exchange_rate);
           finalExchangeRate = rate;
-          finalAdvanceMoney = Math.round(data.advance_money * rate);
+          finalAdvanceMoney = Math.round(data.advance_money! * rate);
         } else {
           console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
           const fetchedRate = await this.fetchBanxicoRate(data.currency);
-          
+
           if (fetchedRate !== null) {
             finalExchangeRate = fetchedRate;
-            finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
-            
+            finalAdvanceMoney = Math.round(data.advance_money! * fetchedRate);
+
             await manager.query(
               `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
               [data.currency, fetchedRate, todayStr]
@@ -553,15 +540,15 @@ export class RequestsService {
       entity.unconverted_advance_money = finalUnconvertedAdvanceMoney;
       entity.exchange_rate = finalExchangeRate;
       entity.advance_money = finalAdvanceMoney;
-      entity.currency = data.currency;
-      entity.id_origin_city = data.id_origin_city;
-      entity.motive = data.motive;
+      entity.currency = data.currency ?? null;
+      entity.id_origin_city = data.id_origin_city!;
+      entity.motive = data.motive!;
       entity.requirements = data.requirements ?? null;
-      entity.priority = data.priority;
+      entity.priority = data.priority!;
 
       //Overhaul de requests_destinations
       const destRepo = manager.getRepository(RequestsDestination);
-      entity.requests_destinations = data.requests_destinations.map((d) =>
+      entity.requests_destinations = data.requests_destinations!.map((d) =>
         destRepo.create({
           ...d,
           provider_support_status: 'pending_provider',
