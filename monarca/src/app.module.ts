@@ -48,6 +48,8 @@ import { ApprovalLevel } from './approval-engine/entities/approval-level.entity'
 import { ApprovalLevelActor } from './approval-engine/entities/approval-level-actor.entity';
 import { RequestApproval } from './approval-engine/entities/request-approval.entity';
 import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
+import { CompanyNotificationSettingsModule } from './company-notification-settings/company-notification-settings.module';
+import { CompanyNotificationSetting } from './company-notification-settings/entities/company-notification-setting.entity';
 
 @Module({
   imports: [
@@ -72,6 +74,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
     GuardsModule,
     CompaniesModule,
     ApprovalEngineModule,
+    CompanyNotificationSettingsModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -82,6 +85,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
       entities: [
         User,
         Company,
+        CompanyNotificationSetting,
         CostCenter,
         Destination,
         ExchangeRate,
@@ -107,6 +111,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
     TypeOrmModule.forFeature([
       User,
+      CompanyNotificationSetting,
       CostCenter,
       Destination,
       ExchangeRate,
