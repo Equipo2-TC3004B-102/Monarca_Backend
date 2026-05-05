@@ -5,8 +5,7 @@
  *              are present), and sets up Swagger API documentation.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/04/2026 [Fausto Izquierdo] Added try/catch to bootstrap for graceful
- *            database connection failure logging (ST-4).
+ * 04/05/2026 [Santiago Coronado Hernández] Added enhanced error handling in the bootstrap function to log detailed startup errors..
  */
 
 import 'dotenv/config';
@@ -16,6 +15,7 @@ import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { LoggingMiddleware } from './utils/logging.middleware';
+import { MulterErrorFilter } from './utils/multer-error.filter';
 import * as fs from 'fs';
 import * as https from 'https';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -56,6 +56,7 @@ async function bootstrap() {
         forbidNonWhitelisted: true,
       }),
     );
+    app.useGlobalFilters(new MulterErrorFilter());
 
     const config = new DocumentBuilder()
       .setTitle('Monarca API')
