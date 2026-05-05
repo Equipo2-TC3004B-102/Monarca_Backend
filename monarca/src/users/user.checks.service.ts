@@ -131,8 +131,13 @@ export class UserChecks {
   }
 
   /**
+<<<<<<< Updated upstream
    * getRandomSOIID, selects an active SOI user scoped to the given company when provided.
    * Input: id_company (string, optional) company scope.
+=======
+   * getRandomSOIID, selects a SOI user scoped to the given company when provided.
+   * Input: id_company (string, optional) company scope for SOI selection.
+>>>>>>> Stashed changes
    * Output: SOI user id when available, otherwise null.
    */
   async getRandomSOIID(id_company?: string): Promise<string | null> {

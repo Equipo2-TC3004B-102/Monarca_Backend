@@ -4,7 +4,6 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 29/04/2026 [Julio Rodriguez] Passed id_company to approver chain and cost-center fallback methods to enforce company scoping.
  * 04/05/2026 [Julio Rodriguez] Pass id_company to getRandomSOIID so SOI assignment is scoped to the requester's company.
  */
 
