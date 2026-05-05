@@ -27,6 +27,11 @@ export class CompanyNotificationSettingsService {
         id_company,
         email_enabled: true,
         in_app_enabled: true,
+        email_requests_created: true,
+        email_requests_status: true,
+        email_revisions: true,
+        email_reservations: true,
+        email_admin_alerts: true,
       });
 
       settings = await this.settingsRepository.save(settings);
@@ -40,6 +45,11 @@ export class CompanyNotificationSettingsService {
     body: {
       email_enabled?: boolean;
       in_app_enabled?: boolean;
+      email_requests_created?: boolean;
+      email_requests_status?: boolean;
+      email_revisions?: boolean;
+      email_reservations?: boolean;
+      email_admin_alerts?: boolean;
     },
   ): Promise<CompanyNotificationSetting> {
     const settings = await this.getByCompany(id_company);
@@ -50,6 +60,26 @@ export class CompanyNotificationSettingsService {
 
     if (body.in_app_enabled !== undefined) {
       settings.in_app_enabled = body.in_app_enabled;
+    }
+
+    if (body.email_requests_created !== undefined) {
+      settings.email_requests_created = body.email_requests_created;
+    }
+
+    if (body.email_requests_status !== undefined) {
+      settings.email_requests_status = body.email_requests_status;
+    }
+
+    if (body.email_revisions !== undefined) {
+      settings.email_revisions = body.email_revisions;
+    }
+
+    if (body.email_reservations !== undefined) {
+      settings.email_reservations = body.email_reservations;
+    }
+
+    if (body.email_admin_alerts !== undefined) {
+      settings.email_admin_alerts = body.email_admin_alerts;
     }
 
     return this.settingsRepository.save(settings);

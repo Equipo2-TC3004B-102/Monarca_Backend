@@ -1,3 +1,12 @@
+/**
+ * FileName: requests.module.ts
+ * Description: Module for travel request business logic. Handles request creation,
+ *              role-based retrieval, updates, and status changes with auditing.
+ * Authors: Original Monarca team
+ * Last Modification made:
+ * 05/05/2026 [Santiago Coronado Hernández] Changed providers to export RequestsChecks and added NotificationsModule to imports to allow sending notifications related to requests.
+ */
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Request } from './entities/request.entity';
@@ -13,7 +22,6 @@ import { RequestsStatusService } from './requests.status.service';
 import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { TravelAgenciesModule } from 'src/travel-agencies/travel-agencies.module';
 import { RequestLogsModule } from 'src/request-logs/request-logs.module';
-import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
@@ -27,7 +35,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     NotificationsModule, // Assuming this is a controller that handles notifications related to requests
   ],
   controllers: [RequestsController, RequestsStatusController],
-  providers: [RequestsService, RequestsChecks, RequestsStatusService, NotificationsService],
+  providers: [RequestsService, RequestsChecks, RequestsStatusService],
   exports: [RequestsService, RequestsChecks],
 })
 export class RequestsModule {}

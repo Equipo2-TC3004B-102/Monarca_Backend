@@ -3,7 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodríguez] cancel() now blocks users who are the assigned approver (id_admin) even if they also have is_requester.
+ * 05/05/2026 [Santiago Coronado Hernández] Added NotificationType to notification options.
  */
 
 import {
@@ -18,6 +18,7 @@ import { RequestsService } from './requests.service';
 import { ApproveRequestDTO } from './dto/approve-request.dto';
 import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/notification-types';
 
 // STATUSES:
 // ['Pending Review', 'Changes Needed', 'Denied', 'Cancelled', 'Pending Reservations',  'Pending Accounting Approval', 'In Progress',  'Pending Vouchers Approval', 'Completed]
@@ -83,6 +84,7 @@ export class RequestsStatusService {
 <p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     // Notify SOI to review budget before reservations.
@@ -95,6 +97,7 @@ export class RequestsStatusService {
 <p>Por favor, revisa la información para continuar el flujo.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     return await this.requestsService.updateStatus(
@@ -133,6 +136,7 @@ export class RequestsStatusService {
 <p>Por favor, revisa los detalles de tu solicitud y considera realizar los cambios necesarios.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     return await this.requestsService.updateStatus(id_request, 'Denied');
@@ -178,6 +182,7 @@ export class RequestsStatusService {
 <p>Si tienes alguna pregunta o necesitas más información, no dudes en contactarnos.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+        { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
 
     return await this.requestsService.updateStatus(id_request, 'Cancelled');
@@ -216,6 +221,7 @@ export class RequestsStatusService {
 <p>Tu solicitud pasa ahora a estado de viaje en progreso.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.RESERVATION_CREATED },
     );
 
 
@@ -263,6 +269,7 @@ export class RequestsStatusService {
 <p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     // Notify travel agents to start reservations after SOI budget approval.
@@ -280,6 +287,7 @@ export class RequestsStatusService {
 <p>Por favor, revisa la solicitud y procede con la reservación.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+        { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
     }
 
@@ -320,6 +328,7 @@ export class RequestsStatusService {
 <p>Por favor, revisa los comprobantes cargados y procede con la aprobación.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     return await this.requestsService.updateStatus(
@@ -360,6 +369,7 @@ export class RequestsStatusService {
 <p>Por favor, espera a que se realice la aprobación de reembolso.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     // Notify SOI
@@ -372,6 +382,7 @@ export class RequestsStatusService {
 <p>Por favor, revisa los detalles de la solicitud y procede con la aprobación de reembolso.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     return await this.requestsService.updateStatus(id_request, 'Pending Refund Approval');
@@ -410,6 +421,7 @@ export class RequestsStatusService {
 <p>Gracias por utilizar Monarca para gestionar tus viajes.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,
+      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     return await this.requestsService.updateStatus(id_request, 'Completed');

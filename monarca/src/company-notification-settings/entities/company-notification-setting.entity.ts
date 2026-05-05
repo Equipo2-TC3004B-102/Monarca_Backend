@@ -33,6 +33,21 @@ export class CompanyNotificationSetting {
 
   @Column({ default: true })
   in_app_enabled: boolean;
+ 
+  @Column({ default: true })
+  email_requests_created: boolean;
+
+  @Column({ default: true })
+  email_requests_status: boolean;
+
+  @Column({ default: true })
+  email_revisions: boolean;
+
+  @Column({ default: true })
+  email_reservations: boolean;
+
+  @Column({ default: true })
+  email_admin_alerts: boolean;
 
   @CreateDateColumn()
   created_at: Date;

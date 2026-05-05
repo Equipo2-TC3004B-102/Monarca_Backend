@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodriguez] Added all role flags (is_requester, is_approver, is_soi, is_travelAgent) to getUserById select so FLAG_PERMISSIONS filter in profile() works correctly.
+ * 05/05/2026 [Santiago Coronado Hernández] Added company id to select component 
  */
 
 import { Injectable } from '@nestjs/common';
@@ -45,7 +45,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent'],
+      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent', 'id_company'],
       relations: ['role', 'role.permissions'],
     });
 
