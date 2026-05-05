@@ -5,7 +5,6 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
  * 22/04/2026 [Sebastián Borjas] Added unconverted_amount column to store original foreign-currency amount.
  */
 

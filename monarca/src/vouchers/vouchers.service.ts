@@ -11,13 +11,27 @@
  *                               stored alongside MXN-converted amount.
  */
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, UpdateResult } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { XmlParserService } from './services/xml-parser.service';
+
+type VoucherUploadFiles = {
+  file_url_pdf?: string;
+  file_url_xml?: string;
+};
+
+type ParsedUploadData = Partial<CreateVoucherDto> & {
+  cfdi_version?: string;
+};
 
 const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
   USD: 'SF43718',
@@ -41,6 +55,7 @@ export class VouchersService {
     private readonly voucherRepo: Repository<Voucher>,
     @InjectRepository(Request)
     private readonly rRepo: Repository<Request>,
+    private readonly xmlParserService: XmlParserService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -133,7 +148,16 @@ export class VouchersService {
    * Throws BadRequestException if the referenced request does not exist.
    * Throws BadRequestException if the caller is not the request owner.
    */
-  async create(id_user: string, data: CreateVoucherDto): Promise<Voucher> {
+  async create(
+    id_user: string,
+    data: CreateVoucherDto,
+    xmlBuffer?: Buffer,
+    fileUrls: VoucherUploadFiles = {},
+  ): Promise<Voucher> {
+    if (xmlBuffer) {
+      return this.createFromUpload(id_user, data, xmlBuffer, fileUrls);
+    }
+
     const request = await this.rRepo.findOne({
       where: { id: data.id_request },
     });
@@ -178,6 +202,115 @@ export class VouchersService {
       exchange_rate: exchangeRate,
     });
     return await this.voucherRepo.save(voucher);
+  }
+
+  /**
+   * createFromUpload - Creates and persists a voucher using XML fiscal data as
+   *                    the source of truth for amount and date.
+   * Input: id_user (string) - authenticated user creating the voucher;
+   *        data (CreateVoucherDto) - business metadata supplied by the client;
+   *        xmlBuffer (Buffer) - raw XML bytes to parse;
+   *        fileUrls - publicly accessible file URLs already stored in object storage.
+   * Output: Promise<Voucher> - the newly saved voucher entity.
+   */
+  async createFromUpload(
+    id_user: string,
+    data: CreateVoucherDto,
+    xmlBuffer: Buffer,
+    fileUrls: VoucherUploadFiles = {},
+  ): Promise<Voucher> {
+    const fiscalData = this.xmlParserService.parse(xmlBuffer);
+    const { cfdi_version: _cfdiVersion, ...parsedFiscalData } = fiscalData as ParsedUploadData;
+
+    const request = await this.rRepo.findOne({
+      where: { id: data.id_request },
+    });
+
+    if (!request) {
+      throw new BadRequestException(
+        `RequestDestination ${data.id_request} not found`,
+      );
+    }
+
+    const approverId = request.id_admin;
+    const idCreator = request.id_user;
+
+    if (id_user !== idCreator) {
+      throw new BadRequestException(
+        `User ${id_user} is not authorized to create a voucher for this request`,
+      );
+    }
+
+    const voucherData = {
+      ...data,
+      ...fileUrls,
+      ...parsedFiscalData,
+      id_request: data.id_request,
+      class: data.class,
+      tax_type: data.tax_type,
+      currency: parsedFiscalData.currency ?? data.currency,
+      amount: parsedFiscalData.amount ?? data.amount,
+      date: parsedFiscalData.date ?? data.date,
+      id_approver: approverId,
+    };
+
+    let finalAmount: number = voucherData.amount;
+    let unconvertedAmount: number | null = null;
+
+    if (voucherData.currency && voucherData.currency !== 'MXN') {
+      unconvertedAmount = voucherData.amount;
+      const exchangeRate = voucherData.exchange_rate ?? 1;
+      finalAmount = Math.round(voucherData.amount * exchangeRate * 100) / 100;
+    }
+
+    const voucher = this.voucherRepo.create({
+      id_request: voucherData.id_request,
+      class: voucherData.class,
+      amount: finalAmount,
+      unconverted_amount: unconvertedAmount,
+      currency: voucherData.currency,
+      tax_type: voucherData.tax_type,
+      date: new Date(voucherData.date),
+      file_url_pdf: voucherData.file_url_pdf ?? null,
+      file_url_xml: voucherData.file_url_xml ?? null,
+      status: voucherData.status,
+      id_approver: voucherData.id_approver,
+      fiscal_uuid: voucherData.fiscal_uuid ?? null,
+      issuer_rfc: voucherData.issuer_rfc ?? null,
+      issuer_name: voucherData.issuer_name ?? null,
+      receiver_rfc: voucherData.receiver_rfc ?? null,
+      receiver_name: voucherData.receiver_name ?? null,
+      exchange_rate: voucherData.exchange_rate ?? null,
+      subtotal: voucherData.subtotal ?? null,
+      discount: voucherData.discount ?? null,
+      iva_trasladado: voucherData.iva_trasladado ?? null,
+      ieps_trasladado: voucherData.ieps_trasladado ?? null,
+      isr_retenido: voucherData.isr_retenido ?? null,
+      iva_retenido: voucherData.iva_retenido ?? null,
+      payment_form: voucherData.payment_form ?? null,
+      payment_method: voucherData.payment_method ?? null,
+    });
+
+    return await this.voucherRepo.save(voucher);
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const databaseError = error as {
+      code?: string;
+      driverError?: { code?: string; message?: string };
+      message?: string;
+    };
+
+    return (
+      databaseError.code === '23503' ||
+      databaseError.driverError?.code === '23503' ||
+      Boolean(databaseError.message?.includes('violates foreign key constraint')) ||
+      Boolean(databaseError.driverError?.message?.includes('violates foreign key constraint'))
+    );
   }
 
   /**

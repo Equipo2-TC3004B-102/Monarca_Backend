@@ -113,9 +113,17 @@ export class VouchersController {
       }
     }
 
+    let xmlBuffer: Buffer | undefined;
+    const xmlFile = files.file_url_xml?.[0];
+    if (xmlFile) {
+      xmlBuffer = fs.readFileSync(xmlFile.path);
+    }
+
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap}
+      dto,
+      xmlBuffer,
+      fileMap
     );
   }
 
