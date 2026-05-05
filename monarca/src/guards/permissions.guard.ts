@@ -5,7 +5,7 @@
  *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 30/04/2026 [Julio Rodriguez] Added map for permissions with flags
+ * 04/05/2026 [Santiago Coronado Hernández] Added permission to requester
  */
 
 import {

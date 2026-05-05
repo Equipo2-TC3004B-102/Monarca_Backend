@@ -7,18 +7,23 @@
  *              notification_logs table via NotificationLogsService for full traceability.
  * Authors: Original Monarca team
  * Last Modification made:
- * 26/04/2026 [Juan Pablo Narchi] Integrated NotificationLogsService to auto-log every send attempt with status tracking.
+ * 05/05/2026 [Santiago Coronado Hernández] Added notify method that wraps messages in a basic HTML template and checks company notification settings before sending.
  */
 
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { NotificationLogsService } from './notification-logs.service';
+import { CompanyNotificationSettingsService } from '../company-notification-settings/company-notification-settings.service';
+import { NotificationType } from './notification-types';
 
 @Injectable()
 export class NotificationsService {
   private transporter: nodemailer.Transporter;
 
-  constructor(private readonly logsService: NotificationLogsService) {
+  constructor(
+    private readonly logsService: NotificationLogsService,
+    private readonly companySettingsService: CompanyNotificationSettingsService,
+  ) {
     this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
@@ -52,10 +57,7 @@ export class NotificationsService {
       await this.logsService.markFailed(log.id, errorMessage);
       console.error('Error enviando correo:', errorMessage);
     }
-  }
-
-
-  /**
+  }  /**
    * sendNotification - Convenience wrapper around sendMail for structured notification calls.
    * Input: to (string) - recipient email address;
    *        subject (string) - email subject line;
@@ -77,7 +79,20 @@ export class NotificationsService {
    *        html (string, optional) - inner HTML partial to embed in the full HTML wrapper.
    * Output: Promise<void>
    */
-  async notify(to: string, subject: string, message: string, html?: string) {
+  async notify(
+    to: string,
+    subject: string,
+    message: string,
+    html?: string,
+    options?: { companyId?: string; type?: NotificationType },
+  ) {
+    if (options?.companyId && options?.type) {
+      const should = await this.shouldSendEmail(options.companyId, options.type);
+      if (!should) {
+        // Preference disables this notification type for the company — skip sending.
+        return;
+      }
+    }
     const escapeHtml = (str: string) =>
       str
         .replace(/&/g, '&amp;')
@@ -88,5 +103,33 @@ export class NotificationsService {
 
     const htmlComplete = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(subject)}</title></head><body>${html ?? escapeHtml(message)}</body></html>`;
     return this.sendMail(to, subject, message, htmlComplete);
+  }
+
+  async shouldSendEmail(companyId: string, type: NotificationType): Promise<boolean> {
+    try {
+      const settings = await this.companySettingsService.getByCompany(companyId);
+
+      // If global email_enabled is false, do not send any emails.
+      if (settings.email_enabled === false) return false;
+
+      switch (type) {
+        case NotificationType.REQUEST_CREATED:
+          return settings.email_requests_created ?? true;
+        case NotificationType.REQUEST_STATUS:
+          return settings.email_requests_status ?? true;
+        case NotificationType.REVISION_CREATED:
+          return settings.email_revisions ?? true;
+        case NotificationType.RESERVATION_CREATED:
+          return settings.email_reservations ?? true;
+        case NotificationType.ADMIN_ALERT:
+          return settings.email_admin_alerts ?? true;
+        default:
+          return true;
+      }
+    } catch (err) {
+      // On error, default to sending to avoid silent failures.
+      console.error('Error checking company notification settings:', err);
+      return true;
+    }
   }
 }

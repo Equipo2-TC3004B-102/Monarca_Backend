@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodriguez] getRandomSOIID: replaced RBAC innerJoin with is_soi flag + company scope; added status=active filter to getApproverIdByCompany.
+ * 05/05/2026 [Santiago Coronado Hernández] Added id_company to getUserById select.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -45,7 +45,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent'],
+      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent', 'id_company'],
       relations: ['role', 'role.permissions'],
     });
 
@@ -131,13 +131,8 @@ export class UserChecks {
   }
 
   /**
-<<<<<<< Updated upstream
    * getRandomSOIID, selects an active SOI user scoped to the given company when provided.
    * Input: id_company (string, optional) company scope.
-=======
-   * getRandomSOIID, selects a SOI user scoped to the given company when provided.
-   * Input: id_company (string, optional) company scope for SOI selection.
->>>>>>> Stashed changes
    * Output: SOI user id when available, otherwise null.
    */
   async getRandomSOIID(id_company?: string): Promise<string | null> {
