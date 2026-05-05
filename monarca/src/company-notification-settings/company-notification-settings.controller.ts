@@ -26,6 +26,11 @@ export class CompanyNotificationSettingsController {
     body: {
       email_enabled?: boolean;
       in_app_enabled?: boolean;
+      email_requests_created?: boolean;
+      email_requests_status?: boolean;
+      email_revisions?: boolean;
+      email_reservations?: boolean;
+      email_admin_alerts?: boolean;
     },
   ) {
     return this.settingsService.updateByCompany(id_company, body);

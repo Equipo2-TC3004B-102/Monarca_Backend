@@ -6,9 +6,7 @@
  *              to 'Changes Needed'.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
- *                              BadRequestException for HTTP 400 policy and
- *                              aligned header documentation.
+ * 05/05/2026 [Santiago Coronado Hernández] Added NotificationType to notification options.
  */
 
 import {
@@ -23,6 +21,7 @@ import { RequestsService } from 'src/requests/requests.service';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsChecks } from 'src/requests/requests.checks';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/notification-types';
 import { UserChecks } from 'src/users/user.checks.service';
 
 @Injectable()
@@ -92,6 +91,7 @@ export class RevisionsService {
 <p>Para más detalles, visita tu panel de solicitudes.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`,      
+      { companyId: request.id_company, type: NotificationType.REVISION_CREATED },
     );
 
     // const revision = this.revisionRepository.create(data);

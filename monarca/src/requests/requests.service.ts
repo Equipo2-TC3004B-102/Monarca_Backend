@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 29/04/2026 [Julio Rodriguez] Passed id_company to approver chain and cost-center fallback methods to enforce company scoping.
+ * 05/05/2026 [Santiago Coronado Hernández] added notificationtype to notification service calls and implemented logic to check company notification settings before sending emails
  */
 
 import {
@@ -23,6 +23,7 @@ import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/notification-types';
 
 const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
   USD: 'SF43718',
@@ -284,6 +285,8 @@ export class RequestsService {
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`
+      ,
+      { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
     );
 
 
@@ -588,6 +591,8 @@ export class RequestsService {
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`
+        ,
+        { companyId: updated.id_company, type: NotificationType.REQUEST_STATUS },
       );
 
       return updated;
