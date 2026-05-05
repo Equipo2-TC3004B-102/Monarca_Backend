@@ -5,7 +5,7 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Santiago Coronado Hernández] Changed synchronize value to false 
+ * [04/05/2026] [Jinsik Yoon] Added CompanyNotificationSetting to TypeORM configuration and imports.
  */
 
 import { Module } from '@nestjs/common';
@@ -51,6 +51,8 @@ import { ApprovalLevelActor } from './approval-engine/entities/approval-level-ac
 import { RequestApproval } from './approval-engine/entities/request-approval.entity';
 import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
 import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
+import { CompanyNotificationSettingsModule } from './company-notification-settings/company-notification-settings.module';
+import { CompanyNotificationSetting } from './company-notification-settings/entities/company-notification-setting.entity';
 
 @Module({
   imports: [
@@ -77,6 +79,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
     CompaniesModule,
     ApprovalRulesModule,
     ApprovalEngineModule,
+    CompanyNotificationSettingsModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -87,6 +90,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
       entities: [
         User,
         Company,
+        CompanyNotificationSetting,
         CostCenter,
         Destination,
         ExchangeRate,
@@ -113,6 +117,7 @@ import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 
     TypeOrmModule.forFeature([
       User,
+      CompanyNotificationSetting,
       CostCenter,
       Destination,
       ExchangeRate,
