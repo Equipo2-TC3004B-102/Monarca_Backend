@@ -62,5 +62,13 @@
   {
     "id": "7fedb986-8761-4ffd-aa85-71e73a41f85d",
     "name": "submit_reservations"
+  },
+  {
+    "id": "00000001-0000-4000-8000-000000000010",
+    "name": "request_changes"
+  },
+  {
+    "id": "00000001-0000-4000-8000-000000000011",
+    "name": "view_approved_request_history"
   }
 ]
