@@ -1,25 +1,34 @@
 /**
  * FileName: vouchers.service.spec
- * Description: Unit tests for VouchersService. Verifies that the service
- *              is correctly instantiated within a NestJS testing module.
+ * Description: Unit tests for VouchersService. Verifies the service is correctly
+ *              instantiated and that the CFDI cross-check on create() rejects
+ *              canceled invoices, missing invoices, and refund amounts that do
+ *              not match the CFDI total (issue #69-child).
  * Authors: Original Moncarca team
  * Last Modification made:
  * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
  * 20/04/2026 [fest] Added mocked TypeORM repositories for isolated unit testing.
+ * 05/05/2026 [Juan Pablo Narchi] Added CFDI cross-check tests for refund amount,
+ *                                canceled CFDI, and not-found CFDI scenarios.
  */
 
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { VouchersService } from 'src/vouchers/vouchers.service';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { CfdiValidationService } from 'src/vouchers/services/cfdi-validation.service';
+import { ParsedCfdiVoucher } from 'src/vouchers/vouchers.service';
+import { CreateVoucherDto } from 'src/vouchers/dto/create-voucher-dto';
 
 describe('VouchersService', () => {
   let service: VouchersService;
 
   const voucherRepositoryMock = {
-    create: jest.fn(),
-    save: jest.fn(),
+    create: jest.fn((entity) => entity),
+    save: jest.fn(async (entity) => ({ id: 'voucher-1', ...entity })),
     find: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
@@ -30,35 +39,141 @@ describe('VouchersService', () => {
     findOne: jest.fn(),
   };
 
-  /**
-   * beforeEach - Sets up the testing module before each test case.
-   * Input: None
-   * Output: Initializes the VouchersService instance available to all tests.
-   */
+  const dataSourceMock = {
+    query: jest.fn(),
+  };
+
+  const cfdiValidationServiceMock = {
+    resolveStatus: jest.fn(),
+  };
+
+  const buildParsedCfdi = (overrides: Partial<ParsedCfdiVoucher> = {}): ParsedCfdiVoucher => ({
+    cfdi_version: '4.0',
+    fiscal_uuid: '6F29A520-4C2A-4D3B-9E1F-8A7B6C5D4E3F',
+    issuer_rfc: 'AAA010101AAA',
+    issuer_name: 'Empresa Ejemplo SA de CV',
+    receiver_rfc: 'BBB020202BBB',
+    receiver_name: 'Cliente Ejemplo SA de CV',
+    subtotal: 1000,
+    amount: 1160,
+    currency: 'MXN',
+    exchange_rate: 1,
+    discount: 0,
+    iva_trasladado: 160,
+    ieps_trasladado: 0,
+    isr_retenido: 0,
+    iva_retenido: 0,
+    payment_form: '01',
+    payment_method: 'PUE',
+    date: '2026-04-25T00:00:00.000Z',
+    ...overrides,
+  });
+
+  const buildDto = (overrides: Partial<CreateVoucherDto> = {}): CreateVoucherDto => ({
+    id_request: 'request-1',
+    class: 'GAS Gasolina',
+    amount: 1160,
+    tax_type: '16%',
+    currency: 'MXN',
+    date: '2026-04-25T00:00:00.000Z',
+    status: 'pending',
+    id_approver: 'approver-1',
+    ...overrides,
+  } as CreateVoucherDto);
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
+    requestRepositoryMock.findOne.mockResolvedValue({
+      id: 'request-1',
+      id_user: 'user-1',
+      id_admin: 'approver-1',
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VouchersService,
-        {
-          provide: getRepositoryToken(Voucher),
-          useValue: voucherRepositoryMock,
-        },
-        {
-          provide: getRepositoryToken(Request),
-          useValue: requestRepositoryMock,
-        },
+        { provide: getRepositoryToken(Voucher), useValue: voucherRepositoryMock },
+        { provide: getRepositoryToken(Request), useValue: requestRepositoryMock },
+        { provide: DataSource, useValue: dataSourceMock },
+        { provide: CfdiValidationService, useValue: cfdiValidationServiceMock },
       ],
     }).compile();
 
     service = module.get<VouchersService>(VouchersService);
   });
 
-  /**
-   * should be defined - Verifies that VouchersService is correctly instantiated.
-   * Input: None
-   * Output: Passes if the service instance is defined (not null or undefined).
-   */
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('CFDI cross-check on create()', () => {
+    it('persists the voucher with cfdi_status=VALID when amount matches the CFDI total', async () => {
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
+      const parsed = buildParsedCfdi();
+
+      const saved = await service.create('user-1', buildDto(), parsed);
+
+      expect(cfdiValidationServiceMock.resolveStatus).toHaveBeenCalledWith({
+        fiscal_uuid: parsed.fiscal_uuid,
+        issuer_rfc: parsed.issuer_rfc,
+        receiver_rfc: parsed.receiver_rfc,
+        amount: parsed.amount,
+      });
+      expect(voucherRepositoryMock.save).toHaveBeenCalledTimes(1);
+      expect(saved.cfdi_status).toBe('VALID');
+      expect(saved.fiscal_uuid).toBe(parsed.fiscal_uuid);
+    });
+
+    it('rejects refund amounts that do not match the CFDI total', async () => {
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
+      const parsed = buildParsedCfdi({ amount: 1160 });
+
+      await expect(
+        service.create('user-1', buildDto({ amount: 1500 }), parsed),
+      ).rejects.toMatchObject({
+        response: { code: 'VOUCHERS_AMOUNT_MISMATCH' },
+      });
+      expect(voucherRepositoryMock.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects vouchers whose CFDI is canceled at SAT', async () => {
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('CANCELED');
+      const parsed = buildParsedCfdi();
+
+      await expect(
+        service.create('user-1', buildDto(), parsed),
+      ).rejects.toMatchObject({
+        response: { code: 'VOUCHERS_CFDI_CANCELED' },
+      });
+      expect(voucherRepositoryMock.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects vouchers whose CFDI is not found at SAT', async () => {
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('NOT_FOUND');
+      const parsed = buildParsedCfdi();
+
+      await expect(
+        service.create('user-1', buildDto(), parsed),
+      ).rejects.toMatchObject({
+        response: { code: 'VOUCHERS_CFDI_NOT_FOUND' },
+      });
+    });
+
+    it('rejects vouchers whose currency mismatches the CFDI currency', async () => {
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
+      const parsed = buildParsedCfdi({ currency: 'USD', exchange_rate: 17.5 });
+
+      await expect(
+        service.create('user-1', buildDto({ currency: 'MXN' }), parsed),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('skips the cross-check when no CFDI is parsed (no XML uploaded)', async () => {
+      const saved = await service.create('user-1', buildDto());
+
+      expect(cfdiValidationServiceMock.resolveStatus).not.toHaveBeenCalled();
+      expect(saved.cfdi_status).toBeNull();
+    });
   });
 });

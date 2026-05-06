@@ -8,6 +8,9 @@
  * Last Modification made:
  * 19/04/2026 [Fausto Izquierdo] Added POST /vouchers/parse-xml endpoint for ST-3
  *                               XML extraction testing (no DB persistence).
+ * 05/05/2026 [Juan Pablo Narchi] Auto-parse uploaded XML during voucher creation so
+ *                               the service can cross-check refund amount vs CFDI total
+ *                               and persist the SAT validation status (issue #69-child).
  */
 
 import {
@@ -113,9 +116,19 @@ export class VouchersController {
       }
     }
 
+    // Issue #69-child: parse the uploaded CFDI XML before persisting so the
+    // service can cross-check the refund amount against the invoice total and
+    // record the SAT validation status. Parsing here keeps disk-path access
+    // contained to the controller layer.
+    const xmlFile = files.file_url_xml?.[0];
+    const parsedCfdi = xmlFile
+      ? this.xmlParserService.parse(fs.readFileSync(xmlFile.path))
+      : undefined;
+
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap}
+      {...dto, ...fileMap},
+      parsedCfdi,
     );
   }
 

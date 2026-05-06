@@ -7,7 +7,10 @@
  * Last Modification made:
  * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
  * 22/04/2026 [Sebastián Borjas] Added unconverted_amount column to store original foreign-currency amount.
+ * 05/05/2026 [Juan Pablo Narchi] Added cfdi_status to track SAT validation outcome (Valid/Canceled/Not Found).
  */
+
+export type CfdiStatus = 'VALID' | 'CANCELED' | 'NOT_FOUND' | 'PENDING';
 
 import {
   Entity,
@@ -116,6 +119,10 @@ export class Voucher {
   /** Método de pago SAT (ej. PUE) */
   @Column({ name: 'payment_method', type: 'varchar', nullable: true })
   payment_method: string | null;
+
+  /** Estado del CFDI ante el SAT: VALID | CANCELED | NOT_FOUND | PENDING */
+  @Column({ name: 'cfdi_status', type: 'varchar', length: 16, nullable: true })
+  cfdi_status: CfdiStatus | null;
 
 
   // ──────────────────────────────────────────────
