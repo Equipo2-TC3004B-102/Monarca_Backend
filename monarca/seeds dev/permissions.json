@@ -55,11 +55,7 @@
     "id": "07aac50a-e679-4a7e-b6d8-6eaec6270846",
     "name": "view_assigned_requests_readonly"
   },
-  {
-    "id": "3e9ad5bb-563b-493f-8b67-808371e34e28",
-    "name": "request_history"
-  },
-  {
+{
     "id": "7fedb986-8761-4ffd-aa85-71e73a41f85d",
     "name": "submit_reservations"
   },
