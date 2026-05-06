@@ -4,7 +4,7 @@
  *              approval levels and approval level actors. Company admins are scoped
  *              to their own company; system admins can access all companies.
  * Authors: DebugStudio Team
- * Last Modification:
+ * Last Modification made:
  * 05/05/2026 [Julio Rodriguez] createApprovalLevel derives company_id from caller.id_company instead of DTO.
  */
 

@@ -5,7 +5,7 @@
  *              static file serving for uploaded files.
  * Authors: Original Monarca team
  * Last Modification made:
- * [04/05/2026] [Jinsik Yoon] Added CompanyNotificationSetting to TypeORM configuration and imports.
+ * 06/05/2026 [Julio Rodriguez] Removed Roles, Permission, RolePermission entities and RolesModule — RBAC tables dropped in Database_v4.
  */
 
 import { Module } from '@nestjs/common';
@@ -13,7 +13,6 @@ import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/company-module';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Roles } from './roles/entity/roles.entity';
 import { TravelAgenciesModule } from './travel-agencies/travel-agencies.module';
 import { RequestsModule } from './requests/requests.module';
 import { RequestLogsModule } from './request-logs/request-logs.module';
@@ -25,7 +24,6 @@ import { Destination } from './destinations/entities/destination.entity';
 import { Request } from './requests/entities/request.entity';
 import { Reservation } from './reservations/entity/reservations.entity';
 import { RequestsDestination } from './requests/entities/requests-destination.entity';
-import { Permission } from './roles/entity/permissions.entity';
 import { RequestLog } from './request-logs/entities/request-log.entity';
 import { DestinationsModule } from './destinations/destinations.module';
 import { TravelAgency } from './travel-agencies/entities/travel-agency.entity';
@@ -35,7 +33,6 @@ import { RevisionsModule } from './revisions/revisions.module';
 import { Revision } from './revisions/entities/revision.entity';
 import { SeedService } from 'seed.service';
 import { UserLogsModule } from './user-logs/user-logs.module';
-import { RolePermission } from './roles/entity/roles_permissions.entity';
 import { GuardsModule } from './guards/guards.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -43,7 +40,6 @@ import { CostCentersModule } from './cost-centers/cost-centers.module';
 import { CostCenter } from './cost-centers/entity/cost-centers.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { NotificationLog } from './notifications/entities/notification-log.entity';
-import { RolesModule } from './roles/roles.module';
 import { HealthModule } from './health/health.module';
 import { ExchangeRate } from './exchange-rates/entities/exchange-rate.entity';
 import { ApprovalLevel } from './approval-engine/entities/approval-level.entity';
@@ -61,12 +57,10 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
       serveRoot: '/files',
     }),
     NotificationsModule,
-    RolesModule,
     HealthModule,
     AuthModule,
     UsersModule,
     TravelAgenciesModule,
-    Roles,
     CostCentersModule,
     RequestsModule,
     RequestLogsModule,
@@ -96,9 +90,6 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
         ExchangeRate,
         Request,
         RequestsDestination,
-        Roles,
-        RolePermission,
-        Permission,
         Reservation,
         RequestLog,
         TravelAgency,
@@ -123,9 +114,6 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
       ExchangeRate,
       Request,
       RequestsDestination,
-      Roles,
-      RolePermission,
-      Permission,
       Reservation,
       RequestLog,
       TravelAgency,

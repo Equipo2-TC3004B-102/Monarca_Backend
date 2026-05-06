@@ -3,7 +3,7 @@
  * Description: Service for the /rules endpoints. Thin wrapper around ApprovalLevel CRUD.
  *              Company admins are scoped to their own company; system admins see all.
  * Authors: DebugStudio Team
- * Last Modification:
+ * Last Modification made:
  * 05/05/2026 [Julio Rodriguez] Added caller scoping — company_id derived from JWT, not request body.
  */
 
@@ -21,6 +21,12 @@ export class ApprovalRulesService {
     private readonly repo: Repository<ApprovalLevel>,
   ) {}
 
+  /**
+   * findAll, returns all approval rules visible to the caller.
+   * System admins see all; company admins see only their company's rules.
+   * Input: caller (UserInfoInterface) from JWT.
+   * Output: ApprovalLevel array ordered by level_order ascending.
+   */
   findAll(caller: UserInfoInterface): Promise<ApprovalLevel[]> {
     if (caller.is_system_admin) {
       return this.repo.find({ order: { level_order: 'ASC' } });
@@ -31,6 +37,12 @@ export class ApprovalRulesService {
     });
   }
 
+  /**
+   * create, creates a new approval rule scoped to the caller's company.
+   * Throws ForbiddenException when caller has no associated company.
+   * Input: dto (CreateApprovalRuleDto) with rule data, caller (UserInfoInterface) from JWT.
+   * Output: created ApprovalLevel entity.
+   */
   create(dto: CreateApprovalRuleDto, caller: UserInfoInterface): Promise<ApprovalLevel> {
     if (!caller.id_company) {
       throw new ForbiddenException({

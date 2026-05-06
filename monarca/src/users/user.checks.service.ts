@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 05/05/2026 [Santiago Coronado Hernández] Added id_company to getUserById select.
+ * 06/05/2026 [Julio Rodríguez] Removed stale role/permissions relations from logIn() after Database_v4 dropped RBAC tables.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -29,7 +29,6 @@ export class UserChecks {
   async logIn(data: LogInDTO): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { email: data.email },
-      relations: ['role', 'role.permissions'],
     });
 
     if (!user) return null;
@@ -45,8 +44,7 @@ export class UserChecks {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'name', 'last_name', 'email', 'role', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent', 'id_company'],
-      relations: ['role', 'role.permissions'],
+      select: ['id', 'name', 'last_name', 'email', 'is_system_admin', 'is_company_admin', 'is_requester', 'is_approver', 'is_soi', 'is_travelAgent', 'id_company'],
     });
 
     if (!user) return null;

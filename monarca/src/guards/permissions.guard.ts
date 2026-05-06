@@ -5,7 +5,7 @@
  *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Santiago Coronado Hernández] Added permission to requester
+ * 06/05/2026 [Julio Rodriguez] Removed id_role from userInfo; removed view_assigned_requests_readonly from is_requester after Database_v4 dropped RBAC tables.
  */
 
 import {
@@ -23,7 +23,7 @@ import { RequestInterface } from './interfaces/request.interface';
 
 // Map of user boolean flags to their corresponding permissions. Used to derive a user's permissions based on their flags without needing a DB join to roles_permissions.
 export const FLAG_PERMISSIONS: Record<string, string[]> = {
-  is_requester: ['create_request', 'edit_request', 'delete_request', 'upload_vouchers', 'view_own_requests', 'view_assigned_requests_readonly'],
+  is_requester: ['create_request', 'edit_request', 'delete_request', 'upload_vouchers', 'view_own_requests'],
   is_approver: ['approve_request', 'deny_request', 'request_changes', 'view_approved_request_history'],
   is_soi: ['check_budgets', 'approve_budget', 'deny_budget', 'assign_request_to_travel_agency', 'approve_vouchers', 'deny_vouchers', 'view_assigned_requests_readonly'],
   is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts'],
@@ -37,6 +37,13 @@ export class PermissionsGuard implements CanActivate {
     private userRepository: Repository<User>,
   ) {}
 
+  /**
+   * canActivate, evaluates whether the current request is authorized.
+   * Loads the user from DB, attaches userInfo and userPermissions to the request,
+   * then checks required permissions from the route decorator. System admins bypass all checks.
+   * Input: context (ExecutionContext) from NestJS interceptor chain.
+   * Output: true when authorized, throws BadRequestException when not.
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestInterface>();
 
@@ -56,7 +63,6 @@ export class PermissionsGuard implements CanActivate {
       last_name: user.last_name,
       status: user.status,
       id_ceco: user.id_ceco,
-      id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
       id_company: user.id_company,
       manager_id: user.manager_id,

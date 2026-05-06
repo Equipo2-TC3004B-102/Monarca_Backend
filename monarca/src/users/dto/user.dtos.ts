@@ -6,7 +6,7 @@
  *              for safe responses.
  * Authors: Original Monarca team
  * Last Modification made:
- * 03/05/2026 [Julio Rodriguez] Changed type from ceco_id
+ * 06/05/2026 [Julio Rodriguez] Removed id_role from CreateUserDto — RBAC tables dropped in Database_v4.
  */
 
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
@@ -40,10 +40,6 @@ export class CreateUserDto {
   @ApiProperty({ example: 'active' })
   @IsString()
   status: string;
-
-  @ApiProperty({ example: '8f28d424-2d93-483a-9018-f568cf6bc13a' })
-  @IsUUID()
-  id_role: string;
 
   @ApiProperty({ example: 'TEC-001', required: false })
   @IsString()

@@ -4,7 +4,6 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 05/05/2026 [Santiago Coronado Hernández] added notificationtype to notification service calls and implemented logic to check company notification settings before sending emails
  * 05/05/2026 [Julio Rodriguez] Added approval_levels to the flow of the system.
  */
 

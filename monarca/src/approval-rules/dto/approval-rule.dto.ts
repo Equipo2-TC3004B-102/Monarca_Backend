@@ -3,7 +3,7 @@
  * Description: Data Transfer Objects for ApprovalRule CRUD via /rules endpoints.
  *              company_id is derived from the caller's JWT — not accepted in the request body.
  * Authors: DebugStudio Team
- * Last Modification:
+ * Last Modification made:
  * 05/05/2026 [Julio Rodriguez] Added class-validator decorators and @ApiProperty; removed company_id from body.
  */
 

@@ -4,9 +4,9 @@
  *              CreateApprovalLevelDto validates required and optional fields on creation.
  *              UpdateApprovalLevelDto extends Create with all fields optional.
  * Authors: DebugStudio Team
- * Last Modification:
+ * Last Modification made:
  * 05/05/2026 [Julio Rodriguez] company_id optional (derived from caller for company admins);
- *            added InlineActorDto + actor field to create level and actor in one request.
+ *                              added InlineActorDto + actor field to create level and actor in one request.
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
