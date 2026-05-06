@@ -13,6 +13,8 @@ import { Request } from './entities/request.entity';
 import { RequestsService } from './requests.service';
 import { RequestsController } from './requests.controller';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
+import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
 import { GuardsModule } from 'src/guards/guards.module';
 import { UsersModule } from 'src/users/users.module';
 import { DestinationsModule } from 'src/destinations/destinations.module';
@@ -26,7 +28,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Request, RequestsDestination]),
+    TypeOrmModule.forFeature([Request, RequestsDestination, ApprovalLevel, RequestApproval]),
     GuardsModule,
     UsersModule,
     DestinationsModule,

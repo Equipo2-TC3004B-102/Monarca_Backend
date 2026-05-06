@@ -5,6 +5,7 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 05/05/2026 [Santiago Coronado Hernández] added notificationtype to notification service calls and implemented logic to check company notification settings before sending emails
+ * 05/05/2026 [Julio Rodriguez] Added approval_levels to the flow of the system.
  */
 
 import {
@@ -13,7 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -24,6 +25,8 @@ import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/notification-types';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
+import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
 
 const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
   USD: 'SF43718',
@@ -44,6 +47,10 @@ export class RequestsService {
   constructor(
     @InjectRepository(RequestEntity)
     private readonly requestsRepo: Repository<RequestEntity>,
+    @InjectRepository(ApprovalLevel)
+    private readonly approvalLevelRepo: Repository<ApprovalLevel>,
+    @InjectRepository(RequestApproval)
+    private readonly requestApprovalRepo: Repository<RequestApproval>,
     private readonly userChecks: UserChecks,
     private readonly destinationChecks: DestinationsChecks,
     private readonly notificationsService: NotificationsService,
@@ -151,8 +158,7 @@ export class RequestsService {
           'REQUESTS_INVALID_DESTINATION',
         );
     }
-
-    //ASING APPROVER
+    
     const id_ceco = req.userInfo.id_ceco;
     if (!id_ceco) {
       throw this.clientError(
@@ -174,17 +180,6 @@ export class RequestsService {
       throw this.clientError(
         'The requester is not linked to any company.',
         'REQUESTS_REQUESTER_COMPANY_REQUIRED',
-      );
-    }
-
-    let adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
-    if (!adminId) {
-      adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
-    }
-    if (!adminId) {
-      throw this.serverError(
-        'There is no approver available to assign the request.',
-        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
       );
     }
 
@@ -232,12 +227,45 @@ export class RequestsService {
       }
     }
 
+    const level = await this.approvalLevelRepo.findOne({
+      where: {
+        company_id: id_company,
+        is_active: true,
+        min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
+        max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
+      },
+      order: { level_order: 'ASC' },
+      relations: ['approval_level_actors'],
+    });
+    if (!level) {
+      throw this.clientError(
+        'No approval level is configured for this amount in your company.',
+        'REQUESTS_NO_APPROVAL_LEVEL',
+      );
+    }
+
+    const actor = level.approval_level_actors?.[0] ?? null;
+    let adminId: string | null = null;
+    if (actor?.target_id) {
+      adminId = actor.target_id;
+    } else {
+      adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
+      if (!adminId) adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
+    }
+    if (!adminId) {
+      throw this.serverError(
+        'There is no approver available to assign the request.',
+        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      );
+    }
+
     const request = this.requestsRepo.create({
       ...data,
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
       id_company,
+      current_approval_level_id: level.id,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
       exchange_rate: finalExchangeRate,
@@ -250,6 +278,19 @@ export class RequestsService {
     });
 
     const saved = await this.requestsRepo.save(request);
+
+    await this.requestApprovalRepo.save({
+      request_id: saved.id,
+      approval_level_id: level.id,
+      approval_actor_id: actor?.id ?? null,
+      approver_user_id: adminId,
+      decision: 'PENDING',
+      status: 'PENDING',
+      amount_snapshot: finalAdvanceMoney,
+      currency_snapshot: data.currency ?? 'MXN',
+      escalation_step: 0,
+      decided_at: null,
+    });
 
     // Log creación de un request
     const originCityName = await this.getCityName(saved.id_origin_city);
