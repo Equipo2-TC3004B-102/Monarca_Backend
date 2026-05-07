@@ -2,8 +2,8 @@
  * FileName: users.service.ts
  * Description: Service handling user business logic. Provides CRUD operations
  *              against the users table. Throws BadRequestException when a user
- *              is not found by ID, including findById internal lookups with
- *              role and permission relations.
+ *              is not found by ID. Access control is flag-based — no role/permission
+ *              relations are loaded.
  * Authors: Original Monarca team
  * Last Modification made:
  * 04/05/2026 [Julio Rodriguez] importUsers: role flags (is_requester, is_soi, is_travelAgent, is_approver) read from JSON; defaults to is_requester when no flag is set.
@@ -31,10 +31,7 @@ export class UsersService {
   ) {}
 
   async findById(id: string): Promise<User> {
-    const user = await this.repo.findOne({
-      where: { id },
-      relations: ['role', 'role.permissions'],
-    });
+    const user = await this.repo.findOne({ where: { id } });
 
     if (!user) {
       throw new BadRequestException('User not found');
@@ -85,8 +82,6 @@ export class UsersService {
     const errors: string[] = [];
     let created = 0; // Count for new users in the sistem
     let updated = 0; // Count for existing users that were updated with new data from the batch.
-    const REQUESTER_ROLE_ID = 'b0d4211d-457e-4d84-b8a4-320af380683f';
-
     // Pass 0: upsert cost centers referenced in the JSON for the caller's company.
     // id_ceco in the JSON IS the primary key — create the row directly with that value.
     if (callerCompanyId) {
@@ -131,7 +126,6 @@ export class UsersService {
             ...userDataRest,
             last_name: userData.last_name ?? '',
             password: hashedPassword,
-            id_role: REQUESTER_ROLE_ID, // Placeholder
             id_company: callerCompanyId,
             is_requester: userData.is_requester ?? noFlagSet,
             user_name: userData.user_name ?? userData.email.split('@')[0],

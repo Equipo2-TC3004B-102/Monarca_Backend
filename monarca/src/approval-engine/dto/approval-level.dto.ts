@@ -4,7 +4,9 @@
  *              CreateApprovalLevelDto validates required and optional fields on creation.
  *              UpdateApprovalLevelDto extends Create with all fields optional.
  * Authors: DebugStudio Team
- * Last Modification: 23/04/2026 [Julio Rodríguez] Created DTOs for ApprovalLevel CRUD.
+ * Last Modification made:
+ * 05/05/2026 [Julio Rodriguez] company_id optional (derived from caller for company admins);
+ *                              added InlineActorDto + actor field to create level and actor in one request.
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -16,12 +18,48 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+// New class to allow inline creation of an actor when creating an approval level
+export class InlineActorDto {
+  @ApiProperty({ example: 'MANAGER' })
+  @IsString()
+  actor_type: string;
+
+  @ApiProperty({ example: 'USER', required: false })
+  @IsString()
+  @IsOptional()
+  target_type?: string;
+
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false })
+  @IsUUID()
+  @IsOptional()
+  target_id?: string;
+
+  @ApiProperty({ example: true, required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_required?: boolean;
+
+  @ApiProperty({ example: 'any', required: false })
+  @IsString()
+  @IsOptional()
+  selection_mode?: string;
+
+  @ApiProperty({ example: 1, required: false })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  required_count?: number;
+}
 
 export class CreateApprovalLevelDto {
-  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false })
   @IsUUID()
-  company_id: string;
+  @IsOptional()
+  company_id?: string;
 
   @ApiProperty({ example: 'L1' })
   @IsString()
@@ -72,6 +110,13 @@ export class CreateApprovalLevelDto {
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;
+
+  // Place the actor of an approval level in the same DTO to allow creating both in one request when needed
+  @ApiProperty({ type: InlineActorDto, required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InlineActorDto)
+  actor?: InlineActorDto;
 }
 
 export class UpdateApprovalLevelDto extends PartialType(CreateApprovalLevelDto) {}

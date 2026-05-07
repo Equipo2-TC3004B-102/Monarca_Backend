@@ -4,8 +4,8 @@
  *              approval levels and approval level actors. Company admins are scoped
  *              to their own company; system admins can access all companies.
  * Authors: DebugStudio Team
- * Last Modification:
- * 23/04/2026 [Julio Rodríguez] Added CRUD methods for ApprovalLevel and ApprovalLevelActor.
+ * Last Modification made:
+ * 05/05/2026 [Julio Rodriguez] createApprovalLevel derives company_id from caller.id_company instead of DTO.
  */
 
 import {
@@ -35,7 +35,7 @@ export class ApprovalEngineService {
     return new BadRequestException({ message, code });
   }
 
-  // ─── ApprovalLevel ────────────────────────────────────────────────────────
+  // ApprovalLevel 
 
   /**
    * createApprovalLevel — Creates a new approval level.
@@ -47,15 +47,26 @@ export class ApprovalEngineService {
     dto: CreateApprovalLevelDto,
     caller: UserInfoInterface,
   ): Promise<ApprovalLevel> {
-    if (!caller.is_system_admin && caller.id_company !== dto.company_id) {
+    if (!caller.is_system_admin && !caller.id_company) {
       throw new ForbiddenException({
-        message: 'Cannot create approval levels for a different company',
+        message: 'Cannot create approval levels without a company',
         code: 'APPROVAL_ENGINE_FORBIDDEN_COMPANY',
       });
     }
 
-    const entity = this.approvalLevelRepository.create(dto);
-    return this.approvalLevelRepository.save(entity);
+    const company_id = caller.is_system_admin ? dto.company_id : caller.id_company!;
+    const { actor: actorDto, ...levelData } = dto;
+    const entity = this.approvalLevelRepository.create({ ...levelData, company_id });
+    const savedLevel = await this.approvalLevelRepository.save(entity);
+
+    if (actorDto) {
+      await this.approvalLevelActorRepository.save({
+        ...actorDto,
+        approval_level_id: savedLevel.id,
+      });
+    }
+
+    return savedLevel;
   }
 
   /**
@@ -129,7 +140,7 @@ export class ApprovalEngineService {
     return { status: true, message: `ApprovalLevel ${id} deleted` };
   }
 
-  // ─── ApprovalLevelActor ───────────────────────────────────────────────────
+  // ApprovalLevelActor
 
   /**
    * createApprovalLevelActor — Creates an actor for an existing approval level.

@@ -4,8 +4,8 @@
  *              service, and controller for approval levels, actors, and request approvals.
  *              Also registers admin service and controller for company and user management.
  * Authors: DebugStudio Team
- * Last Modification:
- * 26/04/2026 [Julio Rodríguez] Added Company and User entities; registered AdminService and AdminController.
+ * Last Modification made:
+ * 06/05/2026 [Julio Rodriguez] Removed Roles entity from forFeature — RBAC tables dropped in Database_v4.
  */
 
 import { Module } from '@nestjs/common';
@@ -20,7 +20,6 @@ import { AdminController } from './admin.controller';
 import { GuardsModule } from 'src/guards/guards.module';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { Roles } from 'src/roles/entity/roles.entity';
 
 @Module({
   imports: [
@@ -30,7 +29,6 @@ import { Roles } from 'src/roles/entity/roles.entity';
       RequestApproval,
       Company,
       User,
-      Roles,
     ]),
     GuardsModule,
   ],

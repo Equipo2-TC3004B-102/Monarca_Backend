@@ -118,11 +118,7 @@ export class LoginService {
         ),
       ].map((name) => ({ name }));
 
-      if (user.role) {
-        (user.role as any).permissions = flagPermissions;
-      } else {
-        (user as any).role = { name: 'user', permissions: flagPermissions };
-      }
+      (user as any).role = { name: 'user', permissions: flagPermissions };
 
       return { status: true, user };
     } catch (error) {
