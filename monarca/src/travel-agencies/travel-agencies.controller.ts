@@ -27,6 +27,8 @@ import {
   UpdateTravelAgencyDto,
 } from './dto/travel-agency.dtos';
 import { ProviderFlightQueryDto } from './dto/provider-flight-query.dto';
+import { CompareRequestDto } from './dto/compare-request.dto';
+import { FlightSearchMultiSegmentDto } from './dto/flight-search-multi-segment.dto';
 
 @Controller('travel-agencies')
 export class TravelAgenciesController {
@@ -55,6 +57,18 @@ export class TravelAgenciesController {
   @HttpCode(200)
   searchFlights(@Body() query: ProviderFlightQueryDto) {
     return this.travelAgenciesFlightsService.searchFlights(query);
+  }
+
+  @Post('flights/search-multi-segment')
+  @HttpCode(200)
+  searchFlightsMultiSegment(@Body() query: FlightSearchMultiSegmentDto) {
+    return this.travelAgenciesFlightsService.searchFlightsMultiSegment(query);
+  }
+
+  @Post('flights/compare')
+  @HttpCode(200)
+  compareOffers(@Body() body: CompareRequestDto) {
+    return this.travelAgenciesFlightsService.compareOffers(body);
   }
 
   @Patch(':id')
