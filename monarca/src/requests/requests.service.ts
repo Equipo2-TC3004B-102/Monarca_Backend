@@ -4,8 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 20/04/2026 [Diego de la Vega] Added default provider support metadata for
- *                             requests_destinations on create and update.
+ * 05/05/2026 [Julio Rodriguez] Added approval_levels to the flow of the system.
  */
 
 import {
@@ -14,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -24,6 +23,9 @@ import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/notification-types';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
+import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
 
 const BANXICO_CURRENCY_MAPPING: Record<string, string> = {
   USD: 'SF43718',
@@ -44,6 +46,10 @@ export class RequestsService {
   constructor(
     @InjectRepository(RequestEntity)
     private readonly requestsRepo: Repository<RequestEntity>,
+    @InjectRepository(ApprovalLevel)
+    private readonly approvalLevelRepo: Repository<ApprovalLevel>,
+    @InjectRepository(RequestApproval)
+    private readonly requestApprovalRepo: Repository<RequestApproval>,
     private readonly userChecks: UserChecks,
     private readonly destinationChecks: DestinationsChecks,
     private readonly notificationsService: NotificationsService,
@@ -151,8 +157,7 @@ export class RequestsService {
           'REQUESTS_INVALID_DESTINATION',
         );
     }
-
-    //ASIGNAR APROVADOR
+    
     const id_ceco = req.userInfo.id_ceco;
     if (!id_ceco) {
       throw this.clientError(
@@ -177,31 +182,7 @@ export class RequestsService {
       );
     }
 
-    let adminId = await this.userChecks.getApproverIdFromManagerChain(
-      userId,
-      2,
-    );
-    if (!adminId) {
-      adminId = await this.userChecks.getApproverIdByCompany(
-        id_company,
-        userId,
-      );
-    }
-    if (!adminId) {
-      adminId = await this.userChecks.getRandomApproverIdFromSameCostCenter(
-        id_ceco,
-        userId,
-      );
-    }
-    if (!adminId) {
-      throw this.serverError(
-        'There is no approver available to assign the request.',
-        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
-      );
-    }
-
-    // Assign SOI user globally (SOI is not company-scoped)
-    const SOIId = await this.userChecks.getRandomSOIID();
+    const SOIId = await this.userChecks.getRandomSOIID(id_company);
     if (!SOIId) {
       throw this.serverError(
         'There is no SOI available to assign the request.',
@@ -245,12 +226,45 @@ export class RequestsService {
       }
     }
 
+    const level = await this.approvalLevelRepo.findOne({
+      where: {
+        company_id: id_company,
+        is_active: true,
+        min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
+        max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
+      },
+      order: { level_order: 'ASC' },
+      relations: ['approval_level_actors'],
+    });
+    if (!level) {
+      throw this.clientError(
+        'No approval level is configured for this amount in your company.',
+        'REQUESTS_NO_APPROVAL_LEVEL',
+      );
+    }
+
+    const actor = level.approval_level_actors?.[0] ?? null;
+    let adminId: string | null = null;
+    if (actor?.target_id) {
+      adminId = actor.target_id;
+    } else {
+      adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
+      if (!adminId) adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
+    }
+    if (!adminId) {
+      throw this.serverError(
+        'There is no approver available to assign the request.',
+        'REQUESTS_ASSIGN_ADMIN_UNAVAILABLE',
+      );
+    }
+
     const request = this.requestsRepo.create({
       ...data,
       id_user: userId,
       id_admin: adminId,
       id_SOI: SOIId,
       id_company,
+      current_approval_level_id: level.id,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
       exchange_rate: finalExchangeRate,
@@ -263,6 +277,19 @@ export class RequestsService {
     });
 
     const saved = await this.requestsRepo.save(request);
+
+    await this.requestApprovalRepo.save({
+      request_id: saved.id,
+      approval_level_id: level.id,
+      approval_actor_id: actor?.id ?? null,
+      approver_user_id: adminId,
+      decision: 'PENDING',
+      status: 'PENDING',
+      amount_snapshot: finalAdvanceMoney,
+      currency_snapshot: data.currency ?? 'MXN',
+      escalation_step: 0,
+      decided_at: null,
+    });
 
     // Log creación de un request
     const originCityName = await this.getCityName(saved.id_origin_city);
@@ -297,6 +324,8 @@ export class RequestsService {
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`
+      ,
+      { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
     );
 
 
@@ -498,14 +527,14 @@ export class RequestsService {
         );
 
       //VALIDAR VALIDEZ DE CIUDADES
-      if (!(await this.destinationChecks.isValid(data.id_origin_city))) {
+      if (!(await this.destinationChecks.isValid(data.id_origin_city!))) {
         throw this.clientError(
           'Invalid id_origin_city.',
           'REQUESTS_INVALID_ORIGIN_CITY',
         );
       }
 
-      for (const rd of data.requests_destinations) {
+      for (const rd of data.requests_destinations!) {
         if (!(await this.destinationChecks.isValid(rd.id_destination)))
           throw this.clientError(
             'Invalid id_destination.',
@@ -516,10 +545,10 @@ export class RequestsService {
       //Update informacion general
       let finalAdvanceMoney: number = 0;
       let finalExchangeRate: number | null = null;
-      let finalUnconvertedAdvanceMoney: number | null = data.advance_money || null;
+      let finalUnconvertedAdvanceMoney: number | null = data.advance_money ?? null;
 
       if (data.currency === 'MXN') {
-        finalAdvanceMoney = data.advance_money;
+        finalAdvanceMoney = data.advance_money!;
       } else if (data.currency) {
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -531,15 +560,15 @@ export class RequestsService {
         if (rates && rates.length > 0) {
           const rate = Number(rates[0].exchange_rate);
           finalExchangeRate = rate;
-          finalAdvanceMoney = Math.round(data.advance_money * rate);
+          finalAdvanceMoney = Math.round(data.advance_money! * rate);
         } else {
           console.log(`No exchange rate found in DB for currency ${data.currency} on today's date. Fetching from API...`);
           const fetchedRate = await this.fetchBanxicoRate(data.currency);
-          
+
           if (fetchedRate !== null) {
             finalExchangeRate = fetchedRate;
-            finalAdvanceMoney = Math.round(data.advance_money * fetchedRate);
-            
+            finalAdvanceMoney = Math.round(data.advance_money! * fetchedRate);
+
             await manager.query(
               `INSERT INTO exchange_rates (currency, exchange_rate, update_date) VALUES ($1, $2, $3)`,
               [data.currency, fetchedRate, todayStr]
@@ -553,15 +582,15 @@ export class RequestsService {
       entity.unconverted_advance_money = finalUnconvertedAdvanceMoney;
       entity.exchange_rate = finalExchangeRate;
       entity.advance_money = finalAdvanceMoney;
-      entity.currency = data.currency;
-      entity.id_origin_city = data.id_origin_city;
-      entity.motive = data.motive;
-      entity.requirements = data.requirements;
-      entity.priority = data.priority;
+      entity.currency = data.currency ?? null;
+      entity.id_origin_city = data.id_origin_city!;
+      entity.motive = data.motive!;
+      entity.requirements = data.requirements ?? null;
+      entity.priority = data.priority!;
 
       //Overhaul de requests_destinations
       const destRepo = manager.getRepository(RequestsDestination);
-      entity.requests_destinations = data.requests_destinations.map((d) =>
+      entity.requests_destinations = data.requests_destinations!.map((d) =>
         destRepo.create({
           ...d,
           provider_support_status: 'pending_provider',
@@ -601,6 +630,8 @@ export class RequestsService {
 <p>Por favor, revisa los detalles en el sistema.</p>
 <p>Saludos,</p>
 <p>Equipo de Monarca</p>`
+        ,
+        { companyId: updated.id_company, type: NotificationType.REQUEST_STATUS },
       );
 
       return updated;

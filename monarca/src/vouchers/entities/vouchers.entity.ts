@@ -6,6 +6,8 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 27/04/2026 [S0Borjas] Added date_created timestamp column to track when each voucher record was created.
+ * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
+ * 22/04/2026 [Sebastián Borjas] Added unconverted_amount column to store original foreign-currency amount.
  */
 
 
@@ -32,6 +34,9 @@ export class Voucher {
 
   @Column({ name: 'amount', type: 'decimal', precision: 12, scale: 2 })
   amount: number;
+
+  @Column({ name: 'unconverted_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  unconverted_amount: number | null;
 
   @Column({ name: 'tax_type', type: 'varchar' })
   tax_type: string;

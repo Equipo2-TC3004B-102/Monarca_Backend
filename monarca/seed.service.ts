@@ -1,14 +1,11 @@
 /**
- * FileName: user.entity.ts
- * Description: TypeORM entity representing the users table. A user belongs to a
- *              CeCo (department), role and optionally a travel agency. Can have many
- *              requests, assigned requests, revisions and SOI assigned requests.
+ * FileName: seed.service.ts
+ * Description: Service for seeding and resetting the database. Loads initial data
+ *              from JSON files in /seeds. Handles password hashing for users and
+ *              backwards-compatible field normalization (id_ceco, user_name).
  * Authors: Original Monarca team
  * Last Modification made:
- * 15/04/2026 [Julio Rodríguez] Added company relationship to User entity to associate users with their respective companies.
- *                              Added id_ceco field to User entity to replace id_department for better clarity and consistency with the rest of the codebase.
- *                              Updated related DTOs and interfaces to reflect the changes in the User entity.
- *                              Added documentation comments in the file.
+ * 23/04/2026 [Julio Rodríguez] Fixed header; added approval_levels tables to truncate list.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -21,13 +18,10 @@ import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
-import { RolePermission } from 'src/roles/entity/roles_permissions.entity';
 import { Reservation } from 'src/reservations/entity/reservations.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
-import { Permission } from 'src/roles/entity/permissions.entity';
-import { Roles } from 'src/roles/entity/roles.entity';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -65,21 +59,15 @@ export class SeedService {
         @InjectRepository(RequestLog) private readonly requestLogRepo: Repository<RequestLog>,
         @InjectRepository(Revision) private readonly revisionRepo: Repository<Revision>,
         @InjectRepository(Voucher) private readonly voucherRepo: Repository<Voucher>,
-        @InjectRepository(Permission) private readonly permissionRepo: Repository<Permission>,
-        @InjectRepository(Roles) private readonly rolesRepo: Repository<Roles>,
-        @InjectRepository(RolePermission) private readonly rolePermissionRepo: Repository<RolePermission>,
     ) {}
 
     async run() {
         const seedData: SeedData[] = [
             { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
-            { repo: this.permissionRepo, file: 'permissions.json', entityName: 'Permission' },
             { repo: this.destinationRepo, file: 'destinations.json', entityName: 'Destination' },
             { repo: this.travelAgencyRepo, file: 'travel-agencies.json', entityName: 'TravelAgency' },
-            { repo: this.rolesRepo, file: 'roles.json', entityName: 'Roles' },
             { repo: this.userRepo, file: 'users.json', entityName: 'User' },
-            { repo: this.rolePermissionRepo, file: 'roles-permissions.json', entityName: 'RolePermission' },
             { repo: this.userLogsRepo, file: 'user-logs.json', entityName: 'UserLogs' },
             { repo: this.requestRepo, file: 'requests.json', entityName: 'Request' },
             { repo: this.requestsDestinationRepo, file: 'requests-destinations.json', entityName: 'RequestsDestination' },
@@ -184,14 +172,13 @@ export class SeedService {
                 'requests_destinations',
                 'requests',
                 'user_logs',
-                'roles_permissions',
                 'users',
-                'roles',
                 'travel_agencies',
                 'destinations',
                 'exchange_rates',
-                'permissions',
                 'cost_centers',
+                'approval_levels_actors',
+                'approval_levels',
                 'companies',
             ];
 

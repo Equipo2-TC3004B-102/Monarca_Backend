@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added new GET endpoints for SOI and TA assigned requests
+ * 28/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
  */
 
 import {
@@ -46,13 +46,13 @@ export class RequestsController {
   }
 
   @Get('user')
-  @Permissions('request_history')
+  @Permissions('view_own_requests')
   async findByUser(@Request() req: RequestInterface) {
     return this.requestsService.findByUser(req);
   }
 
   @Get('to-approve')
-  @Permissions('view_assigned_requests_readonly')
+  @Permissions('approve_request')
   async findAssignedApprover(@Request() req: RequestInterface) {
     return this.requestsService.findByAdmin(req);
   }
@@ -80,8 +80,15 @@ export class RequestsController {
     return this.requestsService.findAll();
   }
 
+  @Get('approved-history')
+  @Permissions('view_approved_request_history')
+  async findApprovedHistory() {
+    return this.requestsService.findAll();
+  }
+
+  // Modified to use the dictionary of flags
   @Get(':id')
-  @Permissions('view_assigned_requests_readonly')
+  @Permissions('view_assigned_requests_readonly', 'approve_request', 'check_budgets', 'view_approved_request_history', 'submit_reservations', 'create_request')
   async findOne(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id: string,

@@ -3,8 +3,7 @@
  * Description: Interface for defining the structure of user information.
  * Authors: Original Monarca team
  * Last Modification made:
- * 16/02/2026 [Julio Rodriguez] Added new fields required by Ditta Consulting.
- *                              Added coments for better documentation and maintainability.
+ * 06/05/2026 [Julio Rodriguez] Deleted id_role — access control now handled exclusively via boolean flags.
  */
 
 export interface UserInfoInterface {
@@ -13,15 +12,15 @@ export interface UserInfoInterface {
   name: string;
   last_name: string;
   status: string;
-  id_ceco?: string;
-  id_role?: string;
-  id_travel_agency: string | undefined;
-  id_company?: string;
-  manager_id?: string;
+  id_ceco: string | null;
+  id_travel_agency: string | null;
+  id_company: string | null;
+  manager_id: string | null;
   is_system_admin?: boolean;
   is_first_login?: boolean;
   is_requester?: boolean;
   is_approver?: boolean;
   is_soi?: boolean;
   is_travelAgent?: boolean;
+  is_company_admin?: boolean;
 }
