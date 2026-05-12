@@ -36,8 +36,13 @@ export const UploadPdfInterceptor = () => {
         },
       }),
       fileFilter: (_, file, cb) => {
-        // allow only pdf or xml
-        if (!file.mimetype.match(/\/pdf$/) && !file.mimetype.match(/\/xml$/)) {
+        const ext = extname(file.originalname).toLowerCase();
+        if (
+          !file.mimetype.match(/\/pdf$/) &&
+          !file.mimetype.match(/\/xml$/) &&
+          ext !== '.pdf' &&
+          ext !== '.xml'
+        ) {
           return cb(new Error('Only PDF and XML files are allowed'), false);
         }
         cb(null, true);

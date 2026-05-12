@@ -11,6 +11,8 @@
  * 05/05/2026 [Juan Pablo Narchi] Auto-parse uploaded XML during voucher creation so
  *                               the service can cross-check refund amount vs CFDI total
  *                               and persist the SAT validation status (issue #69-child).
+ * 11/05/2026 [Juan Pablo Narchi] Forward XML buffer to service.create after merge with
+ *                                feature/voucher-db-insertion; cross-check runs in service.
  */
 
 import {
@@ -46,7 +48,7 @@ export class VouchersController {
   constructor(
     private readonly vouchersService: VouchersService,
     private readonly xmlParserService: XmlParserService,
-  ) {}
+  ) { }
 
   /**
    * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
@@ -86,14 +88,14 @@ export class VouchersController {
     @Req() req: RequestInterface,
     @UploadedFiles()
     files: {
-      file_url_pdf?: Express.Multer.File[];
-      file_url_xml?: Express.Multer.File[];
+      pdf?: Express.Multer.File[];
+      xml?: Express.Multer.File[];
     },
     @Body() dto: CreateVoucherDto,
   ) {
 
     const baseDownloadLink = process.env.DOWNLOAD_LINK;
-    const pathToVocuherDownload= "/files/vouchers/";
+    const pathToVocuherDownload = "/files/vouchers/";
     if (!baseDownloadLink) {
       throw new InternalServerErrorException('DOWNLOAD_LINK not configured');
     }
@@ -103,32 +105,30 @@ export class VouchersController {
 
     // flatten both arrays into one list
     const uploaded = [
-      ...(files.file_url_pdf || []),
-      ...(files.file_url_xml || []),
+      ...(files?.pdf || []),
+      ...(files?.xml || []),
     ];
 
     for (const file of uploaded) {
       const publicUrl = `${baseDownloadLink}${pathToVocuherDownload}${file.filename}`;
-      if (file.fieldname === 'file_url_pdf') {
+      if (file.fieldname === 'pdf') {
         fileMap.file_url_pdf = publicUrl;
-      } else if (file.fieldname === 'file_url_xml') {
+      } else if (file.fieldname === 'xml') {
         fileMap.file_url_xml = publicUrl;
       }
     }
 
-    // Issue #69-child: parse the uploaded CFDI XML before persisting so the
-    // service can cross-check the refund amount against the invoice total and
-    // record the SAT validation status. Parsing here keeps disk-path access
-    // contained to the controller layer.
-    const xmlFile = files.file_url_xml?.[0];
-    const parsedCfdi = xmlFile
-      ? this.xmlParserService.parse(fs.readFileSync(xmlFile.path))
-      : undefined;
+    let xmlBuffer: Buffer | undefined;
+    const xmlFile = files?.xml?.[0];
+    if (xmlFile) {
+      xmlBuffer = fs.readFileSync(xmlFile.path);
+    }
 
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap},
-      parsedCfdi,
+      dto,
+      xmlBuffer,
+      fileMap,
     );
   }
 

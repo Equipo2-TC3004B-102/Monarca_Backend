@@ -232,5 +232,19 @@ export class CreateVoucherDto {
   @IsOptional()
   @IsString()
   payment_method?: string;
+
+  @ApiProperty({
+    description: 'Archivo físico XML',
+    required: false,
+  })
+  @IsOptional()
+  xml?: any;
+
+  @ApiProperty({
+    description: 'Archivo físico PDF',
+    required: false,
+  })
+  @IsOptional()
+  pdf?: any;
 }
 

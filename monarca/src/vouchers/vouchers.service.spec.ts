@@ -1,15 +1,17 @@
 /**
  * FileName: vouchers.service.spec
  * Description: Unit tests for VouchersService. Verifies the service is correctly
- *              instantiated and that the CFDI cross-check on create() rejects
- *              canceled invoices, missing invoices, and refund amounts that do
- *              not match the CFDI total (issue #69-child).
+ *              instantiated and that the CFDI cross-check on createFromUpload()
+ *              rejects canceled invoices, missing invoices, and refund amounts
+ *              that do not match the CFDI total (issue #69-child).
  * Authors: Original Moncarca team
  * Last Modification made:
  * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
  * 20/04/2026 [fest] Added mocked TypeORM repositories for isolated unit testing.
  * 05/05/2026 [Juan Pablo Narchi] Added CFDI cross-check tests for refund amount,
  *                                canceled CFDI, and not-found CFDI scenarios.
+ * 11/05/2026 [Juan Pablo Narchi] Updated tests to use create(xmlBuffer, fileUrls)
+ *                                signature merged from feature/voucher-db-insertion.
  */
 
 import { BadRequestException } from '@nestjs/common';
@@ -20,6 +22,7 @@ import { VouchersService } from 'src/vouchers/vouchers.service';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { CfdiValidationService } from 'src/vouchers/services/cfdi-validation.service';
+import { XmlParserService } from 'src/vouchers/services/xml-parser.service';
 import { ParsedCfdiVoucher } from 'src/vouchers/vouchers.service';
 import { CreateVoucherDto } from 'src/vouchers/dto/create-voucher-dto';
 
@@ -46,6 +49,12 @@ describe('VouchersService', () => {
   const cfdiValidationServiceMock = {
     resolveStatus: jest.fn(),
   };
+
+  const xmlParserServiceMock = {
+    parse: jest.fn(),
+  };
+
+  const FAKE_XML_BUFFER = Buffer.from('<fake-xml />');
 
   const buildParsedCfdi = (overrides: Partial<ParsedCfdiVoucher> = {}): ParsedCfdiVoucher => ({
     cfdi_version: '4.0',
@@ -97,6 +106,7 @@ describe('VouchersService', () => {
         { provide: getRepositoryToken(Request), useValue: requestRepositoryMock },
         { provide: DataSource, useValue: dataSourceMock },
         { provide: CfdiValidationService, useValue: cfdiValidationServiceMock },
+        { provide: XmlParserService, useValue: xmlParserServiceMock },
       ],
     }).compile();
 
@@ -107,13 +117,15 @@ describe('VouchersService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('CFDI cross-check on create()', () => {
+  describe('CFDI cross-check on createFromUpload()', () => {
     it('persists the voucher with cfdi_status=VALID when amount matches the CFDI total', async () => {
-      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
       const parsed = buildParsedCfdi();
+      xmlParserServiceMock.parse.mockReturnValue(parsed);
+      cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
 
-      const saved = await service.create('user-1', buildDto(), parsed);
+      const saved = await service.create('user-1', buildDto(), FAKE_XML_BUFFER);
 
+      expect(xmlParserServiceMock.parse).toHaveBeenCalledWith(FAKE_XML_BUFFER);
       expect(cfdiValidationServiceMock.resolveStatus).toHaveBeenCalledWith({
         fiscal_uuid: parsed.fiscal_uuid,
         issuer_rfc: parsed.issuer_rfc,
@@ -126,11 +138,11 @@ describe('VouchersService', () => {
     });
 
     it('rejects refund amounts that do not match the CFDI total', async () => {
+      xmlParserServiceMock.parse.mockReturnValue(buildParsedCfdi({ amount: 1160 }));
       cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
-      const parsed = buildParsedCfdi({ amount: 1160 });
 
       await expect(
-        service.create('user-1', buildDto({ amount: 1500 }), parsed),
+        service.create('user-1', buildDto({ amount: 1500 }), FAKE_XML_BUFFER),
       ).rejects.toMatchObject({
         response: { code: 'VOUCHERS_AMOUNT_MISMATCH' },
       });
@@ -138,11 +150,11 @@ describe('VouchersService', () => {
     });
 
     it('rejects vouchers whose CFDI is canceled at SAT', async () => {
+      xmlParserServiceMock.parse.mockReturnValue(buildParsedCfdi());
       cfdiValidationServiceMock.resolveStatus.mockResolvedValue('CANCELED');
-      const parsed = buildParsedCfdi();
 
       await expect(
-        service.create('user-1', buildDto(), parsed),
+        service.create('user-1', buildDto(), FAKE_XML_BUFFER),
       ).rejects.toMatchObject({
         response: { code: 'VOUCHERS_CFDI_CANCELED' },
       });
@@ -150,28 +162,31 @@ describe('VouchersService', () => {
     });
 
     it('rejects vouchers whose CFDI is not found at SAT', async () => {
+      xmlParserServiceMock.parse.mockReturnValue(buildParsedCfdi());
       cfdiValidationServiceMock.resolveStatus.mockResolvedValue('NOT_FOUND');
-      const parsed = buildParsedCfdi();
 
       await expect(
-        service.create('user-1', buildDto(), parsed),
+        service.create('user-1', buildDto(), FAKE_XML_BUFFER),
       ).rejects.toMatchObject({
         response: { code: 'VOUCHERS_CFDI_NOT_FOUND' },
       });
     });
 
     it('rejects vouchers whose currency mismatches the CFDI currency', async () => {
+      xmlParserServiceMock.parse.mockReturnValue(
+        buildParsedCfdi({ currency: 'USD', exchange_rate: 17.5 }),
+      );
       cfdiValidationServiceMock.resolveStatus.mockResolvedValue('VALID');
-      const parsed = buildParsedCfdi({ currency: 'USD', exchange_rate: 17.5 });
 
       await expect(
-        service.create('user-1', buildDto({ currency: 'MXN' }), parsed),
+        service.create('user-1', buildDto({ currency: 'MXN' }), FAKE_XML_BUFFER),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('skips the cross-check when no CFDI is parsed (no XML uploaded)', async () => {
+    it('skips the cross-check when no XML is uploaded', async () => {
       const saved = await service.create('user-1', buildDto());
 
+      expect(xmlParserServiceMock.parse).not.toHaveBeenCalled();
       expect(cfdiValidationServiceMock.resolveStatus).not.toHaveBeenCalled();
       expect(saved.cfdi_status).toBeNull();
     });

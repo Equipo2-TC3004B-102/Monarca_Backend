@@ -11,9 +11,14 @@
  *                               stored alongside MXN-converted amount.
  * 05/05/2026 [Juan Pablo Narchi] Cross-check refund amount vs parsed CFDI total and
  *                                persist SAT validation status on create (issue #69-child).
+ * 11/05/2026 [Juan Pablo Narchi] Reconciled cross-check with the new createFromUpload
+ *                                flow merged from feature/voucher-db-insertion.
  */
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, UpdateResult } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
@@ -21,10 +26,16 @@ import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { CfdiStatus, Voucher } from './entities/vouchers.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { ParsedCfdi } from './interfaces/parsed-cfdi.interface';
+import { XmlParserService } from './services/xml-parser.service';
 import { CfdiValidationService } from './services/cfdi-validation.service';
 
+type VoucherUploadFiles = {
+  file_url_pdf?: string;
+  file_url_xml?: string;
+};
+
 /**
- * Shape returned by XmlParserService.parse(): the parser already normalizes the
+ * Shape returned by XmlParserService.parse(): the parser normalizes the
  * extracted CFDI into voucher-compatible fields and adds the cfdi_version tag.
  */
 export type ParsedCfdiVoucher = Partial<CreateVoucherDto> & Pick<ParsedCfdi, 'cfdi_version'>;
@@ -54,6 +65,7 @@ export class VouchersService {
     private readonly voucherRepo: Repository<Voucher>,
     @InjectRepository(Request)
     private readonly rRepo: Repository<Request>,
+    private readonly xmlParserService: XmlParserService,
     private readonly dataSource: DataSource,
     private readonly cfdiValidationService: CfdiValidationService,
   ) {}
@@ -211,24 +223,28 @@ export class VouchersService {
   /**
    * create - Creates and persists a new voucher. Validates that the referenced
    *          request exists and that the caller is the owner of that request.
-   *          For non-MXN currencies, resolves the exchange rate and converts the
-   *          amount to MXN, storing the original amount in unconverted_amount.
-   *          When a parsed CFDI is provided, runs the cross-check against the
-   *          requested refund amount, validates the SAT status, and persists
-   *          the extracted fiscal fields on the voucher (issue #69-child).
+   *          If an XML buffer is supplied, delegates to createFromUpload which
+   *          parses the CFDI, runs the refund cross-check (issue #69-child) and
+   *          persists the resolved SAT status. For non-MXN currencies without
+   *          XML, resolves the exchange rate via Banxico and converts to MXN.
    * Input: id_user (string) - UUID of the authenticated user creating the voucher;
    *        data (CreateVoucherDto) - voucher fields;
-   *        parsedCfdi (ParsedCfdi | undefined) - data extracted from the uploaded XML.
+   *        xmlBuffer (Buffer | undefined) - raw XML bytes to parse;
+   *        fileUrls (VoucherUploadFiles) - public URLs to the uploaded files.
    * Output: Promise<Voucher> - the newly saved voucher entity.
-   * Throws BadRequestException if the referenced request does not exist,
-   *        if the caller is not the request owner, if the CFDI is canceled or
-   *        not found, or if the requested amount does not match the CFDI total.
+   * Throws BadRequestException if the request does not exist, if the caller is
+   *        not the request owner, or if the CFDI cross-check fails.
    */
   async create(
     id_user: string,
     data: CreateVoucherDto,
-    parsedCfdi?: ParsedCfdiVoucher,
+    xmlBuffer?: Buffer,
+    fileUrls: VoucherUploadFiles = {},
   ): Promise<Voucher> {
+    if (xmlBuffer) {
+      return this.createFromUpload(id_user, data, xmlBuffer, fileUrls);
+    }
+
     const request = await this.rRepo.findOne({
       where: { id: data.id_request },
     });
@@ -243,11 +259,6 @@ export class VouchersService {
       throw new BadRequestException(
         `User ${id_user} is not authorized to create a voucher for this request`,
       );
-    }
-
-    let cfdiStatus: CfdiStatus | null = null;
-    if (parsedCfdi) {
-      cfdiStatus = await this.crossCheckCfdi(parsedCfdi, data.amount, data.currency);
     }
 
     let finalAmount: number = data.amount;
@@ -275,23 +286,147 @@ export class VouchersService {
       file_url_xml: data.file_url_xml,
       status: data.status,
       id_approver: approverId,
-      exchange_rate: parsedCfdi?.exchange_rate ?? exchangeRate,
-      fiscal_uuid: parsedCfdi?.fiscal_uuid ?? data.fiscal_uuid ?? null,
-      issuer_rfc: parsedCfdi?.issuer_rfc ?? data.issuer_rfc ?? null,
-      issuer_name: parsedCfdi?.issuer_name ?? data.issuer_name ?? null,
-      receiver_rfc: parsedCfdi?.receiver_rfc ?? data.receiver_rfc ?? null,
-      receiver_name: parsedCfdi?.receiver_name ?? data.receiver_name ?? null,
-      subtotal: parsedCfdi?.subtotal ?? data.subtotal ?? null,
-      discount: parsedCfdi?.discount ?? data.discount ?? null,
-      iva_trasladado: parsedCfdi?.iva_trasladado ?? data.iva_trasladado ?? null,
-      ieps_trasladado: parsedCfdi?.ieps_trasladado ?? data.ieps_trasladado ?? null,
-      isr_retenido: parsedCfdi?.isr_retenido ?? data.isr_retenido ?? null,
-      iva_retenido: parsedCfdi?.iva_retenido ?? data.iva_retenido ?? null,
-      payment_form: parsedCfdi?.payment_form ?? data.payment_form ?? null,
-      payment_method: parsedCfdi?.payment_method ?? data.payment_method ?? null,
-      cfdi_status: cfdiStatus,
+      exchange_rate: exchangeRate,
+      fiscal_uuid: data.fiscal_uuid ?? null,
+      issuer_rfc: data.issuer_rfc ?? null,
+      issuer_name: data.issuer_name ?? null,
+      receiver_rfc: data.receiver_rfc ?? null,
+      receiver_name: data.receiver_name ?? null,
+      subtotal: data.subtotal ?? null,
+      discount: data.discount ?? null,
+      iva_trasladado: data.iva_trasladado ?? null,
+      ieps_trasladado: data.ieps_trasladado ?? null,
+      isr_retenido: data.isr_retenido ?? null,
+      iva_retenido: data.iva_retenido ?? null,
+      payment_form: data.payment_form ?? null,
+      payment_method: data.payment_method ?? null,
+      cfdi_status: null,
     });
     return await this.voucherRepo.save(voucher);
+  }
+
+  /**
+   * createFromUpload - Creates and persists a voucher using XML fiscal data as
+   *                    the source of truth for amount and date. Runs the CFDI
+   *                    cross-check (refund amount vs CFDI total + SAT status)
+   *                    before persisting, and records the resolved cfdi_status
+   *                    on the voucher (issue #69-child).
+   * Input: id_user (string) - authenticated user creating the voucher;
+   *        data (CreateVoucherDto) - business metadata supplied by the client;
+   *        xmlBuffer (Buffer) - raw XML bytes to parse;
+   *        fileUrls - publicly accessible file URLs already stored in object storage.
+   * Output: Promise<Voucher> - the newly saved voucher entity.
+   * Throws BadRequestException on the same conditions as crossCheckCfdi.
+   */
+  async createFromUpload(
+    id_user: string,
+    data: CreateVoucherDto,
+    xmlBuffer: Buffer,
+    fileUrls: VoucherUploadFiles = {},
+  ): Promise<Voucher> {
+    const fiscalData = this.xmlParserService.parse(xmlBuffer) as ParsedCfdiVoucher;
+    const { cfdi_version: _cfdiVersion, ...parsedFiscalData } = fiscalData;
+
+    const request = await this.rRepo.findOne({
+      where: { id: data.id_request },
+    });
+
+    if (!request) {
+      throw new BadRequestException(
+        `RequestDestination ${data.id_request} not found`,
+      );
+    }
+
+    const approverId = request.id_admin;
+    const idCreator = request.id_user;
+
+    if (id_user !== idCreator) {
+      throw new BadRequestException(
+        `User ${id_user} is not authorized to create a voucher for this request`,
+      );
+    }
+
+    // Issue #69-child: cross-check refund amount vs CFDI total and validate SAT
+    // status before persisting. The check uses the amount and currency declared
+    // by the client (DTO), not the parsed values, so a mismatch surfaces as a
+    // validation error instead of being silently overwritten.
+    const cfdiStatus = await this.crossCheckCfdi(
+      fiscalData,
+      data.amount,
+      data.currency,
+    );
+
+    const voucherData = {
+      ...data,
+      ...fileUrls,
+      ...parsedFiscalData,
+      id_request: data.id_request,
+      class: data.class,
+      tax_type: data.tax_type,
+      currency: data.currency,
+      amount: data.amount,
+      date: parsedFiscalData.date ?? data.date,
+      id_approver: approverId,
+    };
+
+    let finalAmount: number = voucherData.amount;
+    let unconvertedAmount: number | null = null;
+
+    if (voucherData.currency && voucherData.currency !== 'MXN') {
+      unconvertedAmount = voucherData.amount;
+      const exchangeRate = voucherData.exchange_rate ?? 1;
+      finalAmount = Math.round(voucherData.amount * exchangeRate * 100) / 100;
+    }
+
+    const voucher = this.voucherRepo.create({
+      id_request: voucherData.id_request,
+      class: voucherData.class,
+      amount: finalAmount,
+      unconverted_amount: unconvertedAmount,
+      currency: voucherData.currency,
+      tax_type: voucherData.tax_type,
+      date: new Date(voucherData.date),
+      file_url_pdf: voucherData.file_url_pdf ?? null,
+      file_url_xml: voucherData.file_url_xml ?? null,
+      status: voucherData.status,
+      id_approver: voucherData.id_approver,
+      fiscal_uuid: voucherData.fiscal_uuid ?? null,
+      issuer_rfc: voucherData.issuer_rfc ?? null,
+      issuer_name: voucherData.issuer_name ?? null,
+      receiver_rfc: voucherData.receiver_rfc ?? null,
+      receiver_name: voucherData.receiver_name ?? null,
+      exchange_rate: voucherData.exchange_rate ?? null,
+      subtotal: voucherData.subtotal ?? null,
+      discount: voucherData.discount ?? null,
+      iva_trasladado: voucherData.iva_trasladado ?? null,
+      ieps_trasladado: voucherData.ieps_trasladado ?? null,
+      isr_retenido: voucherData.isr_retenido ?? null,
+      iva_retenido: voucherData.iva_retenido ?? null,
+      payment_form: voucherData.payment_form ?? null,
+      payment_method: voucherData.payment_method ?? null,
+      cfdi_status: cfdiStatus,
+    });
+
+    return await this.voucherRepo.save(voucher);
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const databaseError = error as {
+      code?: string;
+      driverError?: { code?: string; message?: string };
+      message?: string;
+    };
+
+    return (
+      databaseError.code === '23503' ||
+      databaseError.driverError?.code === '23503' ||
+      Boolean(databaseError.message?.includes('violates foreign key constraint')) ||
+      Boolean(databaseError.driverError?.message?.includes('violates foreign key constraint'))
+    );
   }
 
   /**
