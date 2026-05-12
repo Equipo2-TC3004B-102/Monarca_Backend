@@ -4,7 +4,7 @@
  *              common flight search entry point.
  * Authors: Debug Studio (Diego de la Vega)
  * Last Modification made:
- * 22/04/2026 [Diego de la Vega] Created base adapter interface for provider searches.
+ * 2/05/2026 [Diego de la Vega] Added the fetchOffer line to receive the promise result.
  */
 
 import { ProviderFlightQueryDto } from '../dto/provider-flight-query.dto';
@@ -23,4 +23,5 @@ export interface ProviderAdapter {
   readonly provider_name: string;
 
   searchFlights(query: ProviderFlightQueryDto): Promise<ProviderSearchResult>;
+  fetchOffer(offerId: string): Promise<ProviderSearchResult>;
 }
