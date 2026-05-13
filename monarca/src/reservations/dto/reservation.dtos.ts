@@ -5,7 +5,7 @@
  *              reservations, and exposes the entity shape as ReservationDto.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 24/04/2026 [Julio Rodriguez] Standardized validators for Swagger.
+ * 11/05/2026 [Diego de la Vega] Added the flight reference as we cannot make a reservation with the free version of Duffel.
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
@@ -41,6 +41,15 @@ export class CreateReservationDto {
   })
   @IsNumber()
   price: number;
+
+  @ApiProperty({
+    description: 'Optional flight reference or provider link associated with the reservation',
+    example: 'off_0000B6Cj8zofoc7k9G4Nal',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  link?: string;
 
   @ApiProperty({
     description: 'pdf file of the reservation',
