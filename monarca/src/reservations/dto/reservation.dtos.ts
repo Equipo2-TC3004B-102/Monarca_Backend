@@ -17,7 +17,6 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { Reservation } from '../entity/reservations.entity';
 
 export class CreateReservationDto {
