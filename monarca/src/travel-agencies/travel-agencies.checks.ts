@@ -39,9 +39,7 @@ export class TravelAgenciesChecks {
     if (!travel_agency) {
       throw new BadRequestException('Travel agency not found');
     }
-    if (travel_agency.users.length === 0) {
-      throw new BadRequestException('No users found for this travel agency');
-    }
-    return travel_agency.users;
+    // Return users even if empty; notification logic will handle missing agents
+    return travel_agency.users ?? [];
   }
 }
