@@ -6,18 +6,19 @@
  *              current user by ID from the JWT payload.
  * Authors: Original Monarca team
  * Last Modification made:
- * 07/04/2026 [Julio Rodríguez] Standarized error handling with specific messages and codes for better debugging.
+ * 04/05/2026 [Julio Rodríguez] profile() now overrides role.permissions with flag-derived permissions so the frontend reads the correct permission set.
  */
 
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException, // Added for more specific error handling
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { LogInDTO } from '../dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserChecks } from 'src/users/user.checks.service';
+import { FLAG_PERMISSIONS } from 'src/guards/permissions.guard';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -54,8 +55,8 @@ export class LoginService {
       // Cookie configuration for frontend connection
       res.cookie('sessionInfo', token, {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+        secure: false,
+        sameSite: 'lax',
         maxAge: 3600 * 1000, // 1 hour
       });
 
@@ -99,15 +100,25 @@ export class LoginService {
         });
       }
 
-      // get user by id with their permissions
       const user = await this.userChecks.getUserById(id);
 
       if (!user) {
         throw new BadRequestException({
           message: 'Session user not found',
-          code: 'AUTH_SESSION_USER_NOT_FOUND', // 400 error code for session user not found
+          code: 'AUTH_SESSION_USER_NOT_FOUND',
         });
       }
+
+      // Derive permissions from flags so the frontend reads the same set that PermissionsGuard enforces.
+      const flagPermissions = [
+        ...new Set(
+          Object.entries(FLAG_PERMISSIONS)
+            .filter(([flag]) => (user as any)[flag])
+            .flatMap(([, perms]) => perms),
+        ),
+      ].map((name) => ({ name }));
+
+      (user as any).role = { name: 'user', permissions: flagPermissions };
 
       return { status: true, user };
     } catch (error) {

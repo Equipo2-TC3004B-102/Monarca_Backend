@@ -10,24 +10,17 @@
  */
 
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { Company } from '../entity/company.entity';
 
-// Similar as users dtos, but with company-specific fields and validations. CreateCompanyDto requires name and local_currency.
-export class CreateCompanyDto { 
-  @ApiProperty({ // Add descriptions and examples for better documentation.
-    description: 'Company name',
-    example: 'Ditta Consulting',
-  })
-  @IsNotEmpty()
-  name!: string;
+export class CreateCompanyDto {
+  @ApiProperty({ example: 'Ditta Consulting' })
+  @IsString()
+  name: string;
 
-  @ApiProperty({
-    description: 'Local currency used by the company',
-    example: 'MXN',
-  })
-  @IsNotEmpty()
-  local_currency!: string;
+  @ApiProperty({ example: 'MXN' })
+  @IsString()
+  local_currency: string;
 }
 
 // UpdateCompanyDto allows partial updates like name or local_currency, and CompanyDto is used for responses without modifications.

@@ -12,7 +12,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { TravelAgency } from '../entities/travel-agency.entity';
 import { OmitType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreateTravelAgencyDto {
   @ApiProperty({
@@ -20,7 +20,6 @@ export class CreateTravelAgencyDto {
     example: 'Travel Agency',
   })
   @IsString()
-  @IsNotEmpty()
   name: string;
 }
 

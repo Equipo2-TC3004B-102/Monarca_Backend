@@ -5,6 +5,7 @@
  *              UpdateApprovalLevelActorDto extends Create with all fields optional.
  * Authors: DebugStudio Team
  * Last Modification: 23/04/2026 [Julio Rodríguez] Created DTOs for ApprovalLevelActor CRUD.
+ * 13/05/2026 [Julio Rodriguez] Fixed ceco_id validator from @IsUUID to @IsString (CECO ids are varchar, not UUIDs).
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -52,8 +53,8 @@ export class CreateApprovalLevelActorDto {
   @IsOptional()
   selection_mode?: string;
 
-  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false })
-  @IsUUID()
+  @ApiProperty({ example: 'TEC-001', required: false })
+  @IsString()
   @IsOptional()
   ceco_id?: string;
 

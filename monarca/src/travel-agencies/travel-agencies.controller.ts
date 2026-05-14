@@ -6,8 +6,7 @@
  *              and remove (DELETE /travel-agencies/:id).
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized explicit HTTP success code for
- *                              POST endpoint and aligned header format.
+ * 23/04/2026 [Diego de la Vega] Added the REST endpoint implementation for flights requests.
  */
 
 import {
@@ -22,14 +21,21 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { TravelAgenciesService } from './travel-agencies.service';
+import { TravelAgenciesFlightsService } from './travel-agencies-flights.service';
 import {
   CreateTravelAgencyDto,
   UpdateTravelAgencyDto,
 } from './dto/travel-agency.dtos';
+import { ProviderFlightQueryDto } from './dto/provider-flight-query.dto';
+import { CompareRequestDto } from './dto/compare-request.dto';
+import { FlightSearchMultiSegmentDto } from './dto/flight-search-multi-segment.dto';
 
 @Controller('travel-agencies')
 export class TravelAgenciesController {
-  constructor(private readonly travelAgenciesService: TravelAgenciesService) {}
+  constructor(
+    private readonly travelAgenciesService: TravelAgenciesService,
+    private readonly travelAgenciesFlightsService: TravelAgenciesFlightsService,
+  ) {}
 
   @Post()
   @HttpCode(200)
@@ -45,6 +51,24 @@ export class TravelAgenciesController {
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.travelAgenciesService.findOne(id);
+  }
+
+  @Post('flights/search')
+  @HttpCode(200)
+  searchFlights(@Body() query: ProviderFlightQueryDto) {
+    return this.travelAgenciesFlightsService.searchFlights(query);
+  }
+
+  @Post('flights/search-multi-segment')
+  @HttpCode(200)
+  searchFlightsMultiSegment(@Body() query: FlightSearchMultiSegmentDto) {
+    return this.travelAgenciesFlightsService.searchFlightsMultiSegment(query);
+  }
+
+  @Post('flights/compare')
+  @HttpCode(200)
+  compareOffers(@Body() body: CompareRequestDto) {
+    return this.travelAgenciesFlightsService.compareOffers(body);
   }
 
   @Patch(':id')

@@ -4,8 +4,8 @@
  *              approval levels and approval level actors. Company admins are scoped
  *              to their own company; system admins can access all companies.
  * Authors: DebugStudio Team
- * Last Modification:
- * 23/04/2026 [Julio Rodríguez] Added CRUD methods for ApprovalLevel and ApprovalLevelActor.
+ * Last Modification made:
+ * 13/05/2026 [Julio Rodriguez] removeApprovalLevel: reassign pending requests to substitute level before deleting; 400 if no substitute exists.
  */
 
 import {
@@ -14,9 +14,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { ApprovalLevel } from './entities/approval-level.entity';
 import { ApprovalLevelActor } from './entities/approval-level-actor.entity';
+import { RequestApproval } from './entities/request-approval.entity';
+import { Request as RequestEntity } from 'src/requests/entities/request.entity';
 import { CreateApprovalLevelDto, UpdateApprovalLevelDto } from './dto/approval-level.dto';
 import { CreateApprovalLevelActorDto, UpdateApprovalLevelActorDto } from './dto/approval-level-actor.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
@@ -29,13 +31,19 @@ export class ApprovalEngineService {
 
     @InjectRepository(ApprovalLevelActor)
     private readonly approvalLevelActorRepository: Repository<ApprovalLevelActor>,
+
+    @InjectRepository(RequestEntity)
+    private readonly requestRepository: Repository<RequestEntity>,
+
+    @InjectRepository(RequestApproval)
+    private readonly requestApprovalRepository: Repository<RequestApproval>,
   ) {}
 
   private clientError(message: string, code: string) {
     return new BadRequestException({ message, code });
   }
 
-  // ─── ApprovalLevel ────────────────────────────────────────────────────────
+  // ApprovalLevel 
 
   /**
    * createApprovalLevel — Creates a new approval level.
@@ -47,15 +55,26 @@ export class ApprovalEngineService {
     dto: CreateApprovalLevelDto,
     caller: UserInfoInterface,
   ): Promise<ApprovalLevel> {
-    if (!caller.is_system_admin && caller.id_company !== dto.company_id) {
+    if (!caller.is_system_admin && !caller.id_company) {
       throw new ForbiddenException({
-        message: 'Cannot create approval levels for a different company',
+        message: 'Cannot create approval levels without a company',
         code: 'APPROVAL_ENGINE_FORBIDDEN_COMPANY',
       });
     }
 
-    const entity = this.approvalLevelRepository.create(dto);
-    return this.approvalLevelRepository.save(entity);
+    const company_id = caller.is_system_admin ? dto.company_id : caller.id_company!;
+    const { actor: actorDto, ...levelData } = dto;
+    const entity = this.approvalLevelRepository.create({ ...levelData, company_id });
+    const savedLevel = await this.approvalLevelRepository.save(entity);
+
+    if (actorDto) {
+      await this.approvalLevelActorRepository.save({
+        ...actorDto,
+        approval_level_id: savedLevel.id,
+      });
+    }
+
+    return savedLevel;
   }
 
   /**
@@ -117,6 +136,9 @@ export class ApprovalEngineService {
 
   /**
    * removeApprovalLevel — Deletes an approval level by id.
+   * If pending requests exist at this level, finds a substitute at the same level_order
+   * within the same company and reassigns them atomically before deleting.
+   * Throws 400 APPROVAL_LEVEL_HAS_PENDING_REQUESTS when no substitute exists.
    * Input: level id, caller userInfo.
    * Output: deletion confirmation object.
    */
@@ -124,12 +146,46 @@ export class ApprovalEngineService {
     id: string,
     caller: UserInfoInterface,
   ): Promise<{ status: boolean; message: string }> {
-    await this.findOneApprovalLevel(id, caller);
+    const level = await this.findOneApprovalLevel(id, caller);
+
+    const pendingCount = await this.requestRepository.count({
+      where: { current_approval_level_id: id },
+    });
+
+    if (pendingCount > 0) {
+      const substitute = await this.approvalLevelRepository.findOne({
+        where: {
+          company_id: level.company_id,
+          level_order: level.level_order,
+          is_active: true,
+          id: Not(id),
+        },
+      });
+
+      if (!substitute) {
+        throw this.clientError(
+          `Cannot delete: ${pendingCount} pending request(s) at level order ${level.level_order} with no substitute`,
+          'APPROVAL_LEVEL_HAS_PENDING_REQUESTS',
+        );
+      }
+
+      await this.approvalLevelRepository.manager.transaction(async (em) => {
+        await em.update(RequestEntity, { current_approval_level_id: id }, { current_approval_level_id: substitute.id });
+        await em.update(RequestApproval, { approval_level_id: id, status: 'PENDING' }, { approval_level_id: substitute.id });
+        await em.delete(ApprovalLevel, id);
+      });
+
+      return {
+        status: true,
+        message: `ApprovalLevel ${id} deleted; ${pendingCount} request(s) reassigned to ${substitute.id}`,
+      };
+    }
+
     await this.approvalLevelRepository.delete(id);
     return { status: true, message: `ApprovalLevel ${id} deleted` };
   }
 
-  // ─── ApprovalLevelActor ───────────────────────────────────────────────────
+  // ApprovalLevelActor
 
   /**
    * createApprovalLevelActor — Creates an actor for an existing approval level.

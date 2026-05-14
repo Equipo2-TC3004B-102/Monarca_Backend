@@ -5,19 +5,20 @@
  *              for use in other modules that need user data or validation.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 03/05/2026 [Julio Rodriguez] Registered CostCenter entity so importUsers can upsert cecos from the JSON.
  */
 
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { UserChecks } from './user.checks.service';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { RolesModule } from 'src/roles/roles.module';
+import { GuardsModule } from 'src/guards/guards.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), RolesModule],
+  imports: [TypeOrmModule.forFeature([User, CostCenter]), GuardsModule],
   controllers: [UsersController],
   providers: [UserChecks, UsersService],
   exports: [UserChecks, UsersService],
