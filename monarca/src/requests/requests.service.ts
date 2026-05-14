@@ -243,7 +243,11 @@ export class RequestsService {
       );
     }
 
-    const actor = level.approval_level_actors?.[0] ?? null;
+    const actors = level.approval_level_actors ?? [];
+    const actor = actors.find((a) => a.ceco_id === id_ceco)
+      ?? actors.find((a) => a.ceco_id === null)
+      ?? actors[0]
+      ?? null;
     let adminId: string | null = null;
     if (actor?.target_id) {
       adminId = actor.target_id;

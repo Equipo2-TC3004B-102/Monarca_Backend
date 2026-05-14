@@ -5,7 +5,7 @@
  *              backwards-compatible field normalization (id_ceco, user_name).
  * Authors: Original Monarca team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Fixed header; added approval_levels tables to truncate list.
+ * 13/05/2026 [Julio Rodriguez] Added request_approvals to truncate list — missing FK reference caused truncate to fail when request approvals existed.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -170,6 +170,7 @@ export class SeedService {
                 'request_logs',
                 'reservations',
                 'requests_destinations',
+                'request_approvals',
                 'requests',
                 'user_logs',
                 'users',

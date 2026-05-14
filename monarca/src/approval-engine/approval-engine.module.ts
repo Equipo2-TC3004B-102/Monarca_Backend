@@ -5,7 +5,8 @@
  *              Also registers admin service and controller for company and user management.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 06/05/2026 [Julio Rodriguez] Removed Roles entity from forFeature — RBAC tables dropped in Database_v4.
+ * 13/05/2026 [Julio Rodriguez] Added CostCenter to forFeature for CECO listing endpoint.
+ *                              Added Request entity to forFeature for request reassignment on level deletion.
  */
 
 import { Module } from '@nestjs/common';
@@ -20,6 +21,8 @@ import { AdminController } from './admin.controller';
 import { GuardsModule } from 'src/guards/guards.module';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Request as RequestEntity } from 'src/requests/entities/request.entity';
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 
 @Module({
   imports: [
@@ -29,6 +32,8 @@ import { User } from 'src/users/entities/user.entity';
       RequestApproval,
       Company,
       User,
+      RequestEntity,
+      CostCenter,
     ]),
     GuardsModule,
   ],
