@@ -55,8 +55,8 @@ export class LoginService {
       // Cookie configuration for frontend connection
       res.cookie('sessionInfo', token, {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+        secure: false,
+        sameSite: 'lax',
         maxAge: 3600 * 1000, // 1 hour
       });
 

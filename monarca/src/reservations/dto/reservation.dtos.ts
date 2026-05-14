@@ -46,6 +46,15 @@ export class CreateReservationDto {
   price: number;
 
   @ApiProperty({
+    description: 'Optional flight reference or provider link associated with the reservation',
+    example: 'off_0000B6Cj8zofoc7k9G4Nal',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  link?: string;
+
+  @ApiProperty({
     description: 'pdf file of the reservation',
     example: 'file',
   })
