@@ -10,6 +10,7 @@
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsNumber,
@@ -41,6 +42,7 @@ export class CreateReservationDto {
     description: 'Price of the reservation',
     required: true,
   })
+  @Type(() => Number)
   @IsNumber()
   @Type(() => Number)
   price: number;
@@ -69,6 +71,24 @@ export class CreateReservationDto {
   })
   @IsUUID()
   id_request_destination: string;
+
+  @ApiProperty({
+    description: 'Optional provider ID (e.g., duffel for flight reservations)',
+    example: 'duffel',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provider_id?: string;
+
+  @ApiProperty({
+    description: 'Optional provider name (e.g., Duffel for flight reservations)',
+    example: 'Duffel',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provider_name?: string;
 }
 
 export class UpdateReservationDto extends PartialType(CreateReservationDto) {}
