@@ -8,6 +8,7 @@
  * Authors: DebugStudio Team
  * Last Modification made:
  * 13/05/2026 [Julio Rodriguez] Added getCostCentersByCompany for CECO selector in AdminRules.
+ *                              Added getCompanyInfo for company name display in AdminRules (accessible to company admins).
  */
 
 import {
@@ -318,6 +319,22 @@ export class AdminService {
     const { password, ...adminWithoutPassword } = savedAdmin;
 
     return { company, admin: adminWithoutPassword };
+  }
+
+  /**
+   * getCompanyInfo — Returns basic company info (id, name, local_currency) for the given company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: company id, caller userInfo.
+   * Output: Company entity.
+   */
+  async getCompanyInfo(companyId: string, caller: UserInfoInterface): Promise<Company> {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError(
+        'Access restricted to your own company',
+        'ADMIN_FORBIDDEN_COMPANY',
+      );
+    }
+    return this.findOneCompany(companyId);
   }
 
   /**

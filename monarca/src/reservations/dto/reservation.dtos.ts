@@ -5,7 +5,8 @@
  *              reservations, and exposes the entity shape as ReservationDto.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 24/04/2026 [Julio Rodriguez] Standardized validators for Swagger.
+ * 14/05/2026 [Julio Rodriguez] Added @Type(() => Number) to price field so FormData strings are
+ *                              coerced to numbers before @IsNumber() validation.
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Reservation } from '../entity/reservations.entity';
 
 export class CreateReservationDto {
@@ -40,6 +42,7 @@ export class CreateReservationDto {
     required: true,
   })
   @IsNumber()
+  @Type(() => Number)
   price: number;
 
   @ApiProperty({

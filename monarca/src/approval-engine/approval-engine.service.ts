@@ -5,7 +5,6 @@
  *              to their own company; system admins can access all companies.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 05/05/2026 [Julio Rodriguez] createApprovalLevel derives company_id from caller.id_company instead of DTO.
  * 13/05/2026 [Julio Rodriguez] removeApprovalLevel: reassign pending requests to substitute level before deleting; 400 if no substitute exists.
  */
 
