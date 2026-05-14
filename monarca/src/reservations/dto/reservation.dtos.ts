@@ -5,8 +5,8 @@
  *              reservations, and exposes the entity shape as ReservationDto.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 14/05/2026 [Julio Rodriguez] Added @Type(() => Number) to price field so FormData strings are
- *                              coerced to numbers before @IsNumber() validation.
+ * 15/05/2026 [Julio Rodriguez] Removed @IsString from file — Multer handles the binary upload
+ *                              via @UploadedFiles, so dto.file is never a client string.
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
@@ -58,7 +58,6 @@ export class CreateReservationDto {
     description: 'pdf file of the reservation',
     example: 'file',
   })
-  @IsString()
   @IsOptional()
   file?: string;
 
