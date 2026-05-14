@@ -7,7 +7,8 @@
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 03/05/2026 [Julio Rodriguez] findAllUsers now scopes results to caller's company when caller is not system admin.
+ * 13/05/2026 [Julio Rodriguez] Added getCostCentersByCompany for CECO selector in AdminRules.
+ *                              Added getCompanyInfo for company name display in AdminRules (accessible to company admins).
  */
 
 import {
@@ -19,6 +20,7 @@ import { ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
 import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
@@ -32,6 +34,9 @@ export class AdminService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(CostCenter)
+    private readonly costCenterRepository: Repository<CostCenter>,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -314,5 +319,40 @@ export class AdminService {
     const { password, ...adminWithoutPassword } = savedAdmin;
 
     return { company, admin: adminWithoutPassword };
+  }
+
+  /**
+   * getCompanyInfo — Returns basic company info (id, name, local_currency) for the given company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: company id, caller userInfo.
+   * Output: Company entity.
+   */
+  async getCompanyInfo(companyId: string, caller: UserInfoInterface): Promise<Company> {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError(
+        'Access restricted to your own company',
+        'ADMIN_FORBIDDEN_COMPANY',
+      );
+    }
+    return this.findOneCompany(companyId);
+  }
+
+  /**
+   * getCostCentersByCompany — Returns all cost centers belonging to a company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: company id, caller userInfo.
+   * Output: CostCenter array.
+   */
+  async getCostCentersByCompany(
+    companyId: string,
+    caller: UserInfoInterface,
+  ): Promise<CostCenter[]> {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError(
+        'Access restricted to your own company cost centers',
+        'ADMIN_FORBIDDEN_COMPANY',
+      );
+    }
+    return this.costCenterRepository.find({ where: { id_company: companyId } });
   }
 }
