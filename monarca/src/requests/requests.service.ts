@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 05/05/2026 [Julio Rodriguez] Added approval_levels to the flow of the system.
+ * 13/05/2026 [Diego de la Vega] Integrate approval_levels into the request system flow.
  */
 
 import {
@@ -374,12 +374,20 @@ export class RequestsService {
 
     // VALIDAR QUE PUEDE ACCEDER REQUEST
     const id_travel_agency = req.userInfo.id_travel_agency;
+    const isTravelAgent = req.userInfo?.is_travelAgent === true;
+
+    // Allow access when any of the following is true:
+    // - request owner, admin, or SOI
+    // - user belongs to the same travel agency as the request
+    // - user is a travel agent (can access any request regardless of status)
+    const travelAgentAccess = isTravelAgent;
 
     if (
       userId !== request.id_user &&
       userId !== request.id_admin &&
       userId !== request.id_SOI &&
-      !(id_travel_agency && id_travel_agency === request.id_travel_agency) //Testear mas
+      !(id_travel_agency && id_travel_agency === request.id_travel_agency) &&
+      !travelAgentAccess
     )
       throw this.clientError('Cannot access this request.', 'REQUESTS_ACCESS_DENIED');
 
@@ -474,17 +482,13 @@ export class RequestsService {
     const userId = req.sessionInfo.id;
     const travelAgencyId = req.userInfo.id_travel_agency;
 
-    if (!travelAgencyId)
-      throw this.clientError(
-        'Cannot access this endpoint.',
-        'REQUESTS_TRAVEL_AGENCY_REQUIRED',
-      );
+    // Build query based on whether user has a travel agency assigned
+    const whereClause = travelAgencyId
+      ? { id_travel_agency: travelAgencyId, status: 'Pending Reservations' }
+      : { status: 'Pending Reservations' };
 
     const list = await this.requestsRepo.find({
-      where: {
-        id_travel_agency: travelAgencyId,
-        status: 'Pending Reservations',
-      },
+      where: whereClause,
       relations: [
         'requests_destinations',
         'requests_destinations.destination',

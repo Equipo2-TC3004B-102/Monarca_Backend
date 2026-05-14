@@ -75,8 +75,9 @@ export class DuffelProvider implements ProviderAdapter {
       let response;
       try {
         response = await Promise.race([fetchPromise, timeoutPromise]);
-      } catch (err) {
-        console.error('[Duffel] fetch failed or timed out:', err?.message ?? err);
+      } catch (err: any) {
+        const errorMessage = err?.message ?? String(err);
+        console.error('[Duffel] fetch failed or timed out:', errorMessage);
         return {
           results: [],
           error: this.buildError(
@@ -155,8 +156,9 @@ export class DuffelProvider implements ProviderAdapter {
                 break;
               }
             }
-          } catch (err) {
-            console.debug('[Duffel] polling error (will retry):', err?.message ?? err);
+          } catch (err: any) {
+            const errorMessage = err?.message ?? String(err);
+            console.debug('[Duffel] polling error (will retry):', errorMessage);
           }
 
           // Wait before next attempt
