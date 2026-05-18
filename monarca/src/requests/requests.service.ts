@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -226,16 +226,26 @@ export class RequestsService {
       }
     }
 
-    const level = await this.approvalLevelRepo.findOne({
-      where: {
-        company_id: id_company,
-        is_active: true,
-        min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
-        max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
-      },
-      order: { level_order: 'ASC' },
-      relations: ['approval_level_actors'],
+    const amountWhere = {
+      is_active: true,
+      min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
+      max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
+    };
+    const levelOrder = { level_order: 'ASC' as const };
+    const levelRelations = ['approval_level_actors'];
+
+    let level = await this.approvalLevelRepo.findOne({
+      where: { company_id: id_company, ...amountWhere },
+      order: levelOrder,
+      relations: levelRelations,
     });
+    if (!level) {
+      level = await this.approvalLevelRepo.findOne({
+        where: { company_id: IsNull(), ...amountWhere },
+        order: levelOrder,
+        relations: levelRelations,
+      });
+    }
     if (!level) {
       throw this.clientError(
         'No approval level is configured for this amount in your company.',

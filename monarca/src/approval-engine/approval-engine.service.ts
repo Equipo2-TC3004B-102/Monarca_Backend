@@ -6,6 +6,7 @@
  * Authors: DebugStudio Team
  * Last Modification made:
  * 13/05/2026 [Julio Rodriguez] removeApprovalLevel: reassign pending requests to substitute level before deleting; 400 if no substitute exists.
+ * 18/05/2026 [Julio Rodriguez] findAllApprovalLevels: include global levels (company_id IS NULL) in company-scoped query; added IsNull import.
  */
 
 import {
@@ -14,7 +15,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { ApprovalLevel } from './entities/approval-level.entity';
 import { ApprovalLevelActor } from './entities/approval-level-actor.entity';
 import { RequestApproval } from './entities/request-approval.entity';
@@ -89,7 +90,10 @@ export class ApprovalEngineService {
     }
 
     return this.approvalLevelRepository.find({
-      where: { company_id: caller.id_company ?? undefined },
+      where: [
+        { company_id: caller.id_company ?? undefined },
+        { company_id: IsNull() },
+      ],
     });
   }
 
@@ -155,7 +159,7 @@ export class ApprovalEngineService {
     if (pendingCount > 0) {
       const substitute = await this.approvalLevelRepository.findOne({
         where: {
-          company_id: level.company_id,
+          company_id: level.company_id ?? IsNull(),
           level_order: level.level_order,
           is_active: true,
           id: Not(id),
