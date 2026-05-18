@@ -34,9 +34,9 @@ export class ApprovalLevel {
     @Column({ name: 'name' })
     name: string;
 
-    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
-    @Column({ name: 'company_id', type: 'uuid' })
-    company_id: string;
+    @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', nullable: true })
+    @Column({ name: 'company_id', type: 'uuid', nullable: true })
+    company_id: string | null;
 
     @ApiProperty({ example: 'Requires manager approval for amounts above $10,000 MXN', required: false, nullable: true })
     @Column({ name: 'description', type: 'varchar', nullable: true })
