@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 13/05/2026 [Diego de la Vega] Integrate approval_levels into the request system flow.
+ * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] added findReservedHistory method to return all requests with reserved status for a user, and implemented exchange rate fetching and logging of request actions for better auditing and financial accuracy.
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, DataSource, EntityManager, In, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -500,6 +500,41 @@ export class RequestsService {
       ],
     });
     return list;
+  }
+
+  async findReservedHistory(req: RequestInterface): Promise<RequestEntity[]> {
+    const travelAgencyId = req.userInfo.id_travel_agency;
+    const isTravelAgent = req.userInfo?.is_travelAgent === true;
+
+    const statusFilter = In([
+      'In Progress',
+      'Pending Vouchers Approval',
+      'Pending Refund Approval',
+      'Completed',
+    ]);
+
+    const whereClause = travelAgencyId
+      ? { id_travel_agency: travelAgencyId, status: statusFilter }
+      : isTravelAgent
+      ? { status: statusFilter }
+      : null;
+
+    if (!whereClause) {
+      return [];
+    }
+
+    return this.requestsRepo.find({
+      where: whereClause,
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+      ],
+    });
   }
 
   async updateRequest(
