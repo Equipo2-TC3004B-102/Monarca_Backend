@@ -3,7 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 05/05/2026 [Santiago Coronado Hernández] Added NotificationType to notification options.
+ * 13/05/2026 [Diego de la Vega] Fixed some minor bugs related to permissions for making reservations.
  */
 
 import {
@@ -13,6 +13,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
+import { User } from 'src/users/entities/user.entity';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsService } from './requests.service';
 import { ApproveRequestDTO } from './dto/approve-request.dto';
@@ -28,6 +29,8 @@ export class RequestsStatusService {
   constructor(
     @InjectRepository(RequestEntity)
     private readonly requestsRepo: Repository<RequestEntity>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly requestsService: RequestsService,
     private readonly notificationsService: NotificationsService,
     private readonly travelAgenciesChecks: TravelAgenciesChecks,
@@ -190,6 +193,7 @@ export class RequestsStatusService {
 
   async finishedReservations(req: RequestInterface, id_request: string) {
     const id_travel_agency = req.userInfo.id_travel_agency;
+    const isTravelAgent = req.userInfo?.is_travelAgent === true;
 
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
@@ -199,7 +203,12 @@ export class RequestsStatusService {
     if (!request)
       throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
     
-    if  (!(id_travel_agency && id_travel_agency === request.id_travel_agency)) //Testear mas
+    // Allow access if:
+    // - User is a travel agent (regardless of agency assignment)
+    // - User's agency matches the request's agency
+    const canFinishReservations = isTravelAgent || (id_travel_agency && id_travel_agency === request.id_travel_agency);
+    
+    if (!canFinishReservations)
       throw this.clientError(
         'Unable to change requests status.',
         'REQUEST_STATUS_TRANSITION_NOT_ALLOWED',
@@ -273,9 +282,16 @@ export class RequestsStatusService {
     );
 
     // Notify travel agents to start reservations after SOI budget approval.
-    const agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
+    let agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
       request.id_travel_agency,
     );
+
+    // If no agents assigned to this travel agency, notify all travel agents in the system
+    if (agents.length === 0) {
+      agents = await this.userRepo.find({
+        where: { is_travelAgent: true },
+      });
+    }
 
     for (const agent of agents) {
       await this.notificationsService.notify(

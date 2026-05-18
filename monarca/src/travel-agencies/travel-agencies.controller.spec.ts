@@ -30,7 +30,7 @@ describe('TravelAgenciesController', () => {
         },
         {
           provide: TravelAgenciesFlightsService,
-          useValue: { searchFlights: jest.fn() },
+          useValue: { searchFlights: jest.fn(), compareOffers: jest.fn() },
         },
       ],
     }).compile();

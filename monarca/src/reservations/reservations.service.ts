@@ -5,9 +5,9 @@
  *              update, and deletion of reservations.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
- *                              BadRequestException for HTTP 400 policy and
- *                              aligned header documentation.
+ * 14/05/2026 [Diego de la Vega] When a reservation is created with a provider_id (e.g. Duffel),
+ *                               provider_support_status on the linked RequestsDestination is
+ *                               updated to 'supported' so the frontend reflects the correct state.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -20,6 +20,7 @@ import {
 } from './dto/reservation.dtos';
 import { RequestsChecks } from 'src/requests/requests.checks';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
+import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 
 
 @Injectable()
@@ -27,37 +28,63 @@ export class ReservationsService {
   constructor(
     @InjectRepository(Reservation)
     private readonly reservationsRepository: Repository<Reservation>,
-    private readonly requestChecks: RequestsChecks
 
+    @InjectRepository(RequestsDestination)
+    private readonly requestsDestinationRepository: Repository<RequestsDestination>,
+
+    private readonly requestChecks: RequestsChecks,
   ) {}
 
   /**
    * createReservation - Creates and persists a new reservation after validating that
    *                      the travel agency owns the request destination and the request
    *                      is in 'Pending Reservations' status.
+   *                      If the reservation includes a provider_id, the linked
+   *                      RequestsDestination is updated to provider_support_status = 'supported'.
    * Input: req (RequestInterface) - session info containing the travel agency ID;
    *        reservation (CreateReservationDto) - fields: title, comments, price,
-   *        id_request_destination, and optional file link.
+   *        id_request_destination, and optional file link, provider_id, provider_name.
    * Output: Promise<Reservation> - the newly saved reservation entity.
-  * Throws BadRequestException if the agency does not own the destination or
+   * Throws BadRequestException if the agency does not own the destination or
    *        the request is not in the correct status.
    */
-  async createReservation(req: RequestInterface,reservation: CreateReservationDto) {
-    
-    // //VALIDAR USER Y id_request_destination
+  async createReservation(req: RequestInterface, reservation: CreateReservationDto) {
+
+    // Allow creation if:
+    // - User is a travel agent (regardless of agency assignment)
+    // - User's travel agency matches the request destination's agency
     const id_travel_agency = req.userInfo.id_travel_agency;
-    if (!(id_travel_agency && await this.requestChecks.isRequestDestinationTravelAgencyId(reservation.id_request_destination, id_travel_agency))) {
+    const isTravelAgent = req.userInfo?.is_travelAgent === true;
+
+    const hasPermission = isTravelAgent ||
+      (id_travel_agency && await this.requestChecks.isRequestDestinationTravelAgencyId(reservation.id_request_destination, id_travel_agency));
+
+    if (!hasPermission) {
       throw new BadRequestException('Unable to add reservation to that request.');
     }
-    
-    //VALIDAR ESTADO DE REQUEST
-    const requestStatus = await this.requestChecks.getRequestStatusFromRequestDestination(reservation.id_request_destination)
+
+    // Validate request status
+    const requestStatus = await this.requestChecks.getRequestStatusFromRequestDestination(reservation.id_request_destination);
     if (requestStatus !== 'Pending Reservations') {
       throw new BadRequestException('Unable to create reservation because of the requests status.');
     }
 
     const newReservation = this.reservationsRepository.create(reservation);
-    return this.reservationsRepository.save(newReservation);
+    const saved = await this.reservationsRepository.save(newReservation);
+
+    // If the reservation was made through a known provider (e.g. Duffel), mark the
+    // destination as supported so the frontend shows the correct provider status.
+    if (reservation.provider_id) {
+      await this.requestsDestinationRepository.update(
+        reservation.id_request_destination,
+        {
+          provider_support_status: 'supported',
+          provider_support_checked_at: new Date(),
+        },
+      );
+    }
+
+    return saved;
   }
 
   /**

@@ -5,10 +5,12 @@
  *              reservations, and exposes the entity shape as ReservationDto.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 24/04/2026 [Julio Rodriguez] Standardized validators for Swagger.
+ * 14/05/2026 [Julio Rodriguez] Added @Type(() => Number) to price field so FormData strings are
+ *                              coerced to numbers before @IsNumber() validation.
  */
 
 import { ApiProperty, PartialType, OmitType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsNumber,
@@ -39,8 +41,19 @@ export class CreateReservationDto {
     description: 'Price of the reservation',
     required: true,
   })
+  @Type(() => Number)
   @IsNumber()
+  @Type(() => Number)
   price: number;
+
+  @ApiProperty({
+    description: 'Optional flight reference or provider link associated with the reservation',
+    example: 'off_0000B6Cj8zofoc7k9G4Nal',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  link?: string;
 
   @ApiProperty({
     description: 'pdf file of the reservation',
@@ -57,6 +70,24 @@ export class CreateReservationDto {
   })
   @IsUUID()
   id_request_destination: string;
+
+  @ApiProperty({
+    description: 'Optional provider ID (e.g., duffel for flight reservations)',
+    example: 'duffel',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provider_id?: string;
+
+  @ApiProperty({
+    description: 'Optional provider name (e.g., Duffel for flight reservations)',
+    example: 'Duffel',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provider_name?: string;
 }
 
 export class UpdateReservationDto extends PartialType(CreateReservationDto) {}

@@ -8,9 +8,8 @@
  *              to system admins exclusively.
  * Authors: DebugStudio Team
  * Last Modification:
- * 03/05/2026 [Julio Rodriguez] GET /admin/users now accessible to both admins; results scoped by service.
- * 29/04/2026 [Julio Rodriguez] Added POST /admin/companies/setup endpoint.
- * 28/04/2026 [Julio Rodríguez] Created AdminController with company CRUD and user management.
+ * 13/05/2026 [Julio Rodriguez] Added GET /admin/companies/:companyId/cost-centers endpoint.
+ *                              Added GET /admin/companies/:companyId/info endpoint (company admin + system admin).
  */
 
 import {
@@ -116,6 +115,34 @@ export class AdminController {
   }
 
   // Company-scoped user management (company admin and system admin)
+
+  /**
+   * getCompanyInfo — Returns basic company info for the given company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId path param (uuid).
+   * Output: Company entity.
+   */
+  @Get('companies/:companyId/info')
+  async getCompanyInfo(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Req() req: RequestInterface,
+  ) {
+    return this.adminService.getCompanyInfo(companyId, req.userInfo);
+  }
+
+  /**
+   * getCostCentersByCompany — Returns all cost centers belonging to a company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId path param (uuid).
+   * Output: CostCenter array.
+   */
+  @Get('companies/:companyId/cost-centers')
+  async getCostCentersByCompany(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Req() req: RequestInterface,
+  ) {
+    return this.adminService.getCostCentersByCompany(companyId, req.userInfo);
+  }
 
   /**
    * findUsersByCompany — Returns users belonging to a company with optional filters.

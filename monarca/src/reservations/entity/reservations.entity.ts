@@ -31,17 +31,26 @@ export class Reservation {
   @Column({ type: 'varchar', nullable: false })
   comments: string;
 
-  @ApiProperty({ example: 'https://booking.com/reservation/abc123' })
-  @Column({ type: 'varchar', nullable: false })
-  link: string;
+  @ApiProperty({ example: 'https://booking.com/reservation/abc123', required: false })
+  @Column({ type: 'varchar', nullable: true })
+  link?: string;
 
   @ApiProperty({ example: 3500.00 })
   @Column({ type: 'float', nullable: false })
   price: number;
+  
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ name: 'id_request_destination', type: 'uuid' })
   id_request_destination: string;
+
+  @ApiProperty({ example: 'duffel', required: false })
+  @Column({ type: 'varchar', nullable: true })
+  provider_id?: string;
+
+  @ApiProperty({ example: 'Duffel', required: false })
+  @Column({ type: 'varchar', nullable: true })
+  provider_name?: string;
 
   @ManyToOne(
     () => RequestsDestination,

@@ -4,7 +4,7 @@
  *              travel provider adapters.
  * Authors: DebugStudio (Diego de la Vega)
  * Last Modification made:
- * 22/04/2026 [Diego de la Vega] Created normalized flight option and error contracts to define how will the endoint respond.
+ * 22/04/2026 [Diego de la Vega] Created normalized flight option and error contracts to define how will the endpoint respond.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -80,8 +80,8 @@ export class UnifiedFlightSearchResponseDto {
   @ApiProperty({ type: [ProviderErrorDto] })
   provider_errors: ProviderErrorDto[];
 
-  @ApiProperty({ type: ProviderFlightQueryDto })
-  query: ProviderFlightQueryDto;
+  @ApiProperty({ type: ProviderFlightQueryDto, required: false })
+  query?: ProviderFlightQueryDto;
 
   @ApiProperty({ example: 4 })
   results_count: number;

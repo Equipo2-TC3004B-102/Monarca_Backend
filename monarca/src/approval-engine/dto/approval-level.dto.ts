@@ -5,8 +5,7 @@
  *              UpdateApprovalLevelDto extends Create with all fields optional.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 05/05/2026 [Julio Rodriguez] company_id optional (derived from caller for company admins);
- *                              added InlineActorDto + actor field to create level and actor in one request.
+ * 13/05/2026 [Julio Rodriguez] Added ceco_id to InlineActorDto for CECO-scoped actor assignment.
  */
 
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -53,6 +52,11 @@ export class InlineActorDto {
   @Min(1)
   @IsOptional()
   required_count?: number;
+
+  @ApiProperty({ example: 'TEC-001', required: false })
+  @IsString()
+  @IsOptional()
+  ceco_id?: string;
 }
 
 export class CreateApprovalLevelDto {
