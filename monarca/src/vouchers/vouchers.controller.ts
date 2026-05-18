@@ -6,8 +6,7 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 19/04/2026 [Fausto Izquierdo] Added POST /vouchers/parse-xml endpoint for ST-3
- *                               XML extraction testing (no DB persistence).
+ * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] Added parsedCFDI extraction to the uploadVoucher endpoint.
  */
 
 import {
@@ -97,6 +96,10 @@ export class VouchersController {
 
     const id_user = req.sessionInfo.id;
     const fileMap: Record<string, string> = {};
+    const xmlFile = files.file_url_xml?.[0];
+    const parsedCfdi = xmlFile
+      ? this.xmlParserService.parse(fs.readFileSync(xmlFile.path))
+      : undefined;
 
     // flatten both arrays into one list
     const uploaded = [
@@ -115,7 +118,8 @@ export class VouchersController {
 
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap}
+      { ...dto, ...fileMap },
+      parsedCfdi,
     );
   }
 
