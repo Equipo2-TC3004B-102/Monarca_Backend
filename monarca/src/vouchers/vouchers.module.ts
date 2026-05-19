@@ -14,11 +14,12 @@ import { VouchersService } from './vouchers.service';
 import { XmlParserService } from './services/xml-parser.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Voucher } from './entities/vouchers.entity';
+import { VoucherCreationLog } from './entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 import { GuardsModule } from 'src/guards/guards.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([Voucher, Request, RequestsDestination]),
+  imports: [TypeOrmModule.forFeature([Voucher, VoucherCreationLog, Request, RequestsDestination]),
   GuardsModule
 
 ],

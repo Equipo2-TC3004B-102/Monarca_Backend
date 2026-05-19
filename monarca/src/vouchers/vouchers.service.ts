@@ -17,6 +17,7 @@ import { DataSource, Repository, UpdateResult } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
+import { VoucherCreationLog } from './entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 
@@ -40,6 +41,8 @@ export class VouchersService {
   constructor(
     @InjectRepository(Voucher)
     private readonly voucherRepo: Repository<Voucher>,
+    @InjectRepository(VoucherCreationLog)
+    private readonly logRepo: Repository<VoucherCreationLog>,
     @InjectRepository(Request)
     private readonly rRepo: Repository<Request>,
     @InjectRepository(RequestsDestination)
@@ -137,74 +140,96 @@ export class VouchersService {
    * Throws BadRequestException if the caller is not the request owner.
    */
   async create(id_user: string, data: CreateVoucherDto): Promise<Voucher> {
-    const request = await this.rRepo.findOne({
-      where: { id: data.id_request },
-    });
-    if (!request) {
-      throw new BadRequestException(
-        `RequestDestination ${data.id_request} not found`,
-      );
-    }
-    const approverId = request.id_admin;
-    const id_creator = request.id_user;
-    if (id_user !== id_creator) {
-      throw new BadRequestException(
-        `User ${id_user} is not authorized to create a voucher for this request`,
-      );
-    }
-    const [firstDestination, lastDestination] = await Promise.all([
-      this.rdRepo.findOne({
-        where: { id_request: data.id_request },
-        order: { destination_order: 'ASC' },
-      }),
-      this.rdRepo.findOne({
-        where: { id_request: data.id_request, is_last_destination: true },
-      }),
-    ]);
-    if (firstDestination && lastDestination) {
-      const voucherDate = new Date(data.date);
-      const tripStart = new Date(firstDestination.arrival_date).getTime();
-      const deadlineMs = new Date(lastDestination.departure_date).getTime() + 7 * 24 * 60 * 60 * 1000;
-      if (voucherDate.getTime() < tripStart) {
+    try {
+      const request = await this.rRepo.findOne({
+        where: { id: data.id_request },
+      });
+      if (!request) {
         throw new BadRequestException(
-          `Voucher date cannot be before the trip start date`,
+          `RequestDestination ${data.id_request} not found`,
         );
       }
-      if (voucherDate.getTime() > deadlineMs) {
+      const approverId = request.id_admin;
+      const id_creator = request.id_user;
+      if (id_user !== id_creator) {
         throw new BadRequestException(
-          `Voucher date cannot be more than 7 days after the trip departure date`,
+          `User ${id_user} is not authorized to create a voucher for this request`,
         );
       }
-    }
 
-    let finalAmount: number = data.amount;
-    let unconvertedAmount: number | null = null;
-    let exchangeRate: number | null = null;
-
-    if (data.currency && data.currency !== 'MXN') {
-      const rate = await this.resolveExchangeRate(data.currency);
-      if (rate !== null) {
-        exchangeRate = rate;
-        unconvertedAmount = data.amount;
-        finalAmount = Math.round(data.amount * rate * 100) / 100;
+      const [firstDestination, lastDestination] = await Promise.all([
+        this.rdRepo.findOne({
+          where: { id_request: data.id_request },
+          order: { destination_order: 'ASC' },
+        }),
+        this.rdRepo.findOne({
+          where: { id_request: data.id_request, is_last_destination: true },
+        }),
+      ]);
+      if (firstDestination && lastDestination) {
+        const voucherDate = new Date(data.date);
+        const tripStart = new Date(firstDestination.arrival_date).getTime();
+        const deadlineMs = new Date(lastDestination.departure_date).getTime() + 7 * 24 * 60 * 60 * 1000;
+        if (voucherDate.getTime() < tripStart) {
+          throw new BadRequestException(
+            `Voucher date cannot be before the trip start date`,
+          );
+        }
+        if (voucherDate.getTime() > deadlineMs) {
+          throw new BadRequestException(
+            `Voucher date cannot be more than 7 days after the trip departure date`,
+          );
+        }
       }
-    }
 
-    const voucher = this.voucherRepo.create({
-      id_request: data.id_request,
-      class: data.class,
-      amount: finalAmount,
-      unconverted_amount: unconvertedAmount,
-      currency: data.currency,
-      tax_type: data.tax_type,
-      date: new Date(data.date),
-      file_url_pdf: data.file_url_pdf,
-      file_url_xml: data.file_url_xml,
-      status: data.status,
-      id_approver: approverId,
-      exchange_rate: exchangeRate,
-    });
-    return await this.voucherRepo.save(voucher);
+      let finalAmount: number = data.amount;
+      let unconvertedAmount: number | null = null;
+      let exchangeRate: number | null = null;
+
+      if (data.currency && data.currency !== 'MXN') {
+        const rate = await this.resolveExchangeRate(data.currency);
+        if (rate !== null) {
+          exchangeRate = rate;
+          unconvertedAmount = data.amount;
+          finalAmount = Math.round(data.amount * rate * 100) / 100;
+        }
+      }
+
+      const voucher = this.voucherRepo.create({
+        id_request: data.id_request,
+        class: data.class,
+        amount: finalAmount,
+        unconverted_amount: unconvertedAmount,
+        currency: data.currency,
+        tax_type: data.tax_type,
+        date: new Date(data.date),
+        file_url_pdf: data.file_url_pdf,
+        file_url_xml: data.file_url_xml,
+        status: data.status,
+        id_approver: approverId,
+        exchange_rate: exchangeRate,
+      });
+      const saved = await this.voucherRepo.save(voucher);
+      
+      await this.logRepo.save(this.logRepo.create({
+        id_request: data.id_request,
+        id_user,
+        outcome: 'success',
+        failure_reason: null,
+        attempted_voucher_date: data.date,
+      }));
+      
+      return saved;
+    } catch (error) {
+      await this.logRepo.save(this.logRepo.create({
+        id_request: data.id_request ?? null,
+        id_user,
+        outcome: 'failure',
+        failure_reason: error.message,
+        attempted_voucher_date: data.date ?? null,
+      }));
+      throw error;
+    }
   }
 
   /**
