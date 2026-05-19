@@ -35,7 +35,7 @@ export const FLAG_PERMISSIONS: Record<string, string[]> = {
     'delete_cost_center',
   ],
   is_soi: ['check_budgets', 'approve_budget', 'deny_budget', 'assign_request_to_travel_agency', 'approve_vouchers', 'deny_vouchers', 'view_assigned_requests_readonly'],
-  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts'],
+  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts', 'view_travel_agent_history'],
   is_company_admin: [
     'create_cost_center',
     'read_cost_center',
