@@ -10,10 +10,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompanyNotificationSetting } from './entities/company-notification-setting.entity';
 import { CompanyNotificationSettingsService } from './company-notification-settings.service';
 import { CompanyNotificationSettingsController } from './company-notification-settings.controller';
+import { GuardsModule } from 'src/guards/guards.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CompanyNotificationSetting]),
+    GuardsModule,
   ],
   controllers: [CompanyNotificationSettingsController],
   providers: [CompanyNotificationSettingsService],

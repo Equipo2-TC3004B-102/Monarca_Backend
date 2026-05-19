@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 28/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
+ * 19/05/2026 [Julio Rodriguez]: Added new GET /requests/ta-history endpoint for travel agents to view their request history.
  */
 
 import {
@@ -84,6 +84,12 @@ export class RequestsController {
   @Permissions('view_approved_request_history')
   async findApprovedHistory() {
     return this.requestsService.findAll();
+  }
+
+  @Get('ta-history')
+  @Permissions('view_travel_agent_history')
+  async findTAHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findTAHistory(req);
   }
 
   // Modified to use the dictionary of flags

@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 13/05/2026 [Diego de la Vega] Integrate approval_levels into the request system flow.
+ * 19/05/2026 [Julio Rodriguez] Added method for fetching travel agent request history.
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull, Not, In } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -486,6 +486,28 @@ export class RequestsService {
       ],
     });
     return list;
+  }
+
+  async findTAHistory(req: RequestInterface): Promise<RequestEntity[]> {
+    const travelAgencyId = req.userInfo.id_travel_agency;
+    const excludedStatuses = ['Pending Review', 'Denied', 'Cancelled', 'Changes Needed', 'Pending Reservations'];
+
+    return this.requestsRepo.find({
+      where: travelAgencyId
+        ? { id_travel_agency: travelAgencyId, status: Not(In(excludedStatuses)) }
+        : { status: Not(In(excludedStatuses)) },
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+        'travel_agency',
+        'travel_agency.users',
+      ],
+    });
   }
 
   async findByTA(req: RequestInterface): Promise<RequestEntity[]> {

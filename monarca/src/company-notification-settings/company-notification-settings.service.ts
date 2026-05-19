@@ -2,13 +2,16 @@
  * Filename: company-notification-settings.service.ts
  * Description: Service file for handling business logic related to company notification settings.
  * Authors: DebugStudio team
- * Last Modification made: [04/05/2026] [Jinsik Yoon] Initial creation of the service file.
+ * Last Modification made:
+ * [04/05/2026] [Jinsik Yoon] Initial creation of the service file.
+ * [19/05/2026] [Julio Rodriguez] Add userInfo param; enforce company-admin-only and company ownership checks. Extract getSettingsInternal for service-to-service calls.
  */
 
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CompanyNotificationSetting } from './entities/company-notification-setting.entity';
+import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 
 @Injectable()
 export class CompanyNotificationSettingsService {
@@ -17,7 +20,17 @@ export class CompanyNotificationSettingsService {
     private readonly settingsRepository: Repository<CompanyNotificationSetting>,
   ) {}
 
-  async getByCompany(id_company: string): Promise<CompanyNotificationSetting> {
+  private assertCompanyAccess(id_company: string, userInfo: UserInfoInterface): void {
+    if (!userInfo.is_company_admin) {
+      throw new ForbiddenException('Access restricted to company administrators');
+    }
+    if (userInfo.id_company !== id_company) {
+      throw new ForbiddenException('Access restricted to administrators of this company');
+    }
+  }
+
+  // For service-to-service calls (e.g. NotificationsService checking email settings). No auth check — callers are trusted internal services.
+  async getSettingsInternal(id_company: string): Promise<CompanyNotificationSetting> {
     let settings = await this.settingsRepository.findOne({
       where: { id_company },
     });
@@ -40,6 +53,11 @@ export class CompanyNotificationSettingsService {
     return settings;
   }
 
+  async getByCompany(id_company: string, userInfo: UserInfoInterface): Promise<CompanyNotificationSetting> {
+    this.assertCompanyAccess(id_company, userInfo);
+    return this.getSettingsInternal(id_company);
+  }
+
   async updateByCompany(
     id_company: string,
     body: {
@@ -51,8 +69,10 @@ export class CompanyNotificationSettingsService {
       email_reservations?: boolean;
       email_admin_alerts?: boolean;
     },
+    userInfo: UserInfoInterface,
   ): Promise<CompanyNotificationSetting> {
-    const settings = await this.getByCompany(id_company);
+    this.assertCompanyAccess(id_company, userInfo);
+    const settings = await this.getSettingsInternal(id_company);
 
     if (body.email_enabled !== undefined) {
       settings.email_enabled = body.email_enabled;

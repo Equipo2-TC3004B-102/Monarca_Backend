@@ -5,7 +5,7 @@
  *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 06/05/2026 [Julio Rodriguez] Removed id_role from userInfo; removed view_assigned_requests_readonly from is_requester after Database_v4 dropped RBAC tables.
+ * 19/05/2026 [Julio Rodriguez] Added new flag for travel agent reservations history.
  */
 
 import {
@@ -26,7 +26,7 @@ export const FLAG_PERMISSIONS: Record<string, string[]> = {
   is_requester: ['create_request', 'edit_request', 'delete_request', 'upload_vouchers', 'view_own_requests'],
   is_approver: ['approve_request', 'deny_request', 'request_changes', 'view_approved_request_history'],
   is_soi: ['check_budgets', 'approve_budget', 'deny_budget', 'assign_request_to_travel_agency', 'approve_vouchers', 'deny_vouchers', 'view_assigned_requests_readonly'],
-  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts'],
+  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts', 'view_travel_agent_history'],
 };
 
 @Injectable()
