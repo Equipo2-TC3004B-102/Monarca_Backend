@@ -5,6 +5,7 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 19/05/2026 [Julio Rodriguez] Added method for fetching travel agent request history.
+ *                              Filter approval levels by applies_to when creating travel requests.
  */
 
 import {
@@ -228,6 +229,7 @@ export class RequestsService {
 
     const amountWhere = {
       is_active: true,
+      applies_to: In(['travel', 'all']),
       min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
       max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
     };
