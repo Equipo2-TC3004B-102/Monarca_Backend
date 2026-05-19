@@ -6,8 +6,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 19/04/2026 [Fausto Izquierdo] Added POST /vouchers/parse-xml endpoint for ST-3
- *                               XML extraction testing (no DB persistence).
+ * 17/05/2026 [Santiago Coronado Hernández, Juan Pablo Narchi and Fausto Izquierdo] Added parsedCFDI extraction to the uploadVoucher endpoint. 
+ * Also changed pdf and xml field names to be accepted in both file_url_pdf/file_url_xml and pdf/xml for better flexibility. 
  */
 
 import {
@@ -48,7 +48,7 @@ export class VouchersController {
   /**
    * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
    *            and returns the extracted ParsedCfdi JSON without saving anything.
-   * Input: files – multipart upload with field name 'file_url_xml'.
+   * Input: files – multipart upload with field name 'file_url_xml' or 'xml'.
    * Output: Promise<ParsedCfdi> – the raw fiscal data extracted from the CFDI.
    * Throws BadRequestException if no XML file is provided or parsing fails.
    */
@@ -57,11 +57,15 @@ export class VouchersController {
   @HttpCode(200)
   async parseXml(
     @UploadedFiles()
-    files: { file_url_xml?: Express.Multer.File[] },
+    files: { 
+      file_url_xml?: Express.Multer.File[];
+      xml?: Express.Multer.File[];
+    },
   ): Promise<ReturnType<XmlParserService['parse']>> {
-    const xmlFile = files?.file_url_xml?.[0];
+    // Support both old field name (file_url_xml) and new field name (xml)
+    const xmlFile = files?.file_url_xml?.[0] || files?.xml?.[0];
     if (!xmlFile) {
-      throw new BadRequestException('An XML file is required in the file_url_xml field.');
+      throw new BadRequestException('An XML file is required in the file_url_xml or xml field.');
     }
     // Multer uses diskStorage so the file is on disk, not in memory
     const buffer = fs.readFileSync(xmlFile.path);
@@ -85,6 +89,8 @@ export class VouchersController {
     files: {
       file_url_pdf?: Express.Multer.File[];
       file_url_xml?: Express.Multer.File[];
+      pdf?: Express.Multer.File[];
+      xml?: Express.Multer.File[];
     },
     @Body() dto: CreateVoucherDto,
   ) {
@@ -97,25 +103,35 @@ export class VouchersController {
 
     const id_user = req.sessionInfo.id;
     const fileMap: Record<string, string> = {};
+    
+    // Normalize field names: support both old (file_url_xml/file_url_pdf) and new (xml/pdf) field names
+    const xmlFile = files.file_url_xml?.[0] || files.xml?.[0];
+    const parsedCfdi = xmlFile
+      ? this.xmlParserService.parse(fs.readFileSync(xmlFile.path))
+      : undefined;
 
-    // flatten both arrays into one list
+    // flatten both old and new field names into one list
     const uploaded = [
       ...(files.file_url_pdf || []),
       ...(files.file_url_xml || []),
+      ...(files.pdf || []),
+      ...(files.xml || []),
     ];
 
     for (const file of uploaded) {
       const publicUrl = `${baseDownloadLink}${pathToVocuherDownload}${file.filename}`;
-      if (file.fieldname === 'file_url_pdf') {
+      // Normalize field names to standard names for service layer
+      if (file.fieldname === 'file_url_pdf' || file.fieldname === 'pdf') {
         fileMap.file_url_pdf = publicUrl;
-      } else if (file.fieldname === 'file_url_xml') {
+      } else if (file.fieldname === 'file_url_xml' || file.fieldname === 'xml') {
         fileMap.file_url_xml = publicUrl;
       }
     }
 
     return this.vouchersService.create(
       id_user,
-      {...dto, ...fileMap}
+      { ...dto, ...fileMap },
+      parsedCfdi,
     );
   }
 

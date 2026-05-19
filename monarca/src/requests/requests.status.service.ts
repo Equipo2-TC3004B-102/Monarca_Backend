@@ -363,7 +363,9 @@ export class RequestsStatusService {
     if (!request)
       throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
 
-    if (request.id_admin !== id_user)
+    // Allow the request admin or any user with the `approve_vouchers` permission
+    // (e.g., SOI or roles mapped in the permissions guard) to finish approving vouchers.
+    if (request.id_admin !== id_user && !req.userPermissions?.includes('approve_vouchers'))
       throw this.clientError(
         'Unable to change status on request.',
         'REQUEST_STATUS_APPROVE_VOUCHERS_NOT_ALLOWED',

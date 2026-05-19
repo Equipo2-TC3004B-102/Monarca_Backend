@@ -80,6 +80,12 @@ export class RequestsController {
     return this.requestsService.findAll();
   }
 
+  @Get('reserved-history')
+  @Permissions('view_assigned_requests_readonly')
+  async findReservedHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findReservedHistory(req);
+  }
+
   @Get('approved-history')
   @Permissions('view_approved_request_history')
   async findApprovedHistory() {

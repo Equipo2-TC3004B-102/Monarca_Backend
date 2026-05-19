@@ -24,9 +24,24 @@ import { RequestInterface } from './interfaces/request.interface';
 // Map of user boolean flags to their corresponding permissions. Used to derive a user's permissions based on their flags without needing a DB join to roles_permissions.
 export const FLAG_PERMISSIONS: Record<string, string[]> = {
   is_requester: ['create_request', 'edit_request', 'delete_request', 'upload_vouchers', 'view_own_requests'],
-  is_approver: ['approve_request', 'deny_request', 'request_changes', 'view_approved_request_history'],
+  is_approver: [
+    'approve_request',
+    'deny_request',
+    'request_changes',
+    'view_approved_request_history',
+    'create_cost_center',
+    'read_cost_center',
+    'update_cost_center',
+    'delete_cost_center',
+  ],
   is_soi: ['check_budgets', 'approve_budget', 'deny_budget', 'assign_request_to_travel_agency', 'approve_vouchers', 'deny_vouchers', 'view_assigned_requests_readonly'],
-  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts', 'view_travel_agent_history'],
+  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts'],
+  is_company_admin: [
+    'create_cost_center',
+    'read_cost_center',
+    'update_cost_center',
+    'delete_cost_center',
+  ],
 };
 
 @Injectable()
