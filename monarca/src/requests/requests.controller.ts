@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 28/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
+ * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi]: Added reserved-history to return all reserved requests for a user.
  */
 
 import {
@@ -78,6 +78,12 @@ export class RequestsController {
   @Permissions('view_assigned_requests_readonly')
   async findAll() {
     return this.requestsService.findAll();
+  }
+
+  @Get('reserved-history')
+  @Permissions('view_assigned_requests_readonly')
+  async findReservedHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findReservedHistory(req);
   }
 
   @Get('approved-history')
