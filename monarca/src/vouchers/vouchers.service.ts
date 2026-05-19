@@ -265,7 +265,17 @@ export class VouchersService {
       payment_form: parsedCfdi?.payment_form ?? data.payment_form ?? null,
       payment_method: parsedCfdi?.payment_method ?? data.payment_method ?? null,
     });
-    return await this.voucherRepo.save(voucher);
+    try {
+      return await this.voucherRepo.save(voucher);
+    } catch (error) {
+      // Detect Postgres unique constraint violation (duplicate fiscal_uuid)
+      const e: any = error;
+      const pgCode = e?.code || e?.driverError?.code || e?.original?.code;
+      if (pgCode === '23505') {
+        throw new BadRequestException('This voucher is already registered in the system');
+      }
+      throw error;
+    }
   }
 
   /**

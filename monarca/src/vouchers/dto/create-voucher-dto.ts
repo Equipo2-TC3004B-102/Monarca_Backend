@@ -80,6 +80,22 @@ export class CreateVoucherDto {
   file_url_xml?: string;
 
   @ApiProperty({
+    description: 'PDF file field name (alternative to file_url_pdf)',
+    example: 'File object',
+    required: false,
+  })
+  @IsOptional()
+  pdf?: any;
+
+  @ApiProperty({
+    description: 'XML file field name (alternative to file_url_xml)',
+    example: 'File object',
+    required: false,
+  })
+  @IsOptional()
+  xml?: any;
+
+  @ApiProperty({
     description: 'Status of approval',
     example: 'voucher denied',
   })
