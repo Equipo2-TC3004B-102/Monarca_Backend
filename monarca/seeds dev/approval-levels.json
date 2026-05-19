@@ -1,0 +1,15 @@
+[
+  {
+    "id": "00000002-0000-4000-8000-000000000001",
+    "code": "DEFAULT-GLOBAL",
+    "name": "Default Global Level",
+    "company_id": null,
+    "description": "Fallback approval level covering all amounts when no company-specific level is configured.",
+    "applies_to": "travel",
+    "level_order": 1,
+    "min_amount_mon": 0,
+    "max_amount_mon": 9999999,
+    "required_approvals": 1,
+    "is_active": true
+  }
+]

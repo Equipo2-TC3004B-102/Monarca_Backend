@@ -22,6 +22,7 @@ import { Reservation } from 'src/reservations/entity/reservations.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -59,11 +60,13 @@ export class SeedService {
         @InjectRepository(RequestLog) private readonly requestLogRepo: Repository<RequestLog>,
         @InjectRepository(Revision) private readonly revisionRepo: Repository<Revision>,
         @InjectRepository(Voucher) private readonly voucherRepo: Repository<Voucher>,
+        @InjectRepository(ApprovalLevel) private readonly approvalLevelRepo: Repository<ApprovalLevel>,
     ) {}
 
     async run() {
         const seedData: SeedData[] = [
             { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
+            { repo: this.approvalLevelRepo, file: 'approval-levels.json', entityName: 'ApprovalLevel' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
             { repo: this.destinationRepo, file: 'destinations.json', entityName: 'Destination' },
             { repo: this.travelAgencyRepo, file: 'travel-agencies.json', entityName: 'TravelAgency' },
