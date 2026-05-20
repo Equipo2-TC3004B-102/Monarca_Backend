@@ -6,6 +6,7 @@
  * Last Modification made:
  * 15/04/2026 [Julio Rodríguez] Removed unresolved ApprovalLevel relation to keep the Companies module compilable while approval-level entities are implemented.
  * 19/05/2026 [Julio Rodriguez] Added voucher_deadline_days to configure per-company expense submission window.
+ * 20/05/2026 [Julio Rodriguez] Added comp_code for SAP company code used in accounting poliza export.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -31,6 +32,10 @@ export class Company {
     @ApiProperty({ example: 7 })
     @Column({ name: 'voucher_deadline_days', type: 'integer', default: 7 })
     voucher_deadline_days: number;
+
+    @ApiProperty({ example: '1000', required: false })
+    @Column({ name: 'comp_code', type: 'varchar', length: 10, nullable: true })
+    comp_code: string | null;
 
     // One company can have many employees
     @OneToMany(() => User, (user) => user.company)

@@ -6,6 +6,7 @@
  * Authors: Original Monarca team
  * Last Modification made:
  * 06/05/2026 [Julio Rodriguez] Removed Roles, Permission, RolePermission entities and RolesModule — RBAC tables dropped in Database_v4.
+ * 20/05/2026 [Julio Rodriguez] Added AccountingModule and its two entities for poliza export feature.
  */
 
 import { Module } from '@nestjs/common';
@@ -50,6 +51,9 @@ import { ApprovalRulesModule } from './approval-rules/approval-rules.module';
 import { ApprovalEngineModule } from './approval-engine/approval-engine.module';
 import { CompanyNotificationSettingsModule } from './company-notification-settings/company-notification-settings.module';
 import { CompanyNotificationSetting } from './company-notification-settings/entities/company-notification-setting.entity';
+import { AccountingModule } from './accounting/accounting.module';
+import { AccountingCatalog } from './accounting/entities/accounting-catalog.entity';
+import { AccountingConcept } from './accounting/entities/accounting-concept.entity';
 
 @Module({
   imports: [
@@ -75,6 +79,7 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
     ApprovalRulesModule,
     ApprovalEngineModule,
     CompanyNotificationSettingsModule,
+    AccountingModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -102,6 +107,8 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
         ApprovalLevel,
         ApprovalLevelActor,
         RequestApproval,
+        AccountingCatalog,
+        AccountingConcept,
       ],
       synchronize: false, // False for migrations.
       retryAttempts: 3,
