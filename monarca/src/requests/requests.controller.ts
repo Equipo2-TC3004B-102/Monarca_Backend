@@ -5,8 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 26/04/2026 [Julio Rodriguez]: Fixed permissions in 'to-approve' and 'to-approve-SOI' endpoints.
- * 26/04/2026 [Julio Rodriguez]: Added approved-history endpoint for approver role.
+ * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi]: Added reserved-history to return all reserved requests for a user.
  */
 
 import {
@@ -81,14 +80,21 @@ export class RequestsController {
     return this.requestsService.findAll();
   }
 
+  @Get('reserved-history')
+  @Permissions('view_assigned_requests_readonly')
+  async findReservedHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findReservedHistory(req);
+  }
+
   @Get('approved-history')
   @Permissions('view_approved_request_history')
   async findApprovedHistory() {
     return this.requestsService.findAll();
   }
 
+  // Modified to use the dictionary of flags
   @Get(':id')
-  @Permissions('view_assigned_requests_readonly')
+  @Permissions('view_assigned_requests_readonly', 'approve_request', 'check_budgets', 'view_approved_request_history', 'submit_reservations', 'create_request')
   async findOne(
     @Request() req: RequestInterface,
     @Param('id', new ParseUUIDPipe()) id: string,

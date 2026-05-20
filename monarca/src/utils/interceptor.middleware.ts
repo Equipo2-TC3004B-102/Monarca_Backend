@@ -5,7 +5,7 @@
  *              with a unique UUID-based filename.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 25/02/2026 [Santiago Coronado Hernández and Fausto Izquierdo] Added pdf and xml variants to read files better
  */
 
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -26,6 +26,8 @@ export const UploadPdfInterceptor = () => {
     [
       { name: 'file_url_pdf', maxCount: 1 },
       { name: 'file_url_xml', maxCount: 1 },
+      { name: 'pdf', maxCount: 1 },
+      { name: 'xml', maxCount: 1 },
     ],
     {
       storage: diskStorage({

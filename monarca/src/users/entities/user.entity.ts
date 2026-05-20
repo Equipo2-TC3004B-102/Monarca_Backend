@@ -1,12 +1,12 @@
 /**
  * FileName: user.entity.ts
  * Description: TypeORM entity representing the users table. A user belongs to a
- *              CeCo (department), role and optionally a travel agency. Can have many
+ *              CeCo (department) and optionally a travel agency. Can have many
  *              requests, assigned requests, revisions and SOI assigned requests.
+ *              Access control is handled via boolean flags — id_role removed in Database_v4.
  * Authors: Original Monarca team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
- *                              Added company relation and manager self-relation for organizational structure.
+ * 06/05/2026 [Julio Rodriguez] Removed id_role column and Roles relation — RBAC tables dropped in Database_v4.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -14,7 +14,6 @@ import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
-import { Roles } from 'src/roles/entity/roles.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
 import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
@@ -69,13 +68,9 @@ export class User {
   @Column({ name: 'creation_date', type: 'date', default: () => 'CURRENT_DATE' })
   creation_date: Date;
 
-  @ApiProperty({ example: 1 })
-  @Column({ name: 'id_ceco', type: 'uuid', nullable: true })
+  @ApiProperty({ example: 'TEC-001' })
+  @Column({ name: 'id_ceco', type: 'varchar', nullable: true })
   id_ceco: string | null;
-
-  @ApiProperty({ example: 2 })
-  @Column({ name: 'id_role' })
-  id_role: string;
 
   @ApiProperty()
   @Column({
@@ -148,11 +143,6 @@ export class User {
   @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_ceco' })
   ceco: CostCenter | null;
-
-  // Pending to move logic to flags
-  @ManyToOne(() => Roles, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'id_role' })
-  role: Roles;
 
   // Pending to review
   @ManyToOne(() => TravelAgency, (travel_agency) => travel_agency.users, { nullable: true, onDelete: 'SET NULL' })

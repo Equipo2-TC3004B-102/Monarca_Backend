@@ -1,11 +1,11 @@
 /**
  * FileName: permissions.guard.ts
- * Description: Guard for enforcing user permissions on protected routes. Checks
- *              if the authenticated user has the required permissions defined
- *              by endpoint metadata.
+ * Description: Guard for enforcing user permissions on protected routes. Derives
+ *              permissions from user boolean flags via FLAG_PERMISSIONS map —
+ *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added new attributes to userInfo for better access control and logging.
+ * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] Added is_company_admin flag and corresponding permissions to FLAG_PERMISSIONS map. 
  */
 
 import {
@@ -21,26 +21,54 @@ import { User } from 'src/users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RequestInterface } from './interfaces/request.interface';
 
+// Map of user boolean flags to their corresponding permissions. Used to derive a user's permissions based on their flags without needing a DB join to roles_permissions.
+export const FLAG_PERMISSIONS: Record<string, string[]> = {
+  is_requester: ['create_request', 'edit_request', 'delete_request', 'upload_vouchers', 'view_own_requests'],
+  is_approver: [
+    'approve_request',
+    'deny_request',
+    'request_changes',
+    'view_approved_request_history',
+    'create_cost_center',
+    'read_cost_center',
+    'update_cost_center',
+    'delete_cost_center',
+  ],
+  is_soi: ['check_budgets', 'approve_budget', 'deny_budget', 'assign_request_to_travel_agency', 'approve_vouchers', 'deny_vouchers', 'view_assigned_requests_readonly'],
+  is_travelAgent: ['view_assigned_requests_readonly', 'submit_reservations', 'send_reservation_receipts'],
+  is_company_admin: [
+    'create_cost_center',
+    'read_cost_center',
+    'update_cost_center',
+    'delete_cost_center',
+  ],
+};
+
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     @InjectRepository(User)
-    private userRepository123: Repository<User>,
+    private userRepository: Repository<User>,
   ) {}
 
+  /**
+   * canActivate, evaluates whether the current request is authorized.
+   * Loads the user from DB, attaches userInfo and userPermissions to the request,
+   * then checks required permissions from the route decorator. System admins bypass all checks.
+   * Input: context (ExecutionContext) from NestJS interceptor chain.
+   * Output: true when authorized, throws BadRequestException when not.
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestInterface>();
 
     const userId = request.sessionInfo?.id;
     if (!userId) throw new BadRequestException('User session not found');
 
-    const user = await this.findById(userId);
-    if (!user || !user.role || !user.role.permissions) {
-      throw new BadRequestException('User or permissions not found');
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('User not found');
     }
-
-    // console.log('User found:', user.id);
 
     request.sessionInfo.id = user.id;
     request.userInfo = {
@@ -50,9 +78,8 @@ export class PermissionsGuard implements CanActivate {
       last_name: user.last_name,
       status: user.status,
       id_ceco: user.id_ceco,
-      id_role: user.id_role,
       id_travel_agency: user.id_travel_agency,
-      id_company: user.id_company, // Added company ID to userInfo for access control based on company association
+      id_company: user.id_company,
       manager_id: user.manager_id,
       is_system_admin: user.is_system_admin,
       is_first_login: user.is_first_login,
@@ -60,10 +87,13 @@ export class PermissionsGuard implements CanActivate {
       is_approver: user.is_approver,
       is_soi: user.is_soi,
       is_travelAgent: user.is_travelAgent,
+      is_company_admin: user.is_company_admin,
     };
-    // console.log(`request.sessionInfo.id: ${request.sessionInfo.id}`)
 
-    const userPermissions = user.role.permissions.map((p) => p.name);
+    const userPermissions = Object.entries(FLAG_PERMISSIONS)
+      .filter(([flag]) => user[flag as keyof User])
+      .flatMap(([, perms]) => perms);
+
     request.userPermissions = userPermissions;
 
     const permissionsRequired = this.reflector.get<string[]>(
@@ -73,7 +103,10 @@ export class PermissionsGuard implements CanActivate {
 
     if (!permissionsRequired) return true;
 
-    const hasPermission = permissionsRequired.every((permission) =>
+    // System admins bypass all permission checks — they have access to every business endpoint.
+    if (user.is_system_admin) return true;
+
+    const hasPermission = permissionsRequired.some((permission) =>
       userPermissions.includes(permission),
     );
 
@@ -82,18 +115,5 @@ export class PermissionsGuard implements CanActivate {
     }
 
     return true;
-  }
-
-  async findById(id: string): Promise<User> {
-    const user = await this.userRepository123.findOne({
-      where: { id },
-      relations: ['role', 'role.permissions'],
-    });
-
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    return user;
   }
 }

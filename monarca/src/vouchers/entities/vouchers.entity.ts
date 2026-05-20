@@ -5,9 +5,12 @@
  *              and the ManyToOne relationship to the Request entity.
  * Authors: Original Monarca team
  * Last Modification made:
+ * 27/04/2026 [S0Borjas] Added date_created timestamp column to track when each voucher record was created.
  * 20/04/2026 [fest] Added receiver_name and exchange_rate fiscal fields for CFDI integration.
  * 22/04/2026 [Sebastián Borjas] Added unconverted_amount column to store original foreign-currency amount.
+  * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] Added new columns for CFDI data extraction and validation, including fiscal_uuid, issuer/receiver RFC and name, exchange rate, subtotal, discount, taxes, and payment details. Updated Voucher entity to support enhanced CFDI integration and tracking.
  */
+
 
 import {
   Entity,
@@ -18,6 +21,7 @@ import {
 } from 'typeorm';
 import { Request } from 'src/requests/entities/request.entity';
 import { User } from 'src/users/entities/user.entity';
+import { CfdiStatus } from '../types/cfdi-status.type';
 
 @Entity({ name: 'vouchers' })
 export class Voucher {
@@ -45,6 +49,9 @@ export class Voucher {
   @Column({ name: 'date', type: 'timestamptz' })
   date: Date;
 
+  @Column({ name: 'date_created', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  date_created: Date;
+
   @Column({ name: 'file_url_pdf', type: 'varchar', nullable: true })
   file_url_pdf: string | null;
 
@@ -53,6 +60,9 @@ export class Voucher {
 
   @Column({ name: 'status', type: 'varchar' })
   status: string;
+
+  @Column({ name: 'cfdi_status', type: 'varchar', length: 16, nullable: true })
+  cfdi_status: CfdiStatus | null;
 
   @Column({ name: 'id_approver', type: 'uuid', nullable: true })
   id_approver: string | null;

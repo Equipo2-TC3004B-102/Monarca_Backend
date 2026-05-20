@@ -5,7 +5,7 @@
  *              for use in other modules that need travel agency validation.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 23/04/2026 [Diego de la Vega] Added the NestJS module to call the flights orchestrator and providers.
  */
 
 import { Module } from '@nestjs/common';
@@ -14,11 +14,24 @@ import { TravelAgenciesController } from './travel-agencies.controller';
 import { TravelAgency } from './entities/travel-agency.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TravelAgenciesChecks } from './travel-agencies.checks';
+import { DuffelProvider } from './providers/duffel.provider';
+import { TRAVEL_AGENCIES_PROVIDER_ADAPTERS } from './providers/travel-agencies-provider.token';
+import { TravelAgenciesFlightsService } from './travel-agencies-flights.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([TravelAgency])],
   controllers: [TravelAgenciesController],
-  providers: [TravelAgenciesService, TravelAgenciesChecks],
+  providers: [
+    TravelAgenciesService,
+    TravelAgenciesChecks,
+    DuffelProvider,
+    TravelAgenciesFlightsService,
+    {
+      provide: TRAVEL_AGENCIES_PROVIDER_ADAPTERS,
+      useFactory: (duffelProvider: DuffelProvider) => [duffelProvider],
+      inject: [DuffelProvider],
+    },
+  ],
   exports: [TravelAgenciesChecks],
 })
 export class TravelAgenciesModule {}

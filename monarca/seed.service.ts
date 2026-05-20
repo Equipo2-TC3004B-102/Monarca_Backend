@@ -5,7 +5,7 @@
  *              backwards-compatible field normalization (id_ceco, user_name).
  * Authors: Original Monarca team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Fixed header; added approval_levels tables to truncate list.
+ * 13/05/2026 [Julio Rodriguez] Added request_approvals to truncate list — missing FK reference caused truncate to fail when request approvals existed.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -18,13 +18,11 @@ import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
-import { RolePermission } from 'src/roles/entity/roles_permissions.entity';
 import { Reservation } from 'src/reservations/entity/reservations.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { Revision } from 'src/revisions/entities/revision.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
-import { Permission } from 'src/roles/entity/permissions.entity';
-import { Roles } from 'src/roles/entity/roles.entity';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -62,21 +60,17 @@ export class SeedService {
         @InjectRepository(RequestLog) private readonly requestLogRepo: Repository<RequestLog>,
         @InjectRepository(Revision) private readonly revisionRepo: Repository<Revision>,
         @InjectRepository(Voucher) private readonly voucherRepo: Repository<Voucher>,
-        @InjectRepository(Permission) private readonly permissionRepo: Repository<Permission>,
-        @InjectRepository(Roles) private readonly rolesRepo: Repository<Roles>,
-        @InjectRepository(RolePermission) private readonly rolePermissionRepo: Repository<RolePermission>,
+        @InjectRepository(ApprovalLevel) private readonly approvalLevelRepo: Repository<ApprovalLevel>,
     ) {}
 
     async run() {
         const seedData: SeedData[] = [
             { repo: this.companyRepo, file: 'companies.json', entityName: 'Company' },
+            { repo: this.approvalLevelRepo, file: 'approval-levels.json', entityName: 'ApprovalLevel' },
             { repo: this.costCenterRepo, file: 'cost-centers.json', entityName: 'CostCenter' },
-            { repo: this.permissionRepo, file: 'permissions.json', entityName: 'Permission' },
             { repo: this.destinationRepo, file: 'destinations.json', entityName: 'Destination' },
             { repo: this.travelAgencyRepo, file: 'travel-agencies.json', entityName: 'TravelAgency' },
-            { repo: this.rolesRepo, file: 'roles.json', entityName: 'Roles' },
             { repo: this.userRepo, file: 'users.json', entityName: 'User' },
-            { repo: this.rolePermissionRepo, file: 'roles-permissions.json', entityName: 'RolePermission' },
             { repo: this.userLogsRepo, file: 'user-logs.json', entityName: 'UserLogs' },
             { repo: this.requestRepo, file: 'requests.json', entityName: 'Request' },
             { repo: this.requestsDestinationRepo, file: 'requests-destinations.json', entityName: 'RequestsDestination' },
@@ -179,15 +173,13 @@ export class SeedService {
                 'request_logs',
                 'reservations',
                 'requests_destinations',
+                'request_approvals',
                 'requests',
                 'user_logs',
-                'roles_permissions',
                 'users',
-                'roles',
                 'travel_agencies',
                 'destinations',
                 'exchange_rates',
-                'permissions',
                 'cost_centers',
                 'approval_levels_actors',
                 'approval_levels',
