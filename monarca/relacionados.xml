@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Comprobante xmlns="http://www.sat.gob.mx/cfd/4" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd"
+  Version="4.0"
+  Serie="A"
+  Folio="123456"
+  Fecha="2026-05-19T10:30:00"
+  FormaPago="01"
+  SubTotal="1000.00"
+  Moneda="MXN"
+  Total="1160.00">
+  
+  <!-- Emisor (Issuer) -->
+  <Emisor Rfc="AAA010101AAA" Nombre="EMPRESA EMISORA SA DE CV">
+    <DomicilioFiscal Calle="Avenida Principal" NumeroExterior="100" Ciudad="MEXICO" Estado="CMX" Pais="MEX" CodigoPostal="06600"/>
+    <RegimenFiscal Regimen="601"/>
+  </Emisor>
+  
+  <!-- Receptor (Receiver) -->
+  <Receptor Rfc="BBB020202BBB" Nombre="EMPRESA RECEPTORA SA DE CV" ResidenciaFiscal="MEX">
+    <Domicilio Calle="Calle Secundaria" NumeroExterior="200" Ciudad="MEXICO" Estado="CMX" Pais="MEX" CodigoPostal="06700"/>
+  </Receptor>
+  
+  <!-- Conceptos (Line items) -->
+  <Conceptos>
+    <Concepto Clave="01010000" Descripcion="Servicio de Consultoria" Cantidad="1.00" ClaveUnidad="ACT" Unidad="Acto" ValorUnitario="1000.00" Importe="1000.00">
+      <Impuestos>
+        <Traslados>
+          <Traslado Base="1000.00" Impuesto="002" TasaOCuota="0.160000" TipoFactor="Tasa" Importe="160.00"/>
+        </Traslados>
+      </Impuestos>
+    </Concepto>
+  </Conceptos>
+  
+  <!-- Impuestos (Taxes) -->
+  <Impuestos TotalImpuestosTrasladados="160.00">
+    <Traslados>
+      <Traslado Base="1000.00" Impuesto="002" TasaOCuota="0.160000" TipoFactor="Tasa" Importe="160.00"/>
+    </Traslados>
+  </Impuestos>
+  
+  <!-- Complemento (Contains digital seal for SAT validation) -->
+  <Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="550e8400-e29b-41d4-a716-446655440000" FechaTimbrado="2026-05-19T10:30:00" SelloCFD="IHBvcHtgIHx8QX5IfH5AQH1AfjB+MH4wfjB+MH4wfjB+IH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4wfjB+MH4w=" NoCertificado="20001000000100446323" Sello="MEUCIQDJmv6hLw9O4DMcvb5oQlmq0n/J0rZmGw6G3Idd2m1jkAIgYR0L/vXqIvzxCj1mG7LL5G7X5V5V5V5V5V5V5V5V5V5="/>
+  </Complemento>
+</Comprobante>

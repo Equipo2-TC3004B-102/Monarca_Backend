@@ -15,9 +15,11 @@ import { DataSource, Repository, UpdateResult } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
+import { VoucherCreationLog } from './entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { CfdiValidationService } from './services/cfdi-validation.service';
 import { CfdiStatus } from './types/cfdi-status.type';
+import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 
 type ParsedVoucherCfdi = Partial<CreateVoucherDto>;
 
@@ -41,11 +43,29 @@ export class VouchersService {
   constructor(
     @InjectRepository(Voucher)
     private readonly voucherRepo: Repository<Voucher>,
+    @InjectRepository(VoucherCreationLog)
+    private readonly logRepo: Repository<VoucherCreationLog>,
     @InjectRepository(Request)
     private readonly rRepo: Repository<Request>,
+    @InjectRepository(RequestsDestination)
+    private readonly rdRepo: Repository<RequestsDestination>,
     private readonly dataSource: DataSource,
     private readonly cfdiValidationService: CfdiValidationService,
   ) {}
+
+  private getFailureReason(error: unknown): string {
+    if (error instanceof BadRequestException) {
+      const response = error.getResponse();
+      if (typeof response === 'string') return response;
+      if (typeof response === 'object' && response !== null) {
+        const msg = (response as { message?: string | string[] }).message;
+        if (Array.isArray(msg)) return msg.join(', ');
+        if (typeof msg === 'string') return msg;
+      }
+    }
+    if (error instanceof Error) return error.message;
+    return String(error);
+  }
 
   private raiseCfdiError(code: string, message: string): never {
     throw new BadRequestException({ message, code });
@@ -206,74 +226,144 @@ export class VouchersService {
     data: CreateVoucherDto,
     parsedCfdi?: ParsedVoucherCfdi,
   ): Promise<Voucher> {
-    const request = await this.rRepo.findOne({
-      where: { id: data.id_request },
-    });
-    if (!request) {
-      throw new BadRequestException(
-        `RequestDestination ${data.id_request} not found`,
-      );
-    }
-    const approverId = request.id_admin;
-    const id_creator = request.id_user;
-    if (id_user !== id_creator) {
-      throw new BadRequestException(
-        `User ${id_user} is not authorized to create a voucher for this request`,
-      );
-    }
-
-    const cfdiStatus = await this.crossCheckCfdi(data, parsedCfdi);
-
-    let finalAmount: number = data.amount;
-    let unconvertedAmount: number | null = null;
-    let exchangeRate: number | null = null;
-
-    if (data.currency && data.currency !== 'MXN') {
-      const rate = await this.resolveExchangeRate(data.currency);
-      if (rate !== null) {
-        exchangeRate = rate;
-        unconvertedAmount = data.amount;
-        finalAmount = Math.round(data.amount * rate * 100) / 100;
-      }
-    }
-
-    const voucher = this.voucherRepo.create({
-      id_request: data.id_request,
-      class: data.class,
-      amount: finalAmount,
-      unconverted_amount: unconvertedAmount,
-      currency: data.currency,
-      tax_type: data.tax_type,
-      date: new Date(data.date),
-      file_url_pdf: data.file_url_pdf,
-      file_url_xml: data.file_url_xml,
-      status: data.status,
-      id_approver: approverId,
-      exchange_rate: exchangeRate,
-      cfdi_status: cfdiStatus,
-      fiscal_uuid: parsedCfdi?.fiscal_uuid ?? data.fiscal_uuid ?? null,
-      issuer_rfc: parsedCfdi?.issuer_rfc ?? data.issuer_rfc ?? null,
-      issuer_name: parsedCfdi?.issuer_name ?? data.issuer_name ?? null,
-      receiver_rfc: parsedCfdi?.receiver_rfc ?? data.receiver_rfc ?? null,
-      receiver_name: parsedCfdi?.receiver_name ?? data.receiver_name ?? null,
-      subtotal: parsedCfdi?.subtotal ?? data.subtotal ?? null,
-      discount: parsedCfdi?.discount ?? data.discount ?? null,
-      iva_trasladado: parsedCfdi?.iva_trasladado ?? data.iva_trasladado ?? null,
-      ieps_trasladado: parsedCfdi?.ieps_trasladado ?? data.ieps_trasladado ?? null,
-      isr_retenido: parsedCfdi?.isr_retenido ?? data.isr_retenido ?? null,
-      iva_retenido: parsedCfdi?.iva_retenido ?? data.iva_retenido ?? null,
-      payment_form: parsedCfdi?.payment_form ?? data.payment_form ?? null,
-      payment_method: parsedCfdi?.payment_method ?? data.payment_method ?? null,
-    });
     try {
-      return await this.voucherRepo.save(voucher);
-    } catch (error) {
-      // Detect Postgres unique constraint violation (duplicate fiscal_uuid)
-      const e: any = error;
-      const pgCode = e?.code || e?.driverError?.code || e?.original?.code;
-      if (pgCode === '23505') {
-        throw new BadRequestException('This voucher is already registered in the system');
+      const request = await this.rRepo.findOne({
+        where: { id: data.id_request },
+      });
+      if (!request) {
+        throw new BadRequestException(
+          `RequestDestination ${data.id_request} not found`,
+        );
       }
+      const approverId = request.id_admin;
+      const id_creator = request.id_user;
+      if (id_user !== id_creator) {
+        throw new BadRequestException(
+          `User ${id_user} is not authorized to create a voucher for this request`,
+        );
+      }
+
+      const cfdiStatus = await this.crossCheckCfdi(data, parsedCfdi);
+
+      const [firstDestination, lastDestination] = await Promise.all([
+        this.rdRepo.findOne({
+          where: { id_request: data.id_request },
+          order: { destination_order: 'ASC' },
+        }),
+        this.rdRepo.findOne({
+          where: { id_request: data.id_request, is_last_destination: true },
+        }),
+      ]);
+      if (firstDestination && lastDestination) {
+        const today = new Date();
+        const voucherDate = new Date(data.date);
+        const tripStart = new Date(firstDestination.departure_date).getTime();
+        const tripEnd = new Date(lastDestination.arrival_date).getTime();
+        const deadlineMs = tripEnd + 7 * 24 * 60 * 60 * 1000;
+
+        if (voucherDate.getTime() < tripStart) {
+          throw new BadRequestException(
+            `Voucher date cannot be before the trip start date`,
+          );
+        }
+        if (voucherDate.getTime() > tripEnd) {
+          throw new BadRequestException(
+            `Voucher date cannot be after the trip end date`,
+          );
+        }
+        if (today.getTime() < tripStart) {
+          throw new BadRequestException(
+            `Vouchers cannot be submitted before the trip has started`,
+          );
+        }
+        if (today.getTime() > deadlineMs) {
+          throw new BadRequestException(
+            `Vouchers can only be submitted within 7 days after the trip ends`,
+          );
+        }
+      }
+
+      let finalAmount: number = data.amount;
+      let unconvertedAmount: number | null = null;
+      let exchangeRate: number | null = null;
+
+      if (data.currency && data.currency !== 'MXN') {
+        const rate = await this.resolveExchangeRate(data.currency);
+        if (rate !== null) {
+          exchangeRate = rate;
+          unconvertedAmount = data.amount;
+          finalAmount = Math.round(data.amount * rate * 100) / 100;
+        }
+      }
+
+      const voucher = this.voucherRepo.create({
+        id_request: data.id_request,
+        class: data.class,
+        amount: finalAmount,
+        unconverted_amount: unconvertedAmount,
+        currency: data.currency,
+        tax_type: data.tax_type,
+        date: new Date(data.date),
+        file_url_pdf: data.file_url_pdf,
+        file_url_xml: data.file_url_xml,
+        status: data.status,
+        id_approver: approverId,
+        exchange_rate: exchangeRate,
+        cfdi_status: cfdiStatus,
+        fiscal_uuid: parsedCfdi?.fiscal_uuid ?? data.fiscal_uuid ?? null,
+        issuer_rfc: parsedCfdi?.issuer_rfc ?? data.issuer_rfc ?? null,
+        issuer_name: parsedCfdi?.issuer_name ?? data.issuer_name ?? null,
+        receiver_rfc: parsedCfdi?.receiver_rfc ?? data.receiver_rfc ?? null,
+        receiver_name: parsedCfdi?.receiver_name ?? data.receiver_name ?? null,
+        subtotal: parsedCfdi?.subtotal ?? data.subtotal ?? null,
+        discount: parsedCfdi?.discount ?? data.discount ?? null,
+        iva_trasladado: parsedCfdi?.iva_trasladado ?? data.iva_trasladado ?? null,
+        ieps_trasladado: parsedCfdi?.ieps_trasladado ?? data.ieps_trasladado ?? null,
+        isr_retenido: parsedCfdi?.isr_retenido ?? data.isr_retenido ?? null,
+        iva_retenido: parsedCfdi?.iva_retenido ?? data.iva_retenido ?? null,
+        payment_form: parsedCfdi?.payment_form ?? data.payment_form ?? null,
+        payment_method: parsedCfdi?.payment_method ?? data.payment_method ?? null,
+      });
+
+      let saved: Voucher;
+      try {
+        saved = await this.voucherRepo.save(voucher);
+      } catch (saveError) {
+        const e = saveError as {
+          code?: string;
+          driverError?: { code?: string };
+          original?: { code?: string };
+        };
+        const pgCode = e?.code ?? e?.driverError?.code ?? e?.original?.code;
+        if (pgCode === '23505') {
+          throw new BadRequestException(
+            'This voucher is already registered in the system',
+          );
+        }
+        throw saveError;
+      }
+
+      await this.logRepo.save(
+        this.logRepo.create({
+          id_request: data.id_request,
+          id_user,
+          outcome: 'success',
+          failure_reason: null,
+          attempted_voucher_date: data.date,
+        }),
+      );
+
+      return saved;
+    } catch (error) {
+      await this.logRepo.save(
+        this.logRepo.create({
+          id_request: data.id_request ?? null,
+          id_user,
+          outcome: 'failure',
+          failure_reason: this.getFailureReason(error),
+          attempted_voucher_date: data.date ?? null,
+        }),
+      );
       throw error;
     }
   }

@@ -12,7 +12,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { VouchersService } from 'src/vouchers/vouchers.service';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
+import { VoucherCreationLog } from 'src/vouchers/entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 import { DataSource } from 'typeorm';
 import { CfdiValidationService } from 'src/vouchers/services/cfdi-validation.service';
 
@@ -30,6 +32,15 @@ describe('VouchersService', () => {
 
   const requestRepositoryMock = {
     findOne: jest.fn(),
+  };
+
+  const logRepositoryMock = {
+    create: jest.fn((value) => value),
+    save: jest.fn().mockResolvedValue({}),
+  };
+
+  const requestsDestinationRepositoryMock = {
+    findOne: jest.fn().mockResolvedValue(null),
   };
 
   const dataSourceMock = {
@@ -72,6 +83,14 @@ describe('VouchersService', () => {
         {
           provide: getRepositoryToken(Request),
           useValue: requestRepositoryMock,
+        },
+        {
+          provide: getRepositoryToken(VoucherCreationLog),
+          useValue: logRepositoryMock,
+        },
+        {
+          provide: getRepositoryToken(RequestsDestination),
+          useValue: requestsDestinationRepositoryMock,
         },
         {
           provide: DataSource,
