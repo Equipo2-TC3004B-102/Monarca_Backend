@@ -29,6 +29,7 @@ import { DestinationsModule } from './destinations/destinations.module';
 import { TravelAgency } from './travel-agencies/entities/travel-agency.entity';
 import { ReservationsModule } from './reservations/reservations.module';
 import { Voucher } from './vouchers/entities/vouchers.entity';
+import { VoucherCreationLog } from './vouchers/entities/voucher-creation-log.entity';
 import { RevisionsModule } from './revisions/revisions.module';
 import { Revision } from './revisions/entities/revision.entity';
 import { SeedService } from 'seed.service';
@@ -94,6 +95,7 @@ import { CompanyNotificationSetting } from './company-notification-settings/enti
         RequestLog,
         TravelAgency,
         Voucher,
+        VoucherCreationLog,
         UserLogs,
         Revision,
         NotificationLog,
