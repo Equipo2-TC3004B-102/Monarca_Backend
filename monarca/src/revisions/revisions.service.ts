@@ -6,7 +6,7 @@
  *              to 'Changes Needed'.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 05/05/2026 [Santiago Coronado Hernández] Added NotificationType to notification options.
+ * 19/05/2026 [Julio Rodriguez] Added folio (YYYY-NNN) to revision notification email.
  */
 
 import {
@@ -80,17 +80,19 @@ export class RevisionsService {
     }
 
     // Notify the user that a revision has been created
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       user.email,
-      'Solicitud con cambios necesarios',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido marcada con cambios necesarios.`,
+      `Solicitud con cambios necesarios — Folio ${folio}`,
+      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido marcada con cambios necesarios.`,
       `<p>Hola ${user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido marcada con cambios necesario. Por favor revisa los comentarios y ajusta tu solicitud.</p>
-<p>Comentarios:</p>
-<p>${data.comment}</p>
-<p>Para más detalles, visita tu panel de solicitudes.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,      
+       <p>Tu solicitud de viaje ha sido marcada con cambios necesarios. Por favor revisa los comentarios y ajusta tu solicitud.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Comentarios:</p>
+       <p>${data.comment}</p>
+       <p>Para más detalles, visita tu panel de solicitudes.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REVISION_CREATED },
     );
 

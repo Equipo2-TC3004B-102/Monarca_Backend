@@ -6,6 +6,7 @@
  * Last Modification made:
  * 19/05/2026 [Julio Rodriguez] Added method for fetching travel agent request history.
  *                              Filter approval levels by applies_to when creating travel requests.
+ *                              Replaced UUID with folio (YYYY-NNN) in notification emails.
  */
 
 import {
@@ -292,7 +293,9 @@ export class RequestsService {
       })),
     });
 
-    const saved = await this.requestsRepo.save(request);
+    const savedRaw = await this.requestsRepo.save(request);
+    // Reload to get DB-generated request_num (SERIAL not populated by save())
+    const saved = await this.requestsRepo.findOneOrFail({ where: { id: savedRaw.id }, relations: ['requests_destinations'] });
 
     await this.requestApprovalRepo.save({
       request_id: saved.id,
@@ -331,15 +334,17 @@ export class RequestsService {
     }
 
     // Mandar mail de notificación al aprobador asignado
+    const savedFolio = `${new Date(saved.createdAt).getFullYear()}-${String(saved.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       approver.email,
-      `Nueva solicitud asignada`,
-      `Se te ha asignado una nueva solicitud de viaje con ID: ${saved.id}. Por favor, revisa los detalles en el sistema.`,
+      `Nueva solicitud asignada — Folio ${savedFolio}`,
+      `Se te ha asignado una nueva solicitud de viaje (Folio: ${savedFolio}, Título: "${saved.title}"). Por favor, revisa los detalles en el sistema.`,
       `<p>Hola ${approver.name},</p>
-<p>Se te ha asignado una nueva solicitud de viaje con ID: <strong>${saved.id}</strong>.</p>
-<p>Por favor, revisa los detalles en el sistema.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`
+       <p>Se te ha asignado una nueva solicitud de viaje.</p>
+       <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
+       <p>Por favor, revisa los detalles en el sistema.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`
       ,
       { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
     );
@@ -698,15 +703,17 @@ export class RequestsService {
           'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
         );
       }
+      const updatedFolio = `${new Date(updated.createdAt).getFullYear()}-${String(updated.request_num).padStart(3, '0')}`;
       await this.notificationsService.notify(
         approver.email,
-        `Solicitud actualizada`,
-        `La solicitud de viaje con ID: ${updated.id} ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
+        `Solicitud actualizada — Folio ${updatedFolio}`,
+        `La solicitud de viaje (Folio: ${updatedFolio}, Título: "${updated.title}") ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
         `<p>Hola ${approver.name},</p>
-<p>La solicitud de viaje con ID: <strong>${updated.id}</strong> ha sido actualizada.</p>
-<p>Por favor, revisa los detalles en el sistema.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`
+         <p>La solicitud de viaje ha sido actualizada.</p>
+         <p><strong>Folio:</strong> ${updatedFolio}<br><strong>Título:</strong> ${updated.title}</p>
+         <p>Por favor, revisa los detalles en el sistema.</p>
+         <p>Saludos,</p>
+         <p>Equipo de Monarca</p>`
         ,
         { companyId: updated.id_company, type: NotificationType.REQUEST_STATUS },
       );

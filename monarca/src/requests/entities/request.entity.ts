@@ -7,6 +7,7 @@
  * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
  *                            Added uuid type to FK columns for consistency.
  *                            Added current_approval_level_id nullable FK to track active approval level.
+ * 19/05/2026 [Julio Rodriguez] Added request_num SERIAL column for human-readable folio (YYYY-NNN).
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -35,6 +36,10 @@ export class Request {
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ApiProperty({ example: 42 })
+  @Column({ type: 'integer', unique: true, insert: false, update: false })
+  request_num: number;
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ name: 'id_user', type: 'uuid' })

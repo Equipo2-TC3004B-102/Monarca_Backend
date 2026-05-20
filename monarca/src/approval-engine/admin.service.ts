@@ -7,8 +7,7 @@
  *              Passwords are always hashed with bcrypt before being persisted.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 13/05/2026 [Julio Rodriguez] Added getCostCentersByCompany for CECO selector in AdminRules.
- *                              Added getCompanyInfo for company name display in AdminRules (accessible to company admins).
+ * 19/05/2026 [Julio Rodriguez] Added updateCompanySettings for per-company voucher deadline configuration.
  */
 
 import {
@@ -23,7 +22,7 @@ import { User } from 'src/users/entities/user.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
+import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto, UpdateCompanySettingsDto } from './dto/admin.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 
 @Injectable()
@@ -354,5 +353,27 @@ export class AdminService {
       );
     }
     return this.costCenterRepository.find({ where: { id_company: companyId } });
+  }
+
+  /**
+   * updateCompanySettings — Updates configurable policy settings for a company.
+   * Only company admins can update their own company.
+   * Input: companyId (string), dto (UpdateCompanySettingsDto), caller (UserInfoInterface).
+   * Output: updated Company entity.
+   */
+  async updateCompanySettings(
+    companyId: string,
+    dto: UpdateCompanySettingsDto,
+    caller: UserInfoInterface,
+  ): Promise<Company> {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError(
+        'Access restricted to your own company',
+        'ADMIN_FORBIDDEN_COMPANY',
+      );
+    }
+    await this.findOneCompany(companyId);
+    await this.companyRepository.update(companyId, dto);
+    return this.findOneCompany(companyId);
   }
 }
