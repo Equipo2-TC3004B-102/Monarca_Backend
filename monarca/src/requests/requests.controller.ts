@@ -88,8 +88,8 @@ export class RequestsController {
 
   @Get('approved-history')
   @Permissions('view_approved_request_history')
-  async findApprovedHistory() {
-    return this.requestsService.findAll();
+  async findApprovedHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findApprovedHistory(req);
   }
 
   @Get('ta-history')
