@@ -458,22 +458,23 @@ export class RequestsService {
 
   async findApprovedHistory(req: RequestInterface): Promise<RequestEntity[]> {
     const userId = req.sessionInfo.id;
-    const excluded = ['Pending Review', 'Denied', 'Cancelled'];
 
-    return this.requestsRepo
-      .createQueryBuilder('r')
-      .leftJoinAndSelect('r.requests_destinations', 'rd')
-      .leftJoinAndSelect('rd.destination', 'd')
-      .leftJoinAndSelect('r.revisions', 'rev')
-      .leftJoinAndSelect('r.user', 'u')
-      .leftJoinAndSelect('r.admin', 'adm')
-      .leftJoinAndSelect('r.SOI', 'soi')
-      .leftJoinAndSelect('r.destination', 'dest')
-      .leftJoinAndSelect('r.ceco', 'ceco')
-      .where('r.id_admin = :userId', { userId })
-      .andWhere('r.status NOT IN (:...excluded)', { excluded })
-      .orderBy('r.createdAt', 'DESC')
-      .getMany();
+    return this.requestsRepo.find({
+      where: {
+        id_admin: userId,
+        status: Not(In(['Pending Review', 'Denied', 'Cancelled'])),
+      },
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+        'ceco',
+      ],
+    });
   }
 
 
