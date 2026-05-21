@@ -36,6 +36,10 @@ export class Request {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ApiProperty({ example: 42 })
+  @Column({ type: 'integer', unique: true, insert: false, update: false })
+  request_num: number;
+
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ name: 'id_user', type: 'uuid' })
   id_user: string;

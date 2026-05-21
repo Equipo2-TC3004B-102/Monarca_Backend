@@ -2,16 +2,18 @@
  * FileName: admin.dto.ts
  * Description: DTOs for admin-specific operations not covered by existing entity DTOs.
  *              Includes SetCompanyAdminDto for toggling the is_company_admin flag,
- *              FindUsersQueryDto for filtering user lists, and CompanySetupDto for
- *              creating a company with its initial admin user in one operation.
+ *              FindUsersQueryDto for filtering user lists, CompanySetupDto for
+ *              creating a company with its initial admin user in one operation,
+ *              and UpdateCompanySettingsDto for company-level policy configuration.
  * Authors: DebugStudio Team
  * Last Modification:
  * 29/04/2026 [Julio Rodriguez] Added CompanySetupAdminDto and CompanySetupDto.
+ * 19/05/2026 [Julio Rodriguez] Added UpdateCompanySettingsDto.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 // Class used for setting user flags (is_requester, is_approver, etc.) in user management endpoints
 export class SetUserFlagsDto {
@@ -80,6 +82,14 @@ export class CompanySetupAdminDto {
   @IsString()
   @IsOptional()
   employee_num?: string;
+}
+
+// Company-level policy settings editable by company admins and system admins.
+export class UpdateCompanySettingsDto {
+  @ApiProperty({ example: 7 })
+  @IsInt()
+  @Min(1)
+  voucher_deadline_days: number;
 }
 
 // Only for Ditta admin use, creates a company and its initial admin user in one operation.

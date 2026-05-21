@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi]: Added reserved-history to return all reserved requests for a user.
+ * 19/05/2026 [Julio Rodriguez]: Added new GET /requests/ta-history endpoint for travel agents to view their request history.
  */
 
 import {
@@ -88,8 +88,14 @@ export class RequestsController {
 
   @Get('approved-history')
   @Permissions('view_approved_request_history')
-  async findApprovedHistory() {
-    return this.requestsService.findAll();
+  async findApprovedHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findApprovedHistory(req);
+  }
+
+  @Get('ta-history')
+  @Permissions('view_travel_agent_history')
+  async findTAHistory(@Request() req: RequestInterface) {
+    return this.requestsService.findTAHistory(req);
   }
 
   // Modified to use the dictionary of flags
