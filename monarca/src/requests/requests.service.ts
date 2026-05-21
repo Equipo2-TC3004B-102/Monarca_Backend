@@ -2,9 +2,9 @@
  * FileName: requests.service.ts
  * Description: Service for travel request business logic. Handles request creation,
  *              role-based retrieval, updates, and status changes with auditing.
- * Authors: Original Monarca team
+ * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] added findReservedHistory method to return all requests with reserved status for a user, and implemented exchange rate fetching and logging of request actions for better auditing and financial accuracy.
+ * 20/05/2026 [Diego - A01420632] Inherit and save id_ceco on request creation.
  */
 
 import {
@@ -278,6 +278,7 @@ export class RequestsService {
       id_admin: adminId,
       id_SOI: SOIId,
       id_company,
+      id_ceco,
       current_approval_level_id: level.id,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
@@ -289,6 +290,7 @@ export class RequestsService {
         provider_support_checked_at: null,
       })),
     });
+
 
     const saved = await this.requestsRepo.save(request);
 
@@ -358,6 +360,7 @@ export class RequestsService {
         'destination',
         'travel_agency',
         'travel_agency.users',
+        'ceco',
       ],
     });
   }
@@ -377,8 +380,10 @@ export class RequestsService {
         'destination',
         'vouchers',
         'requests_destinations.reservations',
+        'ceco',
       ],
     });
+
     if (!request)
       throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
@@ -433,7 +438,9 @@ export class RequestsService {
       .leftJoinAndSelect('r.admin', 'adm')
       .leftJoinAndSelect('r.SOI', 'soi')
       .leftJoinAndSelect('r.destination', 'dest')
+      .leftJoinAndSelect('r.ceco', 'ceco')
       .where('r.id_admin = :userId', { userId })
+
       .andWhere('r.status = :status', { status: 'Pending Review' })
       .orderBy(
         `CASE r.priority
