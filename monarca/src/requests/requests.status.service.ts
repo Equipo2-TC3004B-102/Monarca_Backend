@@ -278,52 +278,45 @@ export class RequestsStatusService {
         'REQUEST_STATUS_TRAVEL_AGENCY_REQUIRED',
       );
 
-    // Notify user
     const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
-    await this.notificationsService.notify(
-      request.user.email,
-      `Solicitud de viaje aprobada contablemente — Folio ${folio}`,
-      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada contablemente y será enviada a reservaciones.`,
-      `<p>Hola ${request.user.name},</p>
-       <p>Tu solicitud de viaje ha sido aprobada contablemente.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
-    );
+    const updated = await this.requestsService.updateStatus(id_request, 'Pending Reservations');
 
-    // Notify travel agents to start reservations after SOI budget approval.
-    let agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
-      request.id_travel_agency,
-    );
-
-    // If no agents assigned to this travel agency, notify all travel agents in the system
-    if (agents.length === 0) {
-      agents = await this.userRepo.find({
-        where: { is_travelAgent: true },
-      });
-    }
-
-    for (const agent of agents) {
-      await this.notificationsService.notify(
-        agent.email,
-        `Solicitud lista para reservaciones — Folio ${folio}`,
-        `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada por SOI y está lista para reservaciones.`,
-        `<p>Hola ${agent.name},</p>
-         <p>La solicitud de viaje fue aprobada por SOI y está lista para reservaciones.</p>
+    // Fire-and-forget: send notifications after responding to avoid request timeout
+    void (async () => {
+      this.notificationsService.notify(
+        request.user.email,
+        `Solicitud de viaje aprobada contablemente — Folio ${folio}`,
+        `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada contablemente y será enviada a reservaciones.`,
+        `<p>Hola ${request.user.name},</p>
+         <p>Tu solicitud de viaje ha sido aprobada contablemente.</p>
          <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-         <p>Por favor, revisa la solicitud y procede con la reservación.</p>
+         <p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
          <p>Saludos,</p>
          <p>Equipo de Monarca</p>`,
         { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
-    }
 
-    return await this.requestsService.updateStatus(
-      id_request,
-      'Pending Reservations',
-    );
+      let agents = await this.travelAgenciesChecks.getTravelAgencyUsers(request.id_travel_agency!);
+      if (agents.length === 0) {
+        agents = await this.userRepo.find({ where: { is_travelAgent: true } });
+      }
+      for (const agent of agents) {
+        this.notificationsService.notify(
+          agent.email,
+          `Solicitud lista para reservaciones — Folio ${folio}`,
+          `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada por SOI y está lista para reservaciones.`,
+          `<p>Hola ${agent.name},</p>
+           <p>La solicitud de viaje fue aprobada por SOI y está lista para reservaciones.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, revisa la solicitud y procede con la reservación.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+      }
+    })();
+
+    return updated;
   }
 
   async finishedUploadingVouchers(req: RequestInterface, id_request: string) {
