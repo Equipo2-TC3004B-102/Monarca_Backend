@@ -107,7 +107,7 @@ export class NotificationsService {
 
   async shouldSendEmail(companyId: string, type: NotificationType): Promise<boolean> {
     try {
-      const settings = await this.companySettingsService.getByCompany(companyId);
+      const settings = await this.companySettingsService.getSettingsInternal(companyId);
 
       // If global email_enabled is false, do not send any emails.
       if (settings.email_enabled === false) return false;

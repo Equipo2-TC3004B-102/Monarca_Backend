@@ -8,8 +8,7 @@
  *              to system admins exclusively.
  * Authors: DebugStudio Team
  * Last Modification:
- * 13/05/2026 [Julio Rodriguez] Added GET /admin/companies/:companyId/cost-centers endpoint.
- *                              Added GET /admin/companies/:companyId/info endpoint (company admin + system admin).
+ * 19/05/2026 [Julio Rodriguez] Added PATCH /admin/companies/:companyId/settings endpoint.
  */
 
 import {
@@ -34,7 +33,7 @@ import { SystemAdminGuard } from 'src/guards/system-admin.guard';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
-import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto } from './dto/admin.dto';
+import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto, UpdateCompanySettingsDto } from './dto/admin.dto';
 
 @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
 @Controller('admin')
@@ -128,6 +127,21 @@ export class AdminController {
     @Req() req: RequestInterface,
   ) {
     return this.adminService.getCompanyInfo(companyId, req.userInfo);
+  }
+
+  /**
+   * updateCompanySettings — Updates configurable policy settings for a company.
+   * Company admins can only update their own company. System admins update any.
+   * Input: companyId path param (uuid), body with UpdateCompanySettingsDto.
+   * Output: updated Company entity.
+   */
+  @Patch('companies/:companyId/settings')
+  async updateCompanySettings(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Body() dto: UpdateCompanySettingsDto,
+    @Req() req: RequestInterface,
+  ) {
+    return this.adminService.updateCompanySettings(companyId, dto, req.userInfo);
   }
 
   /**

@@ -2,11 +2,9 @@
  * FileName: request.entity.ts
  * Description: TypeORM entity representing the requests table. A request
  *              can have many destinations associated to it.
- * Authors: Original Monarca team
+ * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Added | null to nullable column types; added onDelete to relations for better data integrity.
- *                            Added uuid type to FK columns for consistency.
- *                            Added current_approval_level_id nullable FK to track active approval level.
+ * 20/05/2026 [Diego - A01420632] Added id_ceco field and many-to-one relationship with CostCenter.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -29,12 +27,18 @@ import { User } from 'src/users/entities/user.entity';
 import { TravelAgency } from 'src/travel-agencies/entities/travel-agency.entity';
 import { Voucher } from 'src/vouchers/entities/vouchers.entity';
 import { Company } from 'src/companies/entity/company.entity'; // Added import for Company entity to establish relationship
+import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity'; // Import CostCenter entity
+
 
 @Entity({ name: 'requests' })
 export class Request {
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ApiProperty({ example: 42 })
+  @Column({ type: 'integer', unique: true, insert: false, update: false })
+  request_num: number;
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @Column({ name: 'id_user', type: 'uuid' })
@@ -60,6 +64,11 @@ export class Request {
   @Column({ type: 'uuid' })
   id_company: string;
 
+  @ApiProperty({ example: 'TEC-001', required: false, nullable: true })
+  @Column({ name: 'id_ceco', type: 'varchar', nullable: true })
+  id_ceco: string | null;
+
+
   @ApiProperty({ example: 'Business trip to Monterrey' })
   @Column()
   title: string;
@@ -68,7 +77,7 @@ export class Request {
   @Column()
   motive: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   advance_money: number;
 
   @ApiProperty({ example: 'MXN', required: false, nullable: true })
@@ -79,7 +88,7 @@ export class Request {
   @Column({ type: 'float', nullable: true })
   exchange_rate: number | null;
 
-  @Column({ type: 'decimal', nullable: true })
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
   unconverted_advance_money: number | null;
 
   @ApiProperty({ example: 'Pending Review' })
@@ -161,6 +170,12 @@ export class Request {
   @ManyToOne(() => Company, (company) => company.requests)
   @JoinColumn({ name: 'id_company' })
   company: Company;
+
+  // New relationship with CostCenter entity. Many requests can belong to one cost center (CeCo).
+  @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_ceco' })
+  ceco: CostCenter | null;
+
 
   // New relationship with ApprovalLevel entity to track the current approval level of the request. This is a ManyToOne relationship since many requests can be at the same approval level.
   @ManyToOne(() => ApprovalLevel, { nullable: true, onDelete: 'SET NULL' })

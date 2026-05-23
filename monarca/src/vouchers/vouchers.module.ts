@@ -5,7 +5,7 @@
  *              and includes GuardsModule for authentication and authorization.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 17/04/2026 [Fausto Izquierdo] Added XmlParserService provider for CFDI extraction.
+ * 19/05/2026 [Julio Rodriguez] Added Company repository to support per-company voucher deadline.
  */
 
 import { Module } from '@nestjs/common';
@@ -18,10 +18,11 @@ import { Voucher } from './entities/vouchers.entity';
 import { VoucherCreationLog } from './entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
+import { Company } from 'src/companies/entity/company.entity';
 import { GuardsModule } from 'src/guards/guards.module';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Voucher, VoucherCreationLog, Request, RequestsDestination]),
+    TypeOrmModule.forFeature([Voucher, VoucherCreationLog, Request, RequestsDestination, Company]),
     GuardsModule,
   ],
   controllers: [VouchersController],

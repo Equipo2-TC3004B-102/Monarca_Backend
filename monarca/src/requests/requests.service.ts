@@ -2,9 +2,9 @@
  * FileName: requests.service.ts
  * Description: Service for travel request business logic. Handles request creation,
  *              role-based retrieval, updates, and status changes with auditing.
- * Authors: Original Monarca team
+ * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] added findReservedHistory method to return all requests with reserved status for a user, and implemented exchange rate fetching and logging of request actions for better auditing and financial accuracy.
+ * 20/05/2026 [Diego - A01420632] Inherit and save id_ceco on request creation.
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, In, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull, Not, In } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
@@ -228,6 +228,7 @@ export class RequestsService {
 
     const amountWhere = {
       is_active: true,
+      applies_to: In(['travel', 'all']),
       min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
       max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
     };
@@ -278,6 +279,7 @@ export class RequestsService {
       id_admin: adminId,
       id_SOI: SOIId,
       id_company,
+      id_ceco,
       current_approval_level_id: level.id,
       advance_money: finalAdvanceMoney,
       unconverted_advance_money: finalUnconvertedAdvanceMoney,
@@ -290,7 +292,9 @@ export class RequestsService {
       })),
     });
 
-    const saved = await this.requestsRepo.save(request);
+    const savedRaw = await this.requestsRepo.save(request);
+    // Reload to get DB-generated request_num (SERIAL not populated by save())
+    const saved = await this.requestsRepo.findOneOrFail({ where: { id: savedRaw.id }, relations: ['requests_destinations'] });
 
     await this.requestApprovalRepo.save({
       request_id: saved.id,
@@ -329,15 +333,17 @@ export class RequestsService {
     }
 
     // Mandar mail de notificación al aprobador asignado
+    const savedFolio = `${new Date(saved.createdAt).getFullYear()}-${String(saved.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       approver.email,
-      `Nueva solicitud asignada`,
-      `Se te ha asignado una nueva solicitud de viaje con ID: ${saved.id}. Por favor, revisa los detalles en el sistema.`,
+      `Nueva solicitud asignada — Folio ${savedFolio}`,
+      `Se te ha asignado una nueva solicitud de viaje (Folio: ${savedFolio}, Título: "${saved.title}"). Por favor, revisa los detalles en el sistema.`,
       `<p>Hola ${approver.name},</p>
-<p>Se te ha asignado una nueva solicitud de viaje con ID: <strong>${saved.id}</strong>.</p>
-<p>Por favor, revisa los detalles en el sistema.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`
+       <p>Se te ha asignado una nueva solicitud de viaje.</p>
+       <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
+       <p>Por favor, revisa los detalles en el sistema.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`
       ,
       { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
     );
@@ -358,6 +364,7 @@ export class RequestsService {
         'destination',
         'travel_agency',
         'travel_agency.users',
+        'ceco',
       ],
     });
   }
@@ -377,8 +384,10 @@ export class RequestsService {
         'destination',
         'vouchers',
         'requests_destinations.reservations',
+        'ceco',
       ],
     });
+
     if (!request)
       throw this.clientError(`Request ${id} not found`, 'REQUESTS_INVALID_ID');
 
@@ -433,6 +442,7 @@ export class RequestsService {
       .leftJoinAndSelect('r.admin', 'adm')
       .leftJoinAndSelect('r.SOI', 'soi')
       .leftJoinAndSelect('r.destination', 'dest')
+      .leftJoinAndSelect('r.ceco', 'ceco')
       .where('r.id_admin = :userId', { userId })
       .andWhere('r.status = :status', { status: 'Pending Review' })
       .orderBy(
@@ -444,6 +454,27 @@ export class RequestsService {
         'ASC'
       )
       .getMany();
+  }
+
+  async findApprovedHistory(req: RequestInterface): Promise<RequestEntity[]> {
+    const userId = req.sessionInfo.id;
+
+    return this.requestsRepo.find({
+      where: {
+        id_admin: userId,
+        status: Not(In(['Pending Review', 'Denied', 'Cancelled'])),
+      },
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+        'ceco',
+      ],
+    });
   }
 
 
@@ -486,6 +517,28 @@ export class RequestsService {
       ],
     });
     return list;
+  }
+
+  async findTAHistory(req: RequestInterface): Promise<RequestEntity[]> {
+    const travelAgencyId = req.userInfo.id_travel_agency;
+    const excludedStatuses = ['Pending Review', 'Denied', 'Cancelled', 'Changes Needed', 'Pending Reservations'];
+
+    return this.requestsRepo.find({
+      where: travelAgencyId
+        ? { id_travel_agency: travelAgencyId, status: Not(In(excludedStatuses)) }
+        : { status: Not(In(excludedStatuses)) },
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+        'travel_agency',
+        'travel_agency.users',
+      ],
+    });
   }
 
   async findByTA(req: RequestInterface): Promise<RequestEntity[]> {
@@ -674,15 +727,17 @@ export class RequestsService {
           'REQUESTS_ASSIGNED_ADMIN_NOT_FOUND',
         );
       }
+      const updatedFolio = `${new Date(updated.createdAt).getFullYear()}-${String(updated.request_num).padStart(3, '0')}`;
       await this.notificationsService.notify(
         approver.email,
-        `Solicitud actualizada`,
-        `La solicitud de viaje con ID: ${updated.id} ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
+        `Solicitud actualizada — Folio ${updatedFolio}`,
+        `La solicitud de viaje (Folio: ${updatedFolio}, Título: "${updated.title}") ha sido actualizada. Por favor, revisa los detalles en el sistema.`,
         `<p>Hola ${approver.name},</p>
-<p>La solicitud de viaje con ID: <strong>${updated.id}</strong> ha sido actualizada.</p>
-<p>Por favor, revisa los detalles en el sistema.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`
+         <p>La solicitud de viaje ha sido actualizada.</p>
+         <p><strong>Folio:</strong> ${updatedFolio}<br><strong>Título:</strong> ${updated.title}</p>
+         <p>Por favor, revisa los detalles en el sistema.</p>
+         <p>Saludos,</p>
+         <p>Equipo de Monarca</p>`
         ,
         { companyId: updated.id_company, type: NotificationType.REQUEST_STATUS },
       );

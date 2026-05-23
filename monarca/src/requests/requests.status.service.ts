@@ -3,7 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 13/05/2026 [Diego de la Vega] Fixed some minor bugs related to permissions for making reservations.
+ * 19/05/2026 [Julio Rodriguez] Added folio (YYYY-NNN) to all notification email subjects and bodies.
  */
 
 import {
@@ -77,29 +77,33 @@ export class RequestsStatusService {
       { id: id_request },
       { id_travel_agency: id_travel_agency },
     );
-    
+
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
+
     await this.notificationsService.notify(
       request.user.email,
-      'Solicitud de viaje aprobada',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
+      `Solicitud de viaje aprobada — Folio ${folio}`,
+      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
-<p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     // Notify SOI to review budget before reservations.
     await this.notificationsService.notify(
       request.SOI.email,
-      'Solicitud de viaje pendiente de aprobación de presupuesto',
-      `La solicitud de viaje con el título "${request.title}" fue aprobada y está pendiente de tu revisión de presupuesto.`,
+      `Solicitud de viaje pendiente de aprobación de presupuesto — Folio ${folio}`,
+      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada y está pendiente de tu revisión de presupuesto.`,
       `<p>Hola ${request.SOI.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada y está pendiente de tu revisión de presupuesto.</p>
-<p>Por favor, revisa la información para continuar el flujo.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>La solicitud de viaje fue aprobada y está pendiente de tu revisión de presupuesto.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Por favor, revisa la información para continuar el flujo.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
@@ -130,15 +134,17 @@ export class RequestsStatusService {
         'REQUEST_STATUS_DENY_INVALID_STATE',
       );
 
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       request.user.email,
-      'Solicitud de viaje denegada',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido denegada.`,
+      `Solicitud de viaje denegada — Folio ${folio}`,
+      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido denegada.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido denegada.</p>
-<p>Por favor, revisa los detalles de tu solicitud y considera realizar los cambios necesarios.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>Tu solicitud de viaje ha sido denegada.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Por favor, revisa los detalles de tu solicitud y considera realizar los cambios necesarios.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
@@ -176,15 +182,17 @@ export class RequestsStatusService {
         'REQUEST_STATUS_CANCEL_INVALID_STATE',
       );
 
+      const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
       await this.notificationsService.notify(
         request.user.email,
-        'Solicitud de viaje cancelada',
-        `Tu solicitud de viaje con el título "${request.title}" ha sido cancelada.`,
+        `Solicitud de viaje cancelada — Folio ${folio}`,
+        `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido cancelada.`,
         `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido cancelada.</p>
-<p>Si tienes alguna pregunta o necesitas más información, no dudes en contactarnos.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+         <p>Tu solicitud de viaje ha sido cancelada.</p>
+         <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+         <p>Si tienes alguna pregunta o necesitas más información, no dudes en contactarnos.</p>
+         <p>Saludos,</p>
+         <p>Equipo de Monarca</p>`,
         { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
 
@@ -221,15 +229,17 @@ export class RequestsStatusService {
       );
 
     // Notify user once reservations are completed.
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       request.user.email,
-      'Reservaciones de viaje completadas',
-      `La agencia de viajes completó las reservaciones de la solicitud "${request.title}".`,
+      `Reservaciones de viaje completadas — Folio ${folio}`,
+      `La agencia de viajes completó las reservaciones de la solicitud (Folio: ${folio}, Título: "${request.title}").`,
       `<p>Hola ${request.user.name},</p>
-<p>La agencia de viajes completó las reservaciones de tu solicitud "<strong>${request.title}</strong>".</p>
-<p>Tu solicitud pasa ahora a estado de viaje en progreso.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>La agencia de viajes completó las reservaciones de tu solicitud.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Tu solicitud pasa ahora a estado de viaje en progreso.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.RESERVATION_CREATED },
     );
 
@@ -268,49 +278,45 @@ export class RequestsStatusService {
         'REQUEST_STATUS_TRAVEL_AGENCY_REQUIRED',
       );
 
-    // Notify user
-    await this.notificationsService.notify(
-      request.user.email,
-      'Solicitud de viaje aprobada contablemente',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido aprobada contablemente y será enviada a reservaciones.`,
-      `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada contablemente.</p>
-<p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
-    );
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
+    const updated = await this.requestsService.updateStatus(id_request, 'Pending Reservations');
 
-    // Notify travel agents to start reservations after SOI budget approval.
-    let agents = await this.travelAgenciesChecks.getTravelAgencyUsers(
-      request.id_travel_agency,
-    );
-
-    // If no agents assigned to this travel agency, notify all travel agents in the system
-    if (agents.length === 0) {
-      agents = await this.userRepo.find({
-        where: { is_travelAgent: true },
-      });
-    }
-
-    for (const agent of agents) {
-      await this.notificationsService.notify(
-        agent.email,
-        'Solicitud lista para reservaciones',
-        `La solicitud de viaje con el título "${request.title}" fue aprobada por SOI y está lista para reservaciones.`,
-        `<p>Hola ${agent.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" fue aprobada por SOI y está lista para reservaciones.</p>
-<p>Por favor, revisa la solicitud y procede con la reservación.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+    // Fire-and-forget: send notifications after responding to avoid request timeout
+    void (async () => {
+      this.notificationsService.notify(
+        request.user.email,
+        `Solicitud de viaje aprobada contablemente — Folio ${folio}`,
+        `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada contablemente y será enviada a reservaciones.`,
+        `<p>Hola ${request.user.name},</p>
+         <p>Tu solicitud de viaje ha sido aprobada contablemente.</p>
+         <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+         <p>La agencia de viajes recibirá ahora la solicitud para realizar las reservaciones.</p>
+         <p>Saludos,</p>
+         <p>Equipo de Monarca</p>`,
         { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
-    }
 
-    return await this.requestsService.updateStatus(
-      id_request,
-      'Pending Reservations',
-    );
+      let agents = await this.travelAgenciesChecks.getTravelAgencyUsers(request.id_travel_agency!);
+      if (agents.length === 0) {
+        agents = await this.userRepo.find({ where: { is_travelAgent: true } });
+      }
+      for (const agent of agents) {
+        this.notificationsService.notify(
+          agent.email,
+          `Solicitud lista para reservaciones — Folio ${folio}`,
+          `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada por SOI y está lista para reservaciones.`,
+          `<p>Hola ${agent.name},</p>
+           <p>La solicitud de viaje fue aprobada por SOI y está lista para reservaciones.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, revisa la solicitud y procede con la reservación.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+      }
+    })();
+
+    return updated;
   }
 
   async finishedUploadingVouchers(req: RequestInterface, id_request: string) {
@@ -335,15 +341,17 @@ export class RequestsStatusService {
       );
 
     // Notify admin
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       request.admin.email,
-      'Solicitud de viaje pendiente de aprobación de comprobantes',
-      `La solicitud de viaje con el título "${request.title}" ha finalizado la carga de comprobantes y está pendiente de tu aprobación.`,
+      `Solicitud de viaje pendiente de aprobación de comprobantes — Folio ${folio}`,
+      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la carga de comprobantes y está pendiente de tu aprobación.`,
       `<p>Hola ${request.admin.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha finalizado la carga de comprobantes y está pendiente de tu aprobación.</p>
-<p>Por favor, revisa los comprobantes cargados y procede con la aprobación.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>La solicitud de viaje ha finalizado la carga de comprobantes y está pendiente de tu aprobación.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Por favor, revisa los comprobantes cargados y procede con la aprobación.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
@@ -378,28 +386,31 @@ export class RequestsStatusService {
       );
 
     // Notify user
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       request.user.email,
-      'Comprobación de gastos del viaje completada',
-      `Tu comprobación de gastos del viaje con el título "${request.title}" ha sido completada y está pendiente de aprobación de reembolso.`,
+      `Comprobación de gastos del viaje completada — Folio ${folio}`,
+      `Tu comprobación de gastos del viaje (Folio: ${folio}, Título: "${request.title}") ha sido completada y está pendiente de aprobación de reembolso.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido aprobada y está pendiente de aprobación de reembolso.</p>
-<p>Por favor, espera a que se realice la aprobación de reembolso.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de reembolso.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Por favor, espera a que se realice la aprobación de reembolso.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
     // Notify SOI
     await this.notificationsService.notify(
       request.SOI.email,
-      'Solicitud de viaje pendiente de aprobación de reembolso',
-      `La solicitud de viaje con el título "${request.title}" ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.`,
+      `Solicitud de viaje pendiente de aprobación de reembolso — Folio ${folio}`,
+      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.`,
       `<p>Hola ${request.SOI.name},</p>
-<p>La solicitud de viaje con el título "<strong>${request.title}</strong>" ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.</p>
-<p>Por favor, revisa los detalles de la solicitud y procede con la aprobación de reembolso.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>La solicitud de viaje ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>Por favor, revisa los detalles de la solicitud y procede con la aprobación de reembolso.</p>
+       <p>Saludos,</p>
+      <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 
@@ -429,16 +440,18 @@ export class RequestsStatusService {
       );
 
     // Notify user
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
     await this.notificationsService.notify(
       request.user.email,
-      'Solicitud de viaje completada',
-      `Tu solicitud de viaje con el título "${request.title}" ha sido completada y registrada.`,
+      `Solicitud de viaje completada — Folio ${folio}`,
+      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido completada y registrada.`,
       `<p>Hola ${request.user.name},</p>
-<p>Tu solicitud de viaje con el título "<strong>${request.title}</strong>" ha sido completada y registrada.</p>
-<p>En breve se realizará su reembolso si aplica.</p>
-<p>Gracias por utilizar Monarca para gestionar tus viajes.</p>
-<p>Saludos,</p>
-<p>Equipo de Monarca</p>`,
+       <p>Tu solicitud de viaje ha sido completada y registrada.</p>
+       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+       <p>En breve se realizará su reembolso si aplica.</p>
+       <p>Gracias por utilizar Monarca para gestionar tus viajes.</p>
+       <p>Saludos,</p>
+       <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
     );
 

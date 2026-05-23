@@ -6,7 +6,7 @@
  *              and performs currency conversion via DB cache or Banxico API.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández and Juan Pablo Narchi] Imported cfdi stuff from create method, added crossCheckCfdi to validate against SAT status.
+ * 19/05/2026 [Julio Rodriguez] Replaced hardcoded 7-day deadline with per-company voucher_deadline_days.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -17,6 +17,7 @@ import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
 import { VoucherCreationLog } from './entities/voucher-creation-log.entity';
 import { Request } from 'src/requests/entities/request.entity';
+import { Company } from 'src/companies/entity/company.entity';
 import { CfdiValidationService } from './services/cfdi-validation.service';
 import { CfdiStatus } from './types/cfdi-status.type';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
@@ -49,6 +50,8 @@ export class VouchersService {
     private readonly rRepo: Repository<Request>,
     @InjectRepository(RequestsDestination)
     private readonly rdRepo: Repository<RequestsDestination>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     private readonly dataSource: DataSource,
     private readonly cfdiValidationService: CfdiValidationService,
   ) {}
@@ -245,7 +248,7 @@ export class VouchersService {
 
       const cfdiStatus = await this.crossCheckCfdi(data, parsedCfdi);
 
-      const [firstDestination, lastDestination] = await Promise.all([
+      const [firstDestination, lastDestination, company] = await Promise.all([
         this.rdRepo.findOne({
           where: { id_request: data.id_request },
           order: { destination_order: 'ASC' },
@@ -253,13 +256,15 @@ export class VouchersService {
         this.rdRepo.findOne({
           where: { id_request: data.id_request, is_last_destination: true },
         }),
+        this.companyRepo.findOne({ where: { id: request.id_company } }),
       ]);
       if (firstDestination && lastDestination) {
+        const deadlineDays = company?.voucher_deadline_days ?? 7;
         const today = new Date();
         const voucherDate = new Date(data.date);
         const tripStart = new Date(firstDestination.departure_date).getTime();
         const tripEnd = new Date(lastDestination.arrival_date).getTime();
-        const deadlineMs = tripEnd + 7 * 24 * 60 * 60 * 1000;
+        const deadlineMs = tripEnd + deadlineDays * 24 * 60 * 60 * 1000;
 
         if (voucherDate.getTime() < tripStart) {
           throw new BadRequestException(
@@ -278,7 +283,7 @@ export class VouchersService {
         }
         if (today.getTime() > deadlineMs) {
           throw new BadRequestException(
-            `Vouchers can only be submitted within 7 days after the trip ends`,
+            `Vouchers can only be submitted within ${deadlineDays} days after the trip ends`,
           );
         }
       }
