@@ -60,6 +60,6 @@ export class UsersController {
   @HttpCode(200)
   @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
   importUsers(@Body() users: ImportUserDto[], @Req() req: RequestInterface) {
-    return this.usersService.importUsers(users, req.userInfo.id_company);
+    return this.usersService.importUsers(users, req.userInfo.id_company, req.userInfo, req.ip);
   }
 }
