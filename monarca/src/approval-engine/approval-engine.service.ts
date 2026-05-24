@@ -5,8 +5,7 @@
  *              to their own company; system admins can access all companies.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 13/05/2026 [Julio Rodriguez] removeApprovalLevel: reassign pending requests to substitute level before deleting; 400 if no substitute exists.
- * 18/05/2026 [Julio Rodriguez] findAllApprovalLevels: include global levels (company_id IS NULL) in company-scoped query; added IsNull import.
+ * 21/05/2026 [Julio Rodriguez] Updated for logs.
  */
 
 import {
@@ -23,6 +22,7 @@ import { Request as RequestEntity } from 'src/requests/entities/request.entity';
 import { CreateApprovalLevelDto, UpdateApprovalLevelDto } from './dto/approval-level.dto';
 import { CreateApprovalLevelActorDto, UpdateApprovalLevelActorDto } from './dto/approval-level-actor.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 
 @Injectable()
 export class ApprovalEngineService {
@@ -38,6 +38,8 @@ export class ApprovalEngineService {
 
     @InjectRepository(RequestApproval)
     private readonly requestApprovalRepository: Repository<RequestApproval>,
+
+    private readonly userLogsService: UserLogsService,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -55,6 +57,7 @@ export class ApprovalEngineService {
   async createApprovalLevel(
     dto: CreateApprovalLevelDto,
     caller: UserInfoInterface,
+    ip: string,
   ): Promise<ApprovalLevel> {
     if (!caller.is_system_admin && !caller.id_company) {
       throw new ForbiddenException({
@@ -74,6 +77,12 @@ export class ApprovalEngineService {
         approval_level_id: savedLevel.id,
       });
     }
+
+    void this.userLogsService.create({
+      id_user: caller.id,
+      ip,
+      report: `RULE_CREATED§${savedLevel.name}§${savedLevel.level_order}`,
+    });
 
     return savedLevel;
   }
@@ -132,9 +141,18 @@ export class ApprovalEngineService {
     id: string,
     dto: UpdateApprovalLevelDto,
     caller: UserInfoInterface,
+    ip: string,
   ): Promise<ApprovalLevel> {
-    await this.findOneApprovalLevel(id, caller);
+    const level = await this.findOneApprovalLevel(id, caller);
     await this.approvalLevelRepository.update(id, dto);
+
+    const changedFields = Object.keys(dto).join(',');
+    void this.userLogsService.create({
+      id_user: caller.id,
+      ip,
+      report: `RULE_UPDATED§${level.name}§${changedFields}`,
+    });
+
     return this.findOneApprovalLevel(id, caller);
   }
 

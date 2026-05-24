@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team
  * Last Modification made:
- * 05/05/2026 [Santiago Coronado Hernández] Changed providers to export RequestsChecks and added NotificationsModule to imports to allow sending notifications related to requests.
+ * 21/05/2026 [Julio Rodriguez] Added UserLogsModule to record request creation in the company admin audit log.
  */
 
 import { Module } from '@nestjs/common';
@@ -25,6 +25,7 @@ import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks
 import { TravelAgenciesModule } from 'src/travel-agencies/travel-agencies.module';
 import { RequestLogsModule } from 'src/request-logs/request-logs.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { UserLogsModule } from 'src/user-logs/user-logs.module';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     DestinationsModule,
     TravelAgenciesModule,
     RequestLogsModule,
-    NotificationsModule, // Assuming this is a controller that handles notifications related to requests
+    NotificationsModule,
+    UserLogsModule,
   ],
   controllers: [RequestsController, RequestsStatusController],
   providers: [RequestsService, RequestsChecks, RequestsStatusService],

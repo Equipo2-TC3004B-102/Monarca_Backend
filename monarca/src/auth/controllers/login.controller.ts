@@ -5,7 +5,7 @@
  *              Profile route is protected by AuthGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 07/04/2026 [Julio Rodriguez] Added correct HTTP status codes for each endpoint and detailed comments for clarity and maintainability. Deleated non using code.
+ * 21/05/2026 [Julio Rodriguez] Updated for login logs.
  */
 
 import {
@@ -18,7 +18,7 @@ import {
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { LogInDTO } from '../dto/login.dto';
 import { LoginService } from '../services/login.service';
 import { AuthGuard } from 'src/guards/auth.guard';
@@ -29,8 +29,8 @@ export class LoginController {
 
   @Post()
   @HttpCode(200) // Changed to 200 for successful response
-  logIn(@Body() data: LogInDTO, @Res({ passthrough: true }) res: Response) {
-    return this.loginService.logIn(data, res);
+  logIn(@Body() data: LogInDTO, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    return this.loginService.logIn(data, res, req.ip ?? '');
   }
   @Post('logout')
   @HttpCode(200) // Changed to 200 for successful response

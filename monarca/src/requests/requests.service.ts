@@ -4,7 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 20/05/2026 [Diego - A01420632] Inherit and save id_ceco on request creation.
+ * 21/05/2026 [Julio Rodriguez] Added UserLogsModule to record request creation in the company admin audit log.
  */
 
 import {
@@ -24,6 +24,7 @@ import { RequestsDestination } from './entities/requests-destination.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/notification-types';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
 import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
 
@@ -54,6 +55,7 @@ export class RequestsService {
     private readonly destinationChecks: DestinationsChecks,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly userLogsService: UserLogsService,
   ) { }
 
   private async fetchBanxicoRate(currency: string): Promise<number | null> {
@@ -332,8 +334,15 @@ export class RequestsService {
       );
     }
 
-    // Mandar mail de notificación al aprobador asignado
     const savedFolio = `${new Date(saved.createdAt).getFullYear()}-${String(saved.request_num).padStart(3, '0')}`;
+
+    void this.userLogsService.create({
+      id_user: saved.id_user,
+      ip: req.ip,
+      report: `REQUEST_CREATED§${savedFolio}§${saved.title}§${saved.id}`,
+    });
+
+    // Mandar mail de notificación al aprobador asignado
     await this.notificationsService.notify(
       approver.email,
       `Nueva solicitud asignada — Folio ${savedFolio}`,
@@ -394,19 +403,23 @@ export class RequestsService {
     // VALIDAR QUE PUEDE ACCEDER REQUEST
     const id_travel_agency = req.userInfo.id_travel_agency;
     const isTravelAgent = req.userInfo?.is_travelAgent === true;
+    const isAdmin =
+      req.userInfo?.is_system_admin === true ||
+      (req.userInfo?.is_company_admin === true &&
+        req.userInfo.id_company === request.id_company);
 
     // Allow access when any of the following is true:
-    // - request owner, admin, or SOI
+    // - system admin or company admin of the same company
+    // - request owner, assigned approver, or SOI
     // - user belongs to the same travel agency as the request
     // - user is a travel agent (can access any request regardless of status)
-    const travelAgentAccess = isTravelAgent;
-
     if (
+      !isAdmin &&
       userId !== request.id_user &&
       userId !== request.id_admin &&
       userId !== request.id_SOI &&
       !(id_travel_agency && id_travel_agency === request.id_travel_agency) &&
-      !travelAgentAccess
+      !isTravelAgent
     )
       throw this.clientError('Cannot access this request.', 'REQUESTS_ACCESS_DENIED');
 

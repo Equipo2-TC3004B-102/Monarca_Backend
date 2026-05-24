@@ -47,7 +47,7 @@ export class ApprovalEngineController {
     @Body() dto: CreateApprovalLevelDto,
     @Req() req: RequestInterface,
   ) {
-    return this.approvalEngineService.createApprovalLevel(dto, req.userInfo);
+    return this.approvalEngineService.createApprovalLevel(dto, req.userInfo, req.ip);
   }
 
   /**
@@ -85,7 +85,7 @@ export class ApprovalEngineController {
     @Body() dto: UpdateApprovalLevelDto,
     @Req() req: RequestInterface,
   ) {
-    return this.approvalEngineService.updateApprovalLevel(id, dto, req.userInfo);
+    return this.approvalEngineService.updateApprovalLevel(id, dto, req.userInfo, req.ip);
   }
 
   /**
