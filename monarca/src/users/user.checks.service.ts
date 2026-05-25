@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 06/05/2026 [Julio Rodríguez] Removed stale role/permissions relations from logIn() after Database_v4 dropped RBAC tables.
+ * 21/05/2026 [Julio Rodriguez] Added service to handle user checks and lookups, including login validation and approver/SOI retrieval for request processing. This service will be used by the AuthModule for login and by the RequestsModule for approver assignment; updated comments for clarity and maintainability.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -20,6 +20,24 @@ export class UserChecks {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
+
+  /**
+   * recordLogin — Updates login timestamps on every login.
+   * Sets last_login_at to now; on first login also sets first_login_at and flips is_first_login to false.
+   * Input: userId (string).
+   * Output: { isFirstLogin } — true only on the very first login.
+   */
+  async recordLogin(userId: string): Promise<{ isFirstLogin: boolean }> {
+    const user = await this.userRepository.findOne({ where: { id: userId }, select: ['id', 'is_first_login'] });
+    const isFirstLogin = user?.is_first_login === true;
+    const update: Partial<User> = { last_login_at: new Date() };
+    if (isFirstLogin) {
+      update.first_login_at = new Date();
+      update.is_first_login = false;
+    }
+    await this.userRepository.update(userId, update);
+    return { isFirstLogin };
+  }
 
   /**
    * logIn, validates credentials context by fetching user data with role and permissions.

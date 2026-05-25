@@ -3,7 +3,7 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez] Added folio (YYYY-NNN) to all notification email subjects and bodies.
+ * 21/05/2026 [Julio Rodriguez] Added UserLogsService to log status changes in user logs for audit purposes; updated notifications for approval and denial to include folio and clearer messaging.
  */
 
 import {
@@ -20,6 +20,7 @@ import { ApproveRequestDTO } from './dto/approve-request.dto';
 import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/notification-types';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 
 // STATUSES:
 // ['Pending Review', 'Changes Needed', 'Denied', 'Cancelled', 'Pending Reservations',  'Pending Accounting Approval', 'In Progress',  'Pending Vouchers Approval', 'Completed]
@@ -34,6 +35,7 @@ export class RequestsStatusService {
     private readonly requestsService: RequestsService,
     private readonly notificationsService: NotificationsService,
     private readonly travelAgenciesChecks: TravelAgenciesChecks,
+    private readonly userLogsService: UserLogsService,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -195,6 +197,12 @@ export class RequestsStatusService {
          <p>Equipo de Monarca</p>`,
         { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
       );
+
+    void this.userLogsService.create({
+      id_user: request.id_user,
+      ip: req.ip,
+      report: `REQUEST_CANCELLED§${folio}§${request.title}§${request.id}`,
+    });
 
     return await this.requestsService.updateStatus(id_request, 'Cancelled');
   }

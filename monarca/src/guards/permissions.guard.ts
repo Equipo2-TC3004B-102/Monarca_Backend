@@ -5,7 +5,7 @@
  *              no runtime DB join to roles_permissions required.
  * Authors: Original Monarca team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez] Added new flag for travel agent reservations history.
+ * 21/05/2026 [Julio Rodriguez] Updated for logs.
  */
 
 import {
@@ -37,6 +37,7 @@ export const FLAG_PERMISSIONS: Record<string, string[]> = {
     'read_cost_center',
     'update_cost_center',
     'delete_cost_center',
+    'view_assigned_requests_readonly',
   ],
 };
 
