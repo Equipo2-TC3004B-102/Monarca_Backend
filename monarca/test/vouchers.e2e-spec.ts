@@ -9,9 +9,10 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+const request = require('supertest');
 import { AppModule } from 'src/app.module';
 import * as dotenv from 'dotenv';
+import * as cookieParser from 'cookie-parser';
 import { CreateVoucherDto } from 'src/vouchers/dto/create-voucher-dto';
 import { UpdateVoucherDto } from 'src/vouchers/dto/update-voucher-dto';
 dotenv.config();
@@ -29,6 +30,7 @@ describe('Vouchers e2e', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     app.useGlobalPipes(
       new ValidationPipe({
         transform: true,
