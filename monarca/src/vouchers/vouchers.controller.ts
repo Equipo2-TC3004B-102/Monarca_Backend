@@ -6,8 +6,7 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández, Juan Pablo Narchi and Fausto Izquierdo] Added parsedCFDI extraction to the uploadVoucher endpoint. 
- * Also changed pdf and xml field names to be accepted in both file_url_pdf/file_url_xml and pdf/xml for better flexibility. 
+ * 25/05/2026 [Santiago Coronado Hernández] Added CFDI validation service to uploadVoucher endpoint.
  */
 
 import {
@@ -25,6 +24,7 @@ import {
 import * as fs from 'fs';
 import { VouchersService } from './vouchers.service';
 import { XmlParserService } from './services/xml-parser.service';
+import { CfdiValidationService } from './services/cfdi-validation.service';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -43,13 +43,14 @@ export class VouchersController {
   constructor(
     private readonly vouchersService: VouchersService,
     private readonly xmlParserService: XmlParserService,
+    private readonly cfdiValidationService: CfdiValidationService,
   ) {}
 
   /**
    * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
    *            and returns the extracted ParsedCfdi JSON without saving anything.
    * Input: files – multipart upload with field name 'file_url_xml' or 'xml'.
-   * Output: Promise<ParsedCfdi> – the raw fiscal data extracted from the CFDI.
+   * Output: Promise<any> – the raw fiscal data and SAT status extracted from the CFDI.
    * Throws BadRequestException if no XML file is provided or parsing fails.
    */
   @UseInterceptors(UploadPdfInterceptor())
@@ -61,7 +62,7 @@ export class VouchersController {
       file_url_xml?: Express.Multer.File[];
       xml?: Express.Multer.File[];
     },
-  ): Promise<ReturnType<XmlParserService['parse']>> {
+  ): Promise<any> {
     // Support both old field name (file_url_xml) and new field name (xml)
     const xmlFile = files?.file_url_xml?.[0] || files?.xml?.[0];
     if (!xmlFile) {
@@ -69,7 +70,21 @@ export class VouchersController {
     }
     // Multer uses diskStorage so the file is on disk, not in memory
     const buffer = fs.readFileSync(xmlFile.path);
-    return this.xmlParserService.parse(buffer);
+    const parsed = this.xmlParserService.parse(buffer);
+
+    let cfdi_status = 'VALID';
+    if (parsed.fiscal_uuid) {
+      try {
+        cfdi_status = await this.cfdiValidationService.validateSatStatus(parsed.fiscal_uuid);
+      } catch (err) {
+        cfdi_status = 'VALID';
+      }
+    }
+
+    return {
+      ...parsed,
+      cfdi_status,
+    };
   }
 
   /**
