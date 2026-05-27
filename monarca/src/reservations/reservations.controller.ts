@@ -5,7 +5,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added file upload handling to the create endpoint.
+ * 27/05/2026 [Julio Rodriguez] PDF upload is now required for ALL reservations (including Duffel).
+ *                              Raw `link` is stripped from DTO body; only file uploads set it.
  */
 
 import {
@@ -40,12 +41,15 @@ export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   /**
-   * createReservation - Handles optional PDF file upload and creates a new reservation.
-   *                      Builds the public file URL from the upload and merges it into the DTO.
+   * createReservation - Handles PDF file upload and creates a new reservation.
+   *                      A PDF file is required for ALL reservations, including provider-based
+   *                      bookings (e.g. Duffel). The raw `link` field from the DTO body is
+   *                      intentionally stripped; `link` is only set from the uploaded file.
+   *                      This prevents provider booking URLs from bypassing the PDF requirement.
    * Input: req (RequestInterface) - session info used to verify the travel agency;
-   *        files - optional uploaded PDF file via multipart form data;
+   *        files - PDF file via multipart form data (required for all reservations);
    *        createReservationDto (CreateReservationDto) - reservation fields: title, comments,
-   *        price, id_request_destination.
+   *        price, id_request_destination, and optional provider_id / provider_name.
    * Output: Promise<Reservation> - the newly created and persisted reservation record.
    */
   @UseInterceptors(UploadPdfInterceptor())
@@ -72,10 +76,17 @@ export class ReservationsController {
       const publicUrl = `${process.env.DOWNLOAD_LINK}/files/reservations/${file.filename}`;
       if (file.fieldname === 'file') {
         fileMap.link = publicUrl;
-      } }
+      }
+    }
+
+    // Strip the raw `link` from the DTO body so that provider booking URLs
+    // (e.g. Duffel order URLs) cannot bypass the PDF requirement.
+    // `link` is only ever set from the uploaded file via fileMap above.
+    const { link: _bodyLink, ...dtoWithoutLink } = createReservationDto;
+
     return this.reservationsService.createReservation(req,
       {
-        ...createReservationDto,
+        ...dtoWithoutLink,
         ...fileMap,
       } as CreateReservationDto
     );

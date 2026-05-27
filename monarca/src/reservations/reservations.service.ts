@@ -5,9 +5,9 @@
  *              update, and deletion of reservations.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 14/05/2026 [Diego de la Vega] When a reservation is created with a provider_id (e.g. Duffel),
- *                               provider_support_status on the linked RequestsDestination is
- *                               updated to 'supported' so the frontend reflects the correct state.
+ * 27/05/2026 [Julio Rodriguez] Added PDF requirement: all reservations (including Duffel) must
+ *                               include an uploaded PDF file. Controller strips raw `link` from
+ *                               DTO body so only file-uploaded links bypass the check.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -67,6 +67,16 @@ export class ReservationsService {
     const requestStatus = await this.requestChecks.getRequestStatusFromRequestDestination(reservation.id_request_destination);
     if (requestStatus !== 'Pending Reservations') {
       throw new BadRequestException('Unable to create reservation because of the requests status.');
+    }
+
+    // All reservations require a PDF file upload, including provider-based
+    // bookings (e.g. Duffel). The controller strips any raw `link` from the
+    // request body so this field is only set when a file is actually uploaded.
+    if (!reservation.link) {
+      throw new BadRequestException({
+        message: 'A PDF file is required for all reservations.',
+        code: 'RESERVATION_FILE_REQUIRED',
+      });
     }
 
     const newReservation = this.reservationsRepository.create(reservation);
