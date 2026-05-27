@@ -1,3 +1,42 @@
 [
-  
+  {
+    "id": "cccccccc-0001-4000-8000-000000000001",
+    "id_request_destination": "dddddddd-0005-4000-8000-000000000005",
+    "title": "Vuelo MEX-JFK — Auditoría Nueva York",
+    "comments": "Vuelo directo económico, salida 08:00, regreso 19:00",
+    "price": 8500,
+    "link": "https://storage.monarca.dev/seeds/reservation-vuelo-0005.pdf",
+    "provider_id": null,
+    "provider_name": null
+  },
+  {
+    "id": "cccccccc-0002-4000-8000-000000000002",
+    "id_request_destination": "dddddddd-0005-4000-8000-000000000005",
+    "title": "Hotel Marriott Times Square — 5 noches",
+    "comments": "Habitación individual, check-in 15/04, check-out 20/04",
+    "price": 5500,
+    "link": "https://storage.monarca.dev/seeds/reservation-hotel-0005.pdf",
+    "provider_id": null,
+    "provider_name": null
+  },
+  {
+    "id": "cccccccc-0003-4000-8000-000000000003",
+    "id_request_destination": "dddddddd-0003-4000-8000-000000000003",
+    "title": "Vuelo MEX-JFK — Capacitación Nueva York",
+    "comments": "Vuelo directo económico, salida 02/05 09:00",
+    "price": 7200,
+    "link": "https://storage.monarca.dev/seeds/reservation-vuelo-0003.pdf",
+    "provider_id": null,
+    "provider_name": null
+  },
+  {
+    "id": "cccccccc-0004-4000-8000-000000000004",
+    "id_request_destination": "dddddddd-0003-4000-8000-000000000003",
+    "title": "Hotel Hilton Midtown — 4 noches",
+    "comments": "Habitación individual no fumadores, check-in 02/05, check-out 06/05",
+    "price": 4800,
+    "link": "https://storage.monarca.dev/seeds/reservation-hotel-0003.pdf",
+    "provider_id": null,
+    "provider_name": null
+  }
 ]

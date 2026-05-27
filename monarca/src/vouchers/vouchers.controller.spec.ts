@@ -4,8 +4,7 @@
  * is correctly instantiated within a NestJS testing module.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 25/02/2026 [Diego de la Vega] Added detailed comments and documentation for clarity and maintainability.
- * 20/04/2026 [fest] Added service and guard dependency mocks for isolated unit testing.
+ * 25/05/2026 [Santiago Coronado Hernández] Added CFDI validation service mock.
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -13,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { VouchersController } from 'src/vouchers/vouchers.controller';
 import { VouchersService } from 'src/vouchers/vouchers.service';
 import { XmlParserService } from 'src/vouchers/services/xml-parser.service';
+import { CfdiValidationService } from 'src/vouchers/services/cfdi-validation.service';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { PermissionsGuard } from 'src/guards/permissions.guard';
 
@@ -30,6 +30,10 @@ describe('VouchersController', () => {
 
   const xmlParserServiceMock = {
     parse: jest.fn(),
+  };
+
+  const cfdiValidationServiceMock = {
+    validateSatStatus: jest.fn(),
   };
 
   const jwtServiceMock = {
@@ -60,6 +64,10 @@ describe('VouchersController', () => {
         {
           provide: XmlParserService,
           useValue: xmlParserServiceMock,
+        },
+        {
+          provide: CfdiValidationService,
+          useValue: cfdiValidationServiceMock,
         },
         {
           provide: JwtService,
