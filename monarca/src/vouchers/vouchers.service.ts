@@ -6,12 +6,12 @@
  *              and performs currency conversion via DB cache or Banxico API.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez] Replaced hardcoded 7-day deadline with per-company voucher_deadline_days.
+ * 27/05/2026 [Julio Rodriguez] Added request_logs entries for upload, approve, and deny voucher actions.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, UpdateResult } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -21,6 +21,7 @@ import { Company } from 'src/companies/entity/company.entity';
 import { CfdiValidationService } from './services/cfdi-validation.service';
 import { CfdiStatus } from './types/cfdi-status.type';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
+import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 
 type ParsedVoucherCfdi = Partial<CreateVoucherDto>;
 
@@ -52,6 +53,8 @@ export class VouchersService {
     private readonly rdRepo: Repository<RequestsDestination>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(RequestLog)
+    private readonly requestLogRepo: Repository<RequestLog>,
     private readonly dataSource: DataSource,
     private readonly cfdiValidationService: CfdiValidationService,
   ) {}
@@ -358,6 +361,20 @@ export class VouchersService {
         }),
       );
 
+      const amountFormatted = finalAmount.toLocaleString('es-MX', {
+        style: 'currency',
+        currency: 'MXN',
+        minimumFractionDigits: 2,
+      });
+      await this.requestLogRepo.save(
+        this.requestLogRepo.create({
+          id_request: data.id_request,
+          id_user,
+          report: `Comprobante subido. Monto: ${amountFormatted}.`,
+          new_status: request.status,
+        }),
+      );
+
       return saved;
     } catch (error) {
       await this.logRepo.save(
@@ -437,38 +454,50 @@ export class VouchersService {
   }
 
   /**
-   * approve - Sets a voucher's status to 'Voucher Approved'.
-   * Input: id (string) - UUID of the voucher to approve.
+   * approve - Sets a voucher's status to 'Voucher Approved' and records the action in request_logs.
+   * Input: id (string) - UUID of the voucher to approve;
+   *        id_user (string) - UUID of the user performing the approval.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    * Throws BadRequestException if no voucher with the given ID exists.
    */
-  async approve(id: string): Promise<{ status: boolean; message: string }> {
-    const result: UpdateResult = await this.voucherRepo.update(id, {
-      status: 'Voucher Approved',
-    });
-
-    if (result.affected === 0) {
+  async approve(id: string, id_user: string): Promise<{ status: boolean; message: string }> {
+    const voucher = await this.voucherRepo.findOne({ where: { id } });
+    if (!voucher) {
       throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
-
+    await this.voucherRepo.update(id, { status: 'Voucher Approved' });
+    await this.requestLogRepo.save(
+      this.requestLogRepo.create({
+        id_request: voucher.id_request,
+        id_user,
+        report: `Comprobante aprobado.`,
+        new_status: 'Voucher Approved',
+      }),
+    );
     return { status: true, message: `Voucher ${id} approved` };
   }
 
   /**
-   * deny - Sets a voucher's status to 'Voucher Denied'.
-   * Input: id (string) - UUID of the voucher to deny.
+   * deny - Sets a voucher's status to 'Voucher Denied' and records the action in request_logs.
+   * Input: id (string) - UUID of the voucher to deny;
+   *        id_user (string) - UUID of the user performing the denial.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    * Throws BadRequestException if no voucher with the given ID exists.
    */
-  async deny(id: string): Promise<{ status: boolean; message: string }> {
-    const result: UpdateResult = await this.voucherRepo.update(id, {
-      status: 'Voucher Denied',
-    });
-
-    if (result.affected === 0) {
+  async deny(id: string, id_user: string): Promise<{ status: boolean; message: string }> {
+    const voucher = await this.voucherRepo.findOne({ where: { id } });
+    if (!voucher) {
       throw new BadRequestException(`Voucher with ID ${id} not found`);
     }
-
+    await this.voucherRepo.update(id, { status: 'Voucher Denied' });
+    await this.requestLogRepo.save(
+      this.requestLogRepo.create({
+        id_request: voucher.id_request,
+        id_user,
+        report: `Comprobante rechazado.`,
+        new_status: 'Voucher Denied',
+      }),
+    );
     return { status: true, message: `Voucher ${id} denied` };
   }
 

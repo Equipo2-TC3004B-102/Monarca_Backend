@@ -8,7 +8,7 @@
  *              Mutations on company-scoped users are recorded in user_logs for audit purposes.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 21/05/2026 [Julio Rodriguez] Integrated audit logging for user create/update/flag/delete; added getAuditLogs.
+ * 27/05/2026 [Julio Rodriguez] getAuditLogs now returns combined user_logs + request_logs for the company.
  */
 
 import {
@@ -16,7 +16,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -28,6 +28,7 @@ import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
 import { UserLogsService } from 'src/user-logs/user-logs.service';
 import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
+import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 
 @Injectable()
 export class AdminService {
@@ -43,6 +44,9 @@ export class AdminService {
 
     @InjectRepository(RequestEntity)
     private readonly requestRepository: Repository<RequestEntity>,
+
+    @InjectRepository(RequestLog)
+    private readonly requestLogRepo: Repository<RequestLog>,
 
     private readonly userLogsService: UserLogsService,
   ) {}
@@ -467,10 +471,57 @@ export class AdminService {
     });
   }
 
-  async getAuditLogs(companyId: string, caller: UserInfoInterface): Promise<UserLogs[]> {
+  async getAuditLogs(companyId: string, caller: UserInfoInterface) {
     if (!caller.is_system_admin && caller.id_company !== companyId) {
       throw this.clientError('Access restricted to your own company', 'ADMIN_FORBIDDEN_COMPANY');
     }
-    return this.userLogsService.findByCompany(companyId);
+
+    const [userLogs, companyRequests] = await Promise.all([
+      this.userLogsService.findByCompany(companyId),
+      this.requestRepository.find({
+        where: { id_company: companyId },
+        select: ['id'],
+      }),
+    ]);
+
+    const requestIds = companyRequests.map((r) => r.id);
+    const requestLogs: RequestLog[] = requestIds.length > 0
+      ? await this.requestLogRepo.find({
+          where: { id_request: In(requestIds) },
+          relations: ['user'],
+        })
+      : [];
+
+    const toIso = (d: Date | string): string =>
+      d instanceof Date ? d.toISOString() : String(d);
+
+    const combined = [
+      ...userLogs.map((ul) => ({
+        id: ul.id,
+        id_user: ul.id_user,
+        date: toIso(ul.date as unknown as Date | string),
+        ip: ul.ip ?? null,
+        report: ul.report ?? '',
+        new_status: undefined as string | undefined,
+        id_request: undefined as string | undefined,
+        user: ul.user
+          ? { name: ul.user.name, last_name: ul.user.last_name, email: ul.user.email }
+          : undefined,
+      })),
+      ...requestLogs.map((rl) => ({
+        id: rl.id,
+        id_user: rl.id_user,
+        date: toIso(rl.change_date as unknown as Date | string),
+        ip: null as string | null,
+        report: rl.report ?? '',
+        new_status: rl.new_status,
+        id_request: rl.id_request,
+        user: rl.user
+          ? { name: rl.user.name, last_name: rl.user.last_name, email: rl.user.email }
+          : undefined,
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return combined;
   }
 }
