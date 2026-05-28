@@ -4,7 +4,8 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 21/05/2026 [Julio Rodriguez] Added UserLogsModule to record request creation in the company admin audit log.
+ * 27/05/2026 [Julio Rodriguez] Added findVouchersToApprove: lists Pending Vouchers Approval requests for the assigned approver.
+ *                              added 'company' relation to expose voucher_deadline_days to the frontend.
  */
 
 import {
@@ -394,6 +395,7 @@ export class RequestsService {
         'vouchers',
         'requests_destinations.reservations',
         'ceco',
+        'company',
       ],
     });
 
@@ -509,6 +511,30 @@ export class RequestsService {
       ],
     });
     return list;
+  }
+
+  /**
+   * findVouchersToApprove - Lists requests in 'Pending Vouchers Approval' assigned to the current approver.
+   * Input: req (RequestInterface) - session info used to identify the approver (id_admin).
+   * Output: Promise<RequestEntity[]> - requests awaiting voucher review by this approver.
+   */
+  async findVouchersToApprove(req: RequestInterface): Promise<RequestEntity[]> {
+    const userId = req.sessionInfo.id;
+    return this.requestsRepo.find({
+      where: {
+        id_admin: userId,
+        status: 'Pending Vouchers Approval',
+      },
+      relations: [
+        'requests_destinations',
+        'requests_destinations.destination',
+        'revisions',
+        'user',
+        'admin',
+        'SOI',
+        'destination',
+      ],
+    });
   }
 
   // Para jalar todos los requests en estatus de Pending Refund Approval asignados a un SOI
