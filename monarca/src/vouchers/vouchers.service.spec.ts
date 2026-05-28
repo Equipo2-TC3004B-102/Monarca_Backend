@@ -187,4 +187,79 @@ describe('VouchersService', () => {
       response: { code: 'VOUCHERS_CFDI_CANCELED' },
     });
   });
+
+  describe('voucher time limit validation', () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    const baseDto = {
+      id_request: 'request-1',
+      class: 'GAS Gasolina',
+      amount: 150,
+      tax_type: '15%',
+      currency: 'MXN',
+      status: 'voucher uploaded',
+      id_approver: 'admin-1',
+    };
+
+    const mockDestinations = (departureDate: Date, arrivalDate: Date) => {
+      requestsDestinationRepositoryMock.findOne
+        .mockResolvedValueOnce({ departure_date: departureDate })
+        .mockResolvedValueOnce({ arrival_date: arrivalDate });
+    };
+
+    it('rejects when the voucher date is before the trip start date', async () => {
+      const tripStart = new Date(Date.now() + 1 * DAY_MS);
+      const tripEnd = new Date(Date.now() + 3 * DAY_MS);
+      const voucherDate = new Date(Date.now() - 1 * DAY_MS);
+      mockDestinations(tripStart, tripEnd);
+
+      await expect(
+        service.create('user-1', { ...baseDto, date: voucherDate.toISOString() }),
+      ).rejects.toThrow('Voucher date cannot be before the trip start date');
+    });
+
+    it('rejects when the voucher date is after the trip end date', async () => {
+      const tripStart = new Date(Date.now() - 5 * DAY_MS);
+      const tripEnd = new Date(Date.now() - 2 * DAY_MS);
+      const voucherDate = new Date(Date.now() - 1 * DAY_MS);
+      mockDestinations(tripStart, tripEnd);
+
+      await expect(
+        service.create('user-1', { ...baseDto, date: voucherDate.toISOString() }),
+      ).rejects.toThrow('Voucher date cannot be after the trip end date');
+    });
+
+    it('rejects when submitted before the trip has started', async () => {
+      const tripStart = new Date(Date.now() + 2 * DAY_MS);
+      const tripEnd = new Date(Date.now() + 5 * DAY_MS);
+      const voucherDate = new Date(Date.now() + 3 * DAY_MS);
+      mockDestinations(tripStart, tripEnd);
+
+      await expect(
+        service.create('user-1', { ...baseDto, date: voucherDate.toISOString() }),
+      ).rejects.toThrow('Vouchers cannot be submitted before the trip has started');
+    });
+
+    it('rejects when submitted after the 7-day deadline', async () => {
+      const tripStart = new Date(Date.now() - 15 * DAY_MS);
+      const tripEnd = new Date(Date.now() - 10 * DAY_MS);
+      const voucherDate = new Date(Date.now() - 12 * DAY_MS);
+      mockDestinations(tripStart, tripEnd);
+
+      await expect(
+        service.create('user-1', { ...baseDto, date: voucherDate.toISOString() }),
+      ).rejects.toThrow('Vouchers can only be submitted within 7 days after the trip ends');
+    });
+
+    it('allows creation when all time conditions are valid', async () => {
+      const tripStart = new Date(Date.now() - 5 * DAY_MS);
+      const tripEnd = new Date(Date.now() - 2 * DAY_MS);
+      const voucherDate = new Date(Date.now() - 3 * DAY_MS);
+      mockDestinations(tripStart, tripEnd);
+
+      await expect(
+        service.create('user-1', { ...baseDto, date: voucherDate.toISOString() }),
+      ).resolves.toBeDefined();
+    });
+  });
 });
