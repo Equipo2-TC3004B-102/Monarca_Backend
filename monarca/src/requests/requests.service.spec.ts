@@ -1,3 +1,11 @@
+/**
+ * FileName: requests.service.spec.ts
+ * Description: Test suite for RequestsService. Contains unit tests to validate request creation logic, including requester cost center validation and Banxico rate fetching. Ensures that business rules are enforced and external API interactions are handled correctly.
+ * Authors: DebugStudio Team
+ * Last Modification made: 
+ * 31/05/2026 [Jin Sik Yoon] Implemented unit tests for RequestsService covering request creation and Banxico rate fetching scenarios.
+ */
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { RequestsService } from './requests.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -6,6 +14,9 @@ import { UserChecks } from 'src/users/user.checks.service';
 import { DestinationsChecks } from 'src/destinations/destinations.checks';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { DataSource } from 'typeorm';
+import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
+import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 
 describe('RequestsService', () => {
   let service: RequestsService;
@@ -19,16 +30,32 @@ describe('RequestsService', () => {
           useValue: {},
         },
         {
+          provide: getRepositoryToken(ApprovalLevel),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(RequestApproval),
+          useValue: {},
+        },
+        {
           provide: UserChecks,
           useValue: {},
         },
         {
           provide: DestinationsChecks,
-          useValue: {},
+          useValue: {
+            isValid: jest.fn().mockResolvedValue(true),
+          },
         },
         {
           provide: NotificationsService,
           useValue: {},
+        },
+        {
+          provide: UserLogsService,
+          useValue: {
+            create: jest.fn(),
+          },
         },
         {
           provide: DataSource,
@@ -44,6 +71,32 @@ describe('RequestsService', () => {
     expect(service).toBeDefined();
   });
 
+  it('should reject request creation when requester has no cost center', async () => {
+    const req: any = {
+      sessionInfo: { id: 'requester-id' },
+      userInfo: {
+        id_company: 'company-id',
+        id_ceco: null,
+      },
+      ip: '127.0.0.1',
+    };
+
+    const data: any = {
+      id_origin_city: 'origin-city-id',
+      requests_destinations: [
+        {
+          id_destination: 'destination-city-id',
+        },
+      ],
+    };
+
+    await expect(service.create(req, data)).rejects.toMatchObject({
+      response: {
+        code: 'REQUESTS_REQUESTER_CECO_REQUIRED',
+      },
+    });
+  });
+
   describe('fetchBanxicoRate', () => {
     let originalEnv: NodeJS.ProcessEnv;
     let originalFetch: typeof fetch;
@@ -56,7 +109,7 @@ describe('RequestsService', () => {
     });
 
     afterEach(() => {
-      process.env = originalEnv;
+      process.env = { ...originalEnv };
       global.fetch = originalFetch;
       jest.restoreAllMocks();
     });
