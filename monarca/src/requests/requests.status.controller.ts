@@ -5,8 +5,8 @@
  *              AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 18/04/2026 [Julio Rodriguez] Added new endpoints for SOI approval and stage completions.
- *                            Updated endpoint contracts to include necessary parameters and permissions.
+ * 27/05/2026 [Julio Rodriguez] Moved voucher approval to approver: finished-approving-vouchers now uses approve_request.
+ *                              Added GET /:id/variance-report for the approver to preview budget vs. actual before approving.
  */
 
 import {
@@ -102,7 +102,7 @@ export class RequestsStatusController {
   }
 
   @Patch('finished-approving-vouchers/:id')
-  @Permissions('approve_vouchers')
+  @Permissions('approve_request')
   @HttpCode(200)
   async finsihedApprovingVouchers(
     @Request() req: RequestInterface,
@@ -115,7 +115,7 @@ export class RequestsStatusController {
   }
 
   @Patch('complete-request/:id')
-  @Permissions('approve_budget') // Add appropriate permission for marking request as fully completed.
+  @Permissions('approve_budget')
   @HttpCode(200)
   async finsihedRegisteringRequest(
     @Request() req: RequestInterface,
@@ -125,5 +125,14 @@ export class RequestsStatusController {
       req,
       id_request,
     );
+  }
+
+  @Get(':id/variance-report')
+  @Permissions('approve_request')
+  @HttpCode(200)
+  async getVarianceReport(
+    @Param('id', new ParseUUIDPipe()) id_request: string,
+  ) {
+    return await this.requestsStatusService.getVarianceReport(id_request);
   }
 }

@@ -78,5 +78,21 @@
     "provider_support_status": "supported",
     "provider_support_reason": null,
     "provider_support_checked_at": "2026-04-01T10:00:00Z"
+  },
+  {
+    "id": "dddddddd-0006-4000-8000-000000000006",
+    "id_request": "eeeeeeee-0006-4000-8000-000000000006",
+    "id_destination": "d7ee631a-c1b8-42f0-8ae6-cd4d6b23470f",
+    "destination_order": 1,
+    "stay_days": 2,
+    "arrival_date": "2026-05-20T09:00:00Z",
+    "departure_date": "2026-05-22T18:00:00Z",
+    "is_hotel_required": true,
+    "is_plane_required": false,
+    "is_last_destination": true,
+    "details": null,
+    "provider_support_status": "not_required",
+    "provider_support_reason": null,
+    "provider_support_checked_at": null
   }
 ]

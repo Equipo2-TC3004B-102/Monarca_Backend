@@ -5,8 +5,7 @@
  *              log entry is not found by ID.
  * Authors: Original Monarca team
  * Last Modification made:
- * 11/04/2026 [Julio Rodriguez] Standardized client error handling to
- *                              BadRequestException for HTTP 400 policy.
+ * 27/05/2026 [Julio Rodriguez] Added findByRequest to retrieve all logs for a given request.
  */
 
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -29,5 +28,13 @@ export class RequestLogsService {
     const ent = await this.repo.findOneBy({ id });
     if (!ent) throw new BadRequestException(`Log ${id} not found`);
     return ent;
+  }
+
+  async findByRequest(requestId: string): Promise<RequestLog[]> {
+    return this.repo.find({
+      where: { id_request: requestId },
+      relations: ['user'],
+      order: { change_date: 'ASC' },
+    });
   }
 }

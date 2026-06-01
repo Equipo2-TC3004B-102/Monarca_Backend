@@ -98,5 +98,25 @@
     "exchange_rate": 19.5,
     "unconverted_advance_money": 718,
     "requirements": null
+  },
+  {
+    "id": "eeeeeeee-0006-4000-8000-000000000006",
+    "id_user": "5932b459-a3ea-46a1-8482-d56bfda8c866",
+    "id_admin": "5781a1d8-f9f7-4561-b2ed-f6117877459f",
+    "id_SOI": "00000001-0000-4000-8000-000000000004",
+    "id_travel_agency": "7f3b5b8a-9c2e-4d1f-a6e3-8b2c1d0e9f4a",
+    "id_company": "11111111-1111-4111-8111-111111111111",
+    "id_ceco": "a1f4e0e1-1b89-4ccf-9e57-43f4b3d1a001",
+    "id_origin_city": "d7ee631a-c1b8-42f0-8ae6-cd4d6b23470f",
+    "current_approval_level_id": "00000002-0000-4000-8000-000000000001",
+    "title": "Visita a socios en Ciudad de México",
+    "motive": "Reunión de revisión de resultados Q2 con socios estratégicos",
+    "status": "In Progress",
+    "priority": "Medium",
+    "advance_money": 11000,
+    "currency": "MXN",
+    "exchange_rate": null,
+    "unconverted_advance_money": null,
+    "requirements": null
   }
 ]

@@ -5,7 +5,7 @@
  *              queries. All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Monarca team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez]: Added new GET /requests/ta-history endpoint for travel agents to view their request history.
+ * 27/05/2026 [Julio Rodriguez]: Added GET /requests/vouchers-to-approve for approvers to list requests in Pending Vouchers Approval.
  */
 
 import {
@@ -62,6 +62,13 @@ export class RequestsController {
   async findAssignedSOI(@Request() req: RequestInterface) {
     return this.requestsService.findBySOI(req);
   }
+
+  @Get('vouchers-to-approve')
+  @Permissions('approve_request')
+  async findVouchersToApprove(@Request() req: RequestInterface) {
+    return this.requestsService.findVouchersToApprove(req);
+  }
+  
   @Get('refund-to-approve-SOI')
   @Permissions('check_budgets')
   async findPendingRefundApproval(@Request() req: RequestInterface) {

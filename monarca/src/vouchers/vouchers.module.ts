@@ -5,7 +5,7 @@
  *              and includes GuardsModule for authentication and authorization.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez] Added Company repository to support per-company voucher deadline.
+ * 27/05/2026 [Julio Rodriguez] Added RequestLogsModule to support request_logs entries from VouchersService.
  */
 
 import { Module } from '@nestjs/common';
@@ -20,10 +20,13 @@ import { Request } from 'src/requests/entities/request.entity';
 import { RequestsDestination } from 'src/requests/entities/requests-destination.entity';
 import { Company } from 'src/companies/entity/company.entity';
 import { GuardsModule } from 'src/guards/guards.module';
+import { RequestLogsModule } from 'src/request-logs/request-logs.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Voucher, VoucherCreationLog, Request, RequestsDestination, Company]),
     GuardsModule,
+    RequestLogsModule,
   ],
   controllers: [VouchersController],
   providers: [VouchersService, XmlParserService, CfdiValidationService],
