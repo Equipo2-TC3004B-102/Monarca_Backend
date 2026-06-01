@@ -83,9 +83,11 @@ export class RequestDestinationtDto {
   @ApiProperty({
     description: 'Additional details or requirements for this destination',
     example: 'Hotel near downtown',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  details: string;
+  details?: string;
 }
 
 export class CreateRequestDto {
