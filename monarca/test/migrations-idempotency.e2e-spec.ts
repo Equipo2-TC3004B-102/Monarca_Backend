@@ -10,7 +10,7 @@
 import dataSource from 'src/data-source';
 import { QueryRunner } from 'typeorm';
 
-import { DatabaseV11776307000000 } from '../migrations/1776307000000-Database_v1';
+import { DatabaseV11776451915698 } from '../migrations/1776451915698-Database_v1';
 
 
 describe('Migration idempotency', () => {
@@ -60,7 +60,7 @@ describe('Migration idempotency', () => {
    */
   it(`up() should be idempotent across ${RUNS} executions`, async () => {
     const queryRunner = dataSource.createQueryRunner();
-    const migration = new DatabaseV11776307000000();
+    const migration = new DatabaseV11776451915698();
 
     try {
       await queryRunner.connect();
@@ -99,7 +99,7 @@ describe('Migration idempotency', () => {
    */
   it(`down() should be idempotent across ${RUNS} executions`, async () => {
     const queryRunner = dataSource.createQueryRunner();
-    const migration = new DatabaseV11776307000000();
+    const migration = new DatabaseV11776451915698();
 
     try {
       await queryRunner.connect();

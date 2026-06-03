@@ -4,7 +4,7 @@
  *              can have many destinations associated to it.
  * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 20/05/2026 [Diego - A01420632] Added id_ceco field and many-to-one relationship with CostCenter.
+ * 01/06/2026 [Julio Rodriguez] Added approval_count field to track multi-level approval progress.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -37,7 +37,7 @@ export class Request {
   id: string;
 
   @ApiProperty({ example: 42 })
-  @Column({ type: 'integer', unique: true, insert: false, update: false })
+  @Column({ type: 'integer', update: false })
   request_num: number;
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
@@ -98,6 +98,10 @@ export class Request {
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', required: false, nullable: true })
   @Column({ name: 'current_approval_level_id', type: 'uuid', nullable: true, default: null })
   current_approval_level_id: string | null;
+
+  @ApiProperty({ example: 0 })
+  @Column({ name: 'approval_count', type: 'integer', default: 0 })
+  approval_count: number;
 
   @ApiProperty({ example: 'Laptop required', required: false, nullable: true })
   @Column({ name: 'requirements', type: 'varchar', nullable: true })

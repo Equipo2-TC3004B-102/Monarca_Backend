@@ -4,7 +4,7 @@
  *              This entity defines the structure of approval levels, including their order, applicable amount ranges, and relationships with companies, approval level actors and request approvals.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Added @ApiProperty to all fields for Swagger documentation.
+ * 03/06/2026 [Julio Rodríguez] Added ceco_id field to ApprovalLevel entity for CECO-scoped approval levels, allowing levels to be associated with specific cost centers and enabling more granular control over which requests the level applies to based on their CECO.
  */
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -49,6 +49,10 @@ export class ApprovalLevel {
     @ApiProperty({ example: 1 })
     @Column({ name: 'level_order', type: 'integer' })
     level_order: number;
+
+    @ApiProperty({ example: 'TEC-001', required: false, nullable: true })
+    @Column({ name: 'ceco_id', type: 'varchar', nullable: true })
+    ceco_id: string | null;
 
     @ApiProperty({ example: 10000, required: false, nullable: true })
     @Column({ name: 'min_amount_mon', type: 'decimal', scale: 2, nullable: true })
