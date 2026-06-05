@@ -165,6 +165,32 @@ export class UserChecks {
   }
 
   /**
+   * isEligibleApprover — Validates that a specific user can act as an approver for a request.
+   * Requires: not the requester, exists, is_approver, active status, not a company admin,
+   * and belongs to the given company. Used to validate USER-type approval actors.
+   * Input: id_user (string), id_company (string), requesterId (string).
+   * Output: true when the user is an eligible approver, otherwise false.
+   */
+  async isEligibleApprover(
+    id_user: string,
+    id_company: string,
+    requesterId: string,
+  ): Promise<boolean> {
+    if (!id_user || id_user === requesterId) return false;
+    const user = await this.userRepository.findOne({
+      where: { id: id_user },
+      select: ['id', 'is_approver', 'status', 'is_company_admin', 'id_company'],
+    });
+    return (
+      !!user &&
+      user.is_approver === true &&
+      user.status?.toLowerCase() === 'active' &&
+      user.is_company_admin === false &&
+      user.id_company === id_company
+    );
+  }
+
+  /**
    * getRandomSOIID, selects an active SOI user scoped to the given company when provided.
    * Input: id_company (string, optional) company scope.
    * Output: SOI user id when available, otherwise null.

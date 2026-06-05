@@ -18,6 +18,7 @@ import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { UserChecks } from 'src/users/user.checks.service';
+import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { DestinationsChecks } from 'src/destinations/destinations.checks';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsDestination } from './entities/requests-destination.entity';
@@ -56,6 +57,7 @@ export class RequestsService {
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     private readonly userLogsService: UserLogsService,
+    private readonly travelAgenciesChecks: TravelAgenciesChecks,
   ) { }
 
   private async fetchBanxicoRate(currency: string): Promise<number | null> {
@@ -258,22 +260,34 @@ export class RequestsService {
     }
 
     const actors = level.approval_level_actors ?? [];
-    const actor = actors.find((a) => a.ceco_id === id_ceco)
-      ?? actors.find((a) => a.ceco_id === null)
-      ?? actors[0]
-      ?? null;
+    const userActors = actors.filter((a) => a.target_id);
     let adminId: string | null = null;
-    if (actor?.target_id) {
-      adminId = actor.target_id;
-    } else {
+    let selectedActor: (typeof actors)[number] | null = null;
+    if (userActors.length > 0) {
+      // Specific-user level: assign the first staged user who is an eligible approver
+      // (active, is_approver, not a company admin, same company, not the requester).
+      for (const a of userActors) {
+        if (a.target_id && (await this.userChecks.isEligibleApprover(a.target_id, id_company, userId))) {
+          adminId = a.target_id;
+          selectedActor = a;
+          break;
+        }
+      }
+      // If no staged user is eligible, fall through to the manager chain below.
+    }
+    if (!adminId) {
       adminId = await this.userChecks.getApproverIdFromManagerChain(userId, level.level_order, id_company);
       if (!adminId) adminId = await this.userChecks.getChainFallbackApprover(userId, id_company);
     }
     // When no approver is found in the chain (requester is at the top of the hierarchy),
     // skip approval and go directly to Pending Accounting Approval with SOI.
     const bypassToSoi = adminId === null;
+    let bypassAgencyId: string | null = null;
     if (bypassToSoi) {
       adminId = SOIId;
+      // No approver was there to pick a travel agency, so auto-assign one so the
+      // downstream SOI → reservations flow can proceed.
+      bypassAgencyId = await this.travelAgenciesChecks.getDefaultAgencyId();
     }
     if (!adminId) {
       throw this.serverError(
@@ -282,45 +296,49 @@ export class RequestsService {
       );
     }
 
-    // Atomically get the next request number for this company.
-    const counterResult = await this.dataSource.query(
-      `INSERT INTO company_request_counters (company_id, counter)
-       VALUES ($1, 1)
-       ON CONFLICT (company_id) DO UPDATE SET counter = company_request_counters.counter + 1
-       RETURNING counter`,
-      [id_company],
-    );
-    const requestNum: number = counterResult[0].counter;
+    // Increment the per-company counter and insert the request in one transaction so a
+    // failed insert rolls back the counter (no gaps in the per-company request numbering).
+    const savedRaw = await this.dataSource.transaction(async (manager) => {
+      const counterResult = await manager.query(
+        `INSERT INTO company_request_counters (company_id, counter)
+         VALUES ($1, 1)
+         ON CONFLICT (company_id) DO UPDATE SET counter = company_request_counters.counter + 1
+         RETURNING counter`,
+        [id_company],
+      );
+      const requestNum: number = counterResult[0].counter;
 
-    const request = this.requestsRepo.create({
-      ...data,
-      id_user: userId,
-      id_admin: adminId,
-      id_SOI: SOIId,
-      id_company,
-      id_ceco,
-      request_num: requestNum,
-      current_approval_level_id: level.id,
-      advance_money: finalAdvanceMoney,
-      unconverted_advance_money: finalUnconvertedAdvanceMoney,
-      exchange_rate: finalExchangeRate,
-      ...(bypassToSoi && { status: 'Pending Accounting Approval' }),
-      requests_destinations: data.requests_destinations.map((destDto) => ({
-        ...destDto,
-        provider_support_status: 'pending_provider',
-        provider_support_reason: null,
-        provider_support_checked_at: null,
-      })),
+      const request = manager.create(RequestEntity, {
+        ...data,
+        id_user: userId,
+        id_admin: adminId,
+        id_SOI: SOIId,
+        id_company,
+        id_ceco,
+        request_num: requestNum,
+        current_approval_level_id: level.id,
+        advance_money: finalAdvanceMoney,
+        unconverted_advance_money: finalUnconvertedAdvanceMoney,
+        exchange_rate: finalExchangeRate,
+        ...(bypassToSoi && { status: 'Pending Accounting Approval' }),
+        ...(bypassAgencyId && { id_travel_agency: bypassAgencyId }),
+        requests_destinations: data.requests_destinations.map((destDto) => ({
+          ...destDto,
+          provider_support_status: 'pending_provider',
+          provider_support_reason: null,
+          provider_support_checked_at: null,
+        })),
+      });
+
+      return await manager.save(request);
     });
-
-    const savedRaw = await this.requestsRepo.save(request);
     const saved = await this.requestsRepo.findOneOrFail({ where: { id: savedRaw.id }, relations: ['requests_destinations'] });
 
     if (!bypassToSoi) {
       await this.requestApprovalRepo.save({
         request_id: saved.id,
         approval_level_id: level.id,
-        approval_actor_id: actor?.id ?? null,
+        approval_actor_id: selectedActor?.id ?? null,
         approver_user_id: adminId,
         decision: 'PENDING',
         status: 'PENDING',
