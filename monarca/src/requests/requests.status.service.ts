@@ -3,9 +3,13 @@
  * Description: Service for request status transitions and related notifications.
  * Authors: Original Monarca team
  * Last Modification made:
- * 27/05/2026 [Julio Rodriguez] Moved voucher approval to is_approver. Added refund routing in finishedUploadingVouchers, finishedReservations;
- *                              Routing uses advance_money; query now includes applies_to='all' levels;
- *                              Added request_logs entries for voucher-related transitions: finishedUploadingVouchers, finishedApprovingVouchers and finishedRegisteringRequest.
+ * 01/06/2026 [Julio Rodriguez] Replaced actor-based refund routing with manager chain traversal (resolveManagerChainApprover).
+ *                              Company-specific rules now take priority over global fallback via level_order ASC ordering.
+ *                              Requests at the root of the manager chain bypass voucher approval and go directly to SOI.
+ * 02/06/2026 [Julio Rodriguez] Multi-level approval in approve(): after each level completes, routes to the next
+ *                              ApprovalLevel (higher level_order) before advancing to SOI. Also supports
+ *                              required_approvals > 1 within a level by walking up the manager chain for each step.
+ *                              id_travel_agency is now only required on the final approval.
  */
 
 import {
@@ -13,7 +17,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Or, Repository } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, MoreThan, MoreThanOrEqual, Or, Repository } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { User } from 'src/users/entities/user.entity';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
@@ -25,7 +29,9 @@ import { NotificationType } from 'src/notifications/notification-types';
 import { UserLogsService } from 'src/user-logs/user-logs.service';
 import { ApprovalLevel } from 'src/approval-engine/entities/approval-level.entity';
 import { ApprovalLevelActor } from 'src/approval-engine/entities/approval-level-actor.entity';
+import { RequestApproval } from 'src/approval-engine/entities/request-approval.entity';
 import { RequestLog } from 'src/request-logs/entities/request-log.entity';
+import { UserChecks } from 'src/users/user.checks.service';
 
 // STATUSES:
 // ['Pending Review', 'Changes Needed', 'Denied', 'Cancelled', 'Pending Reservations',  'Pending Accounting Approval', 'In Progress',  'Pending Vouchers Approval', 'Completed]
@@ -41,10 +47,13 @@ export class RequestsStatusService {
     private readonly approvalLevelRepo: Repository<ApprovalLevel>,
     @InjectRepository(RequestLog)
     private readonly requestLogRepo: Repository<RequestLog>,
+    @InjectRepository(RequestApproval)
+    private readonly requestApprovalRepo: Repository<RequestApproval>,
     private readonly requestsService: RequestsService,
     private readonly notificationsService: NotificationsService,
     private readonly travelAgenciesChecks: TravelAgenciesChecks,
     private readonly userLogsService: UserLogsService,
+    private readonly userChecks: UserChecks,
   ) {}
 
   private clientError(message: string, code: string) {
@@ -57,20 +66,12 @@ export class RequestsStatusService {
     data: ApproveRequestDTO,
   ) {
     const id_user = req.sessionInfo.id;
-    const id_travel_agency = data.id_travel_agency;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
       relations: ['user', 'SOI', 'admin'],
     });
     if (!request)
       throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
-
-    // Validate travel agency id
-    if (!(await this.travelAgenciesChecks.exists(id_travel_agency)))
-      throw this.clientError(
-        'Invalid travel agency id.',
-        'REQUEST_STATUS_INVALID_TRAVEL_AGENCY',
-      );
 
     if (request.id_admin !== id_user)
       throw this.clientError(
@@ -84,44 +85,236 @@ export class RequestsStatusService {
         'REQUEST_STATUS_APPROVE_INVALID_STATE',
       );
 
-    await this.requestsRepo.update(
-      { id: id_request },
-      { id_travel_agency: id_travel_agency },
-    );
-
     const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
 
-    await this.notificationsService.notify(
-      request.user.email,
-      `Solicitud de viaje aprobada — Folio ${folio}`,
-      `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
-      `<p>Hola ${request.user.name},</p>
-       <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+    // Mark the active PENDING RequestApproval record as APPROVED.
+    await this.requestApprovalRepo.update(
+      { request_id: id_request, approver_user_id: id_user, status: 'PENDING' },
+      { decision: 'APPROVED', status: 'APPROVED', decided_at: new Date() },
     );
 
-    // Notify SOI to review budget before reservations.
-    await this.notificationsService.notify(
-      request.SOI.email,
-      `Solicitud de viaje pendiente de aprobación de presupuesto — Folio ${folio}`,
-      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada y está pendiente de tu revisión de presupuesto.`,
-      `<p>Hola ${request.SOI.name},</p>
-       <p>La solicitud de viaje fue aprobada y está pendiente de tu revisión de presupuesto.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>Por favor, revisa la información para continuar el flujo.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+    const currentLevel = request.current_approval_level_id
+      ? await this.approvalLevelRepo.findOne({ where: { id: request.current_approval_level_id }, relations: ['approval_level_actors'] })
+      : null;
+
+    const newApprovalCount = (request.approval_count ?? 0) + 1;
+    const requiredApprovals = currentLevel?.required_approvals ?? 1;
+
+    // ── Case A: current level needs more approvals — find the next approver ──
+    if (newApprovalCount < requiredApprovals) {
+      // Specific-user levels route through the staged user list (not the manager chain),
+      // so only the configured approvers participate. MANAGER levels walk the chain.
+      const userActors = (currentLevel?.approval_level_actors ?? []).filter((a) => a.target_id);
+      let nextAdminId: string | null = null;
+      let nextActorId: string | null = null;
+      if (userActors.length > 0) {
+        // approval_count doubles as the index into the eligible staged list: element [0] was the
+        // first approver, so after N approvals the next is element [N] (= newApprovalCount).
+        const eligibleStaged = await this.eligibleStagedActors(userActors, request.id_company, request.id_user);
+        const nextStaged = eligibleStaged[newApprovalCount];
+        nextAdminId = nextStaged?.target_id ?? null;
+        nextActorId = nextStaged?.id ?? null;
+      } else {
+        nextAdminId = await this.userChecks.getChainFallbackApprover(id_user, request.id_company);
+      }
+      if (nextAdminId) {
+        await this.requestApprovalRepo.save({
+          request_id: id_request,
+          approval_level_id: currentLevel!.id,
+          approval_actor_id: nextActorId,
+          approver_user_id: nextAdminId,
+          decision: 'PENDING',
+          status: 'PENDING',
+          amount_snapshot: Number(request.advance_money),
+          currency_snapshot: request.currency ?? 'MXN',
+          escalation_step: 0,
+          decided_at: null,
+        });
+        await this.requestsRepo.update(
+          { id: id_request },
+          { id_admin: nextAdminId, approval_count: newApprovalCount },
+        );
+        const nextAdmin = await this.userRepo.findOne({ where: { id: nextAdminId } });
+        if (nextAdmin) {
+          void (async () => {
+            try {
+              await this.notificationsService.notify(
+                nextAdmin.email,
+                `Solicitud de viaje pendiente de tu aprobación — Folio ${folio}`,
+                `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") requiere tu aprobación.`,
+                `<p>Hola ${nextAdmin.name},</p>
+                 <p>La solicitud de viaje ha avanzado y requiere ahora tu revisión.</p>
+                 <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+                 <p>Por favor, revisa los detalles y procede con tu aprobación.</p>
+                 <p>Saludos,</p>
+                 <p>Equipo de Monarca</p>`,
+                { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+              );
+            } catch (e) {
+              console.error('approve(): notification failed (case A)', e);
+            }
+          })();
+        }
+        return await this.requestsRepo.findOne({ where: { id: id_request } });
+      }
+      // No further approver in chain — fall through to next-level / final logic.
+    }
+
+    // ── Case B: level complete — look for the next ApprovalLevel ─────────────────────
+    if (request.current_approval_level_id) {
+      const amountMxn = Number(request.advance_money);
+      const currentLevelOrder = currentLevel?.level_order ?? 0;
+
+      const nextLevelWhere = {
+        is_active: true,
+        applies_to: In(['travel', 'all']),
+        min_amount_mon: Or(IsNull(), LessThanOrEqual(amountMxn)),
+        max_amount_mon: Or(IsNull(), MoreThanOrEqual(amountMxn)),
+        level_order: MoreThan(currentLevelOrder),
+      };
+
+      // Priority: company+CECO > company (no CECO) > global+CECO > global (no CECO)
+      const reqCeco = request.id_ceco ?? null;
+      let nextLevel = reqCeco
+        ? await this.approvalLevelRepo.findOne({ where: { company_id: request.id_company, ceco_id: reqCeco, ...nextLevelWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] })
+        : null;
+      if (!nextLevel) {
+        nextLevel = await this.approvalLevelRepo.findOne({ where: { company_id: request.id_company, ceco_id: IsNull(), ...nextLevelWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
+      }
+      if (!nextLevel && reqCeco) {
+        nextLevel = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: reqCeco, ...nextLevelWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
+      }
+      if (!nextLevel) {
+        nextLevel = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: IsNull(), ...nextLevelWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
+      }
+
+      if (nextLevel) {
+        const nextActors = nextLevel.approval_level_actors ?? [];
+        const nextActor = nextActors.find((a) => a.ceco_id === request.id_ceco)
+          ?? nextActors.find((a) => a.ceco_id === null)
+          ?? nextActors[0]
+          ?? null;
+
+        let nextAdminId: string | null = null;
+        if (nextActor?.target_id) {
+          nextAdminId = nextActor.target_id;
+        } else {
+          nextAdminId = await this.userChecks.getChainFallbackApprover(id_user, request.id_company);
+        }
+
+        if (nextAdminId) {
+          await this.requestApprovalRepo.save({
+            request_id: id_request,
+            approval_level_id: nextLevel.id,
+            approval_actor_id: nextActor?.id ?? null,
+            approver_user_id: nextAdminId,
+            decision: 'PENDING',
+            status: 'PENDING',
+            amount_snapshot: amountMxn,
+            currency_snapshot: request.currency ?? 'MXN',
+            escalation_step: 0,
+            decided_at: null,
+          });
+          await this.requestsRepo.update(
+            { id: id_request },
+            { id_admin: nextAdminId, current_approval_level_id: nextLevel.id, approval_count: 0 },
+          );
+          const nextAdmin = await this.userRepo.findOne({ where: { id: nextAdminId } });
+          void (async () => {
+            try {
+              if (nextAdmin) {
+                await this.notificationsService.notify(
+                  nextAdmin.email,
+                  `Solicitud de viaje pendiente de tu aprobación — Folio ${folio}`,
+                  `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha avanzado al siguiente nivel de aprobación y requiere tu revisión.`,
+                  `<p>Hola ${nextAdmin.name},</p>
+                   <p>La solicitud de viaje ha avanzado al siguiente nivel de aprobación.</p>
+                   <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+                   <p>Por favor, revisa los detalles y procede con tu aprobación.</p>
+                   <p>Saludos,</p>
+                   <p>Equipo de Monarca</p>`,
+                  { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+                );
+              }
+              await this.notificationsService.notify(
+                request.user.email,
+                `Solicitud de viaje en proceso de aprobación — Folio ${folio}`,
+                `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha avanzado al siguiente nivel de aprobación.`,
+                `<p>Hola ${request.user.name},</p>
+                 <p>Tu solicitud de viaje ha avanzado al siguiente nivel de aprobación y continúa en revisión.</p>
+                 <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+                 <p>Recibirás una notificación cuando se complete el proceso.</p>
+                 <p>Saludos,</p>
+                 <p>Equipo de Monarca</p>`,
+                { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+              );
+            } catch (e) {
+              console.error('approve(): notification failed (case B)', e);
+            }
+          })();
+          return await this.requestsRepo.findOne({ where: { id: id_request } });
+        }
+        // No approver found for next level — fall through to final approval.
+      }
+    }
+
+    // ── Final approval: all levels complete → Pending Accounting Approval ────────────
+    const id_travel_agency = data.id_travel_agency;
+    if (!id_travel_agency)
+      throw this.clientError(
+        'Travel agency is required to complete the final approval.',
+        'REQUEST_STATUS_TRAVEL_AGENCY_REQUIRED',
+      );
+    if (!(await this.travelAgenciesChecks.exists(id_travel_agency!)))
+      throw this.clientError(
+        'Invalid travel agency id.',
+        'REQUEST_STATUS_INVALID_TRAVEL_AGENCY',
+      );
+
+    await this.requestsRepo.update(
+      { id: id_request },
+      { id_travel_agency, approval_count: newApprovalCount },
     );
 
-    return await this.requestsService.updateStatus(
+    // Advance the status first (source of truth), then notify best-effort so a failed
+    // notification can't turn a successful approval into an error / block the redirect.
+    const updated = await this.requestsService.updateStatus(
       id_request,
       'Pending Accounting Approval',
     );
+
+    void (async () => {
+      try {
+        await this.notificationsService.notify(
+          request.user.email,
+          `Solicitud de viaje aprobada — Folio ${folio}`,
+          `Tu solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.`,
+          `<p>Hola ${request.user.name},</p>
+           <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de presupuesto por SOI.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Una vez aprobada por SOI, la agencia de viajes podrá continuar con las reservaciones.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+        await this.notificationsService.notify(
+          request.SOI.email,
+          `Solicitud de viaje pendiente de aprobación de presupuesto — Folio ${folio}`,
+          `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") fue aprobada y está pendiente de tu revisión de presupuesto.`,
+          `<p>Hola ${request.SOI.name},</p>
+           <p>La solicitud de viaje fue aprobada y está pendiente de tu revisión de presupuesto.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, revisa la información para continuar el flujo.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+      } catch (e) {
+        console.error('approve(): notification failed after final approval', e);
+      }
+    })();
+
+    return updated;
   }
 
   async deny(req: RequestInterface, id_request: string) {
@@ -158,6 +351,12 @@ export class RequestsStatusService {
        <p>Saludos,</p>
        <p>Equipo de Monarca</p>`,
       { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+    );
+
+    // Close any pending approval records so they don't linger as PENDING.
+    await this.requestApprovalRepo.update(
+      { request_id: id_request, status: 'PENDING' },
+      { decision: 'DENIED', status: 'CANCELLED', decided_at: new Date() },
     );
 
     return await this.requestsService.updateStatus(id_request, 'Denied');
@@ -214,6 +413,12 @@ export class RequestsStatusService {
       ip: req.ip,
       report: `REQUEST_CANCELLED§${folio}§${request.title}§${request.id}`,
     });
+
+    // Close any pending approval records so they don't linger as PENDING.
+    await this.requestApprovalRepo.update(
+      { request_id: id_request, status: 'PENDING' },
+      { decision: 'CANCELLED', status: 'CANCELLED', decided_at: new Date() },
+    );
 
     return await this.requestsService.updateStatus(id_request, 'Cancelled');
   }
@@ -356,7 +561,7 @@ export class RequestsStatusService {
     const id_user = req.sessionInfo.id;
     const request = await this.requestsRepo.findOne({
       where: { id: id_request },
-      relations: ['admin', 'vouchers', 'user'],
+      relations: ['admin', 'vouchers', 'user', 'SOI'],
     });
     if (!request)
       throw this.clientError('Invalid request id', 'REQUEST_STATUS_INVALID_ID');
@@ -396,16 +601,19 @@ export class RequestsStatusService {
       max_amount_mon: Or(IsNull(), MoreThanOrEqual(routingAmount)),
     };
 
-    let refundLevel = await this.approvalLevelRepo.findOne({
-      where: { company_id: request.id_company, ...refundAmountWhere },
-      relations: ['approval_level_actors'],
-    });
-
+    // Priority: company+CECO > company (no CECO) > global+CECO > global (no CECO)
+    const refCeco = request.id_ceco ?? null;
+    let refundLevel = refCeco
+      ? await this.approvalLevelRepo.findOne({ where: { company_id: request.id_company, ceco_id: refCeco, ...refundAmountWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] })
+      : null;
     if (!refundLevel) {
-      refundLevel = await this.approvalLevelRepo.findOne({
-        where: { company_id: IsNull(), ...refundAmountWhere },
-        relations: ['approval_level_actors'],
-      });
+      refundLevel = await this.approvalLevelRepo.findOne({ where: { company_id: request.id_company, ceco_id: IsNull(), ...refundAmountWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
+    }
+    if (!refundLevel && refCeco) {
+      refundLevel = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: refCeco, ...refundAmountWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
+    }
+    if (!refundLevel) {
+      refundLevel = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: IsNull(), ...refundAmountWhere }, order: { level_order: 'ASC' }, relations: ['approval_level_actors'] });
     }
 
     // If still no match, check if any refund/all level exists in the company to determine if we should throw a hard error or just continue without routing.
@@ -427,66 +635,122 @@ export class RequestsStatusService {
       // No refund/'all' levels configured anywhere — keep existing id_admin and continue.
     }
 
+    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
+    const totalAmountFormatted = totalAmount.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
     let notifyApproverEmail = request.admin?.email ?? '';
     let notifyApproverName = request.admin?.name ?? 'Approver';
 
-    if (refundLevel && (refundLevel.approval_level_actors?.length ?? 0) > 0) {
-      const newApprover = await this.resolveRefundApprover(
-        refundLevel.approval_level_actors,
+    if (refundLevel) {
+      const newApprover = await this.resolveManagerChainApprover(
+        request.id_user,
         request.id_company,
-        request.id_admin ?? undefined,
+        refundLevel.approval_level_actors ?? [],
       );
+
       if (!newApprover) {
-        throw this.clientError(
-          'No eligible approver found for the matching refund level.',
-          'REQUESTS_NO_ELIGIBLE_REFUND_APPROVER',
+        // Root of manager chain — no approver exists above the requester; skip to SOI.
+        const updated = await this.requestsService.updateStatus(id_request, 'Pending Refund Approval');
+        await this.requestLogRepo.save(
+          this.requestLogRepo.create({
+            id_request,
+            id_user,
+            report: `Solicitante envió ${pendingVouchers.length} comprobante(s) por un total de ${totalAmountFormatted}. Sin aprobador en cadena gerencial — enviado directamente a SOI.`,
+            new_status: 'Pending Refund Approval',
+          }),
         );
+        if (request.SOI) {
+          void (async () => {
+            try {
+              await this.notificationsService.notify(
+                request.SOI.email,
+                `Solicitud de viaje pendiente de aprobación de reembolso — Folio ${folio}`,
+                `La solicitud (Folio: ${folio}, Título: "${request.title}") fue enviada directamente para aprobación de reembolso.`,
+                `<p>Hola ${request.SOI.name},</p>
+                 <p>La solicitud fue enviada directamente para aprobación de reembolso (sin aprobador en la cadena gerencial).</p>
+                 <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}<br><strong>Total comprobantes:</strong> ${totalAmountFormatted}</p>
+                 <p>Saludos,</p>
+                 <p>Equipo de Monarca</p>`,
+                { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+              );
+            } catch (e) {
+              console.error('finishedUploadingVouchers(): bypass-to-SOI notification failed', e);
+            }
+          })();
+        }
+        return updated;
       }
+
       if (newApprover.id !== request.id_admin) {
         await this.requestsRepo.update({ id: id_request }, { id_admin: newApprover.id });
       }
+      // Track the refund level as the current level and reset approval_count to start the
+      // refund-phase counter (travel approvals are already done by now). Open the first record.
+      await this.requestsRepo.update(
+        { id: id_request },
+        { current_approval_level_id: refundLevel.id, approval_count: 0 },
+      );
+      await this.requestApprovalRepo.save({
+        request_id: id_request,
+        approval_level_id: refundLevel.id,
+        approval_actor_id: null,
+        approver_user_id: newApprover.id,
+        decision: 'PENDING',
+        status: 'PENDING',
+        amount_snapshot: totalAmount,
+        currency_snapshot: request.currency ?? 'MXN',
+        escalation_step: 0,
+        decided_at: null,
+      });
       notifyApproverEmail = newApprover.email;
       notifyApproverName = newApprover.name;
+
+      // When more than one refund approval is required, give the upcoming approvers a heads-up
+      // (mirrors the travel flow). USER levels notify the remaining staged users; MANAGER levels
+      // walk the chain from the first approver.
+      if (refundLevel.required_approvals > 1) {
+        const refundActorsWithTarget = (refundLevel.approval_level_actors ?? []).filter(
+          (a) => a.target_id && a.target_id !== newApprover.id,
+        );
+        const headsUp = async (email: string, name: string) => {
+          void this.notificationsService.notify(
+            email,
+            `Comprobantes pendientes de tu aprobación próximamente — Folio ${folio}`,
+            `La comprobación de gastos de la solicitud (Folio: ${folio}, Título: "${request.title}") requerirá tu aprobación en los próximos pasos.`,
+            `<p>Hola ${name},</p>
+             <p>Una comprobación de gastos requerirá tu aprobación próximamente.</p>
+             <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}<br><strong>Total comprobantes:</strong> ${totalAmountFormatted}</p>
+             <p>Recibirás una nueva notificación cuando llegue tu turno de aprobación.</p>
+             <p>Saludos,</p>
+             <p>Equipo de Monarca</p>`,
+            { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+          );
+        };
+        if (refundActorsWithTarget.length > 0) {
+          for (const a of refundActorsWithTarget) {
+            const fu = await this.userChecks.getUserById(a.target_id!);
+            if (fu) await headsUp(fu.email, fu.name);
+          }
+        } else {
+          let currentId: string = newApprover.id;
+          for (let i = 1; i < refundLevel.required_approvals; i++) {
+            const nextId = await this.userChecks.getChainFallbackApprover(currentId, request.id_company);
+            if (!nextId) break;
+            const fu = await this.userChecks.getUserById(nextId);
+            if (fu) await headsUp(fu.email, fu.name);
+            currentId = nextId;
+          }
+        }
+      }
     }
 
-    // Notify the (possibly newly routed) approver.
-    const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
-    const totalAmountFormatted = totalAmount.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
-
-    await this.notificationsService.notify(
-      notifyApproverEmail,
-      `Solicitud de viaje pendiente de aprobación de comprobantes — Folio ${folio}`,
-      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la carga de comprobantes y está pendiente de tu aprobación.`,
-      `<p>Hola ${notifyApproverName},</p>
-       <p>La solicitud de viaje ha finalizado la carga de comprobantes y está pendiente de tu aprobación.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>Por favor, revisa los comprobantes cargados y procede con la aprobación.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
-    );
-
-    // Notify the requester with a confirmation and the total amount registered.
     const advanceFormatted = Number(request.advance_money).toLocaleString('es-MX', {
       style: 'currency',
       currency: request.currency ?? 'MXN',
       minimumFractionDigits: 2,
     });
-    await this.notificationsService.notify(
-      request.user.email,
-      `Comprobantes enviados para aprobación — Folio ${folio}`,
-      `Tus comprobantes de gastos de la solicitud (Folio: ${folio}) han sido enviados para revisión. Total registrado: ${totalAmountFormatted}.`,
-      `<p>Hola ${request.user.name},</p>
-       <p>Tus comprobantes de gastos han sido enviados exitosamente para aprobación.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p><strong>Total de comprobantes registrado:</strong> ${totalAmountFormatted}</p>
-       <p><strong>Anticipo otorgado:</strong> ${advanceFormatted}</p>
-       <p>Recibirás una notificación cuando tus comprobantes sean revisados por el aprobador.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
-    );
 
+    // Advance status first (source of truth), then notify best-effort so a failed
+    // notification can't turn a successful submission into an error / block the redirect.
     const updated = await this.requestsService.updateStatus(
       id_request,
       'Pending Vouchers Approval',
@@ -499,41 +763,103 @@ export class RequestsStatusService {
         new_status: 'Pending Vouchers Approval',
       }),
     );
+
+    void (async () => {
+      try {
+        await this.notificationsService.notify(
+          notifyApproverEmail,
+          `Solicitud de viaje pendiente de aprobación de comprobantes — Folio ${folio}`,
+          `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la carga de comprobantes y está pendiente de tu aprobación.`,
+          `<p>Hola ${notifyApproverName},</p>
+           <p>La solicitud de viaje ha finalizado la carga de comprobantes y está pendiente de tu aprobación.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, revisa los comprobantes cargados y procede con la aprobación.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+        await this.notificationsService.notify(
+          request.user.email,
+          `Comprobantes enviados para aprobación — Folio ${folio}`,
+          `Tus comprobantes de gastos de la solicitud (Folio: ${folio}) han sido enviados para revisión. Total registrado: ${totalAmountFormatted}.`,
+          `<p>Hola ${request.user.name},</p>
+           <p>Tus comprobantes de gastos han sido enviados exitosamente para aprobación.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p><strong>Total de comprobantes registrado:</strong> ${totalAmountFormatted}</p>
+           <p><strong>Anticipo otorgado:</strong> ${advanceFormatted}</p>
+           <p>Recibirás una notificación cuando tus comprobantes sean revisados por el aprobador.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+      } catch (e) {
+        console.error('finishedUploadingVouchers(): notification failed', e);
+      }
+    })();
+
     return updated;
   }
 
   /**
-   * resolveRefundApprover — Finds the first eligible user for the given actor list.
-   * If actor has target_id, uses that specific user.
-   * Otherwise finds any is_approver=true user in the company, filtered by ceco_id if set.
-   * When no target_id is set, the current approver (currentApproverId) is preferred if they
-   * still qualify — this prevents overwriting a valid assignment with an arbitrary first match.
+   * eligibleStagedActors — Filters USER actors down to those whose target_id is an eligible
+   * approver, preserving order. Multi-level routing indexes into this list by approval_count.
    */
-  private async resolveRefundApprover(
+  private async eligibleStagedActors(
     actors: ApprovalLevelActor[],
     companyId: string,
-    currentApproverId?: string,
+    requesterId: string,
+  ): Promise<ApprovalLevelActor[]> {
+    const eligible: ApprovalLevelActor[] = [];
+    for (const a of actors) {
+      if (a.target_id && (await this.userChecks.isEligibleApprover(a.target_id, companyId, requesterId))) {
+        eligible.push(a);
+      }
+    }
+    return eligible;
+  }
+
+  /**
+   * resolveManagerChainApprover — Walks the manager_id chain from the requester upward.
+   * If any actor has target_id, that specific user is returned (override path).
+   * Otherwise climbs manager_id links until an is_approver user in the same company is found.
+   * An optional ceco_id on the first matching actor restricts the chain to managers in that CECO.
+   * Returns null when the chain reaches a root node (manager_id = null) with no qualifying approver.
+   */
+  private async resolveManagerChainApprover(
+    requesterId: string,
+    companyId: string,
+    actors: ApprovalLevelActor[],
   ): Promise<User | null> {
+    // Specific-user actors: return the first staged user who is an eligible approver.
     for (const actor of actors) {
-      if (actor.target_id) {
+      if (actor.target_id && (await this.userChecks.isEligibleApprover(actor.target_id, companyId, requesterId))) {
         const user = await this.userRepo.findOne({ where: { id: actor.target_id } });
         if (user) return user;
-        continue;
       }
-      const where: Record<string, unknown> = { is_approver: true, id_company: companyId };
-      if (actor.ceco_id) where['id_ceco'] = actor.ceco_id;
-
-      // Prefer the current approver if they still qualify for this level.
-      if (currentApproverId) {
-        const currentApprover = await this.userRepo.findOne({
-          where: { id: currentApproverId, ...(where as object) } as any,
-        });
-        if (currentApprover) return currentApprover;
-      }
-
-      const user = await this.userRepo.findOne({ where: where as any });
-      if (user) return user;
     }
+
+    const cecoFilter = actors.find((a) => a.ceco_id)?.ceco_id ?? null;
+    const visited = new Set<string>();
+    let cursor = await this.userRepo.findOne({ where: { id: requesterId } });
+
+    while (cursor && cursor.manager_id) {
+      if (visited.has(cursor.id)) break;
+      visited.add(cursor.id);
+
+      const next = await this.userRepo.findOne({ where: { id: cursor.manager_id } });
+      if (!next) break;
+
+      const qualifies =
+        next.is_approver &&
+        next.status === 'active' &&
+        !next.is_company_admin &&
+        next.id_company === companyId &&
+        (!cecoFilter || next.id_ceco === cecoFilter);
+
+      if (qualifies) return next;
+      cursor = next;
+    }
+
     return null;
   }
   
@@ -563,34 +889,86 @@ export class RequestsStatusService {
 
     const folio = `${new Date(request.createdAt).getFullYear()}-${String(request.request_num).padStart(3, '0')}`;
 
-    // Notify requester
-    await this.notificationsService.notify(
-      request.user.email,
-      `Comprobación de gastos del viaje completada — Folio ${folio}`,
-      `Tu comprobación de gastos del viaje (Folio: ${folio}, Título: "${request.title}") ha sido completada y está pendiente de aprobación de reembolso.`,
-      `<p>Hola ${request.user.name},</p>
-       <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de reembolso.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>Por favor, espera a que se realice la aprobación de reembolso.</p>
-       <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+    // Mark the current PENDING approval as APPROVED. By this point all travel approvals are
+    // already APPROVED, so the only PENDING row for this approver is the refund one.
+    await this.requestApprovalRepo.update(
+      { request_id: id_request, approver_user_id: id_user, status: 'PENDING' },
+      { decision: 'APPROVED', status: 'APPROVED', decided_at: new Date() },
     );
 
-    // Notify SOI that the refund is ready for final registration.
-    await this.notificationsService.notify(
-      request.SOI.email,
-      `Solicitud de viaje pendiente de aprobación de reembolso — Folio ${folio}`,
-      `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.`,
-      `<p>Hola ${request.SOI.name},</p>
-       <p>La solicitud de viaje ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.</p>
-       <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
-       <p>Por favor, revisa los detalles de la solicitud y procede con la aprobación de reembolso.</p>
-       <p>Saludos,</p>
-      <p>Equipo de Monarca</p>`,
-      { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
-    );
+    // ── Multi-level refund: route to the next approver if the level needs more approvals ──
+    // Applies only when the current level is refund-applicable. approval_count was reset to 0
+    // when the refund phase started; it counts refund approvals and doubles as the index into
+    // the eligible staged list, so no extra column is needed.
+    const refundLevel = request.current_approval_level_id
+      ? await this.approvalLevelRepo.findOne({ where: { id: request.current_approval_level_id }, relations: ['approval_level_actors'] })
+      : null;
+    const isRefundLevel = !!refundLevel && ['refund', 'all'].includes(refundLevel.applies_to);
+    const requiredApprovals = isRefundLevel ? (refundLevel!.required_approvals ?? 1) : 1;
+    const newRefundCount = (request.approval_count ?? 0) + 1;
 
+    if (isRefundLevel && newRefundCount < requiredApprovals) {
+      // Specific-user refund levels route through the staged user list; MANAGER levels walk the chain.
+      const refundUserActors = (refundLevel!.approval_level_actors ?? []).filter((a) => a.target_id);
+      let nextApproverId: string | null = null;
+      let nextRefundActorId: string | null = null;
+      if (refundUserActors.length > 0) {
+        const eligibleStaged = await this.eligibleStagedActors(refundUserActors, request.id_company, request.id_user);
+        const nextStaged = eligibleStaged[newRefundCount];
+        nextApproverId = nextStaged?.target_id ?? null;
+        nextRefundActorId = nextStaged?.id ?? null;
+      } else {
+        nextApproverId = await this.userChecks.getChainFallbackApprover(id_user, request.id_company);
+      }
+      if (nextApproverId) {
+        await this.requestApprovalRepo.save({
+          request_id: id_request,
+          approval_level_id: refundLevel!.id,
+          approval_actor_id: nextRefundActorId,
+          approver_user_id: nextApproverId,
+          decision: 'PENDING',
+          status: 'PENDING',
+          amount_snapshot: Number(request.advance_money),
+          currency_snapshot: request.currency ?? 'MXN',
+          escalation_step: 0,
+          decided_at: null,
+        });
+        await this.requestsRepo.update({ id: id_request }, { id_admin: nextApproverId, approval_count: newRefundCount });
+        const nextApprover = await this.userRepo.findOne({ where: { id: nextApproverId } });
+        if (nextApprover) {
+          void (async () => {
+            try {
+              await this.notificationsService.notify(
+                nextApprover.email,
+                `Comprobantes pendientes de tu aprobación — Folio ${folio}`,
+                `La comprobación de gastos de la solicitud (Folio: ${folio}, Título: "${request.title}") requiere tu aprobación.`,
+                `<p>Hola ${nextApprover.name},</p>
+                 <p>La comprobación de gastos ha avanzado y requiere ahora tu revisión.</p>
+                 <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+                 <p>Por favor, revisa los comprobantes y procede con tu aprobación.</p>
+                 <p>Saludos,</p>
+                 <p>Equipo de Monarca</p>`,
+                { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+              );
+            } catch (e) {
+              console.error('finishedApprovingVouchers(): notification failed (next approver)', e);
+            }
+          })();
+        }
+        await this.requestLogRepo.save(
+          this.requestLogRepo.create({
+            id_request,
+            id_user,
+            report: `Aprobador aprobó comprobantes (${newRefundCount}/${requiredApprovals}). Enrutado al siguiente aprobador.`,
+            new_status: 'Pending Vouchers Approval',
+          }),
+        );
+        return await this.requestsRepo.findOne({ where: { id: id_request } });
+      }
+      // No further approver in the chain — fall through to final refund approval (SOI).
+    }
+
+    // Advance status first (source of truth), then notify best-effort.
     const updated = await this.requestsService.updateStatus(id_request, 'Pending Refund Approval');
     await this.requestLogRepo.save(
       this.requestLogRepo.create({
@@ -600,6 +978,38 @@ export class RequestsStatusService {
         new_status: 'Pending Refund Approval',
       }),
     );
+
+    void (async () => {
+      try {
+        await this.notificationsService.notify(
+          request.user.email,
+          `Comprobación de gastos del viaje completada — Folio ${folio}`,
+          `Tu comprobación de gastos del viaje (Folio: ${folio}, Título: "${request.title}") ha sido completada y está pendiente de aprobación de reembolso.`,
+          `<p>Hola ${request.user.name},</p>
+           <p>Tu solicitud de viaje ha sido aprobada y está pendiente de aprobación de reembolso.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, espera a que se realice la aprobación de reembolso.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+        await this.notificationsService.notify(
+          request.SOI.email,
+          `Solicitud de viaje pendiente de aprobación de reembolso — Folio ${folio}`,
+          `La solicitud de viaje (Folio: ${folio}, Título: "${request.title}") ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.`,
+          `<p>Hola ${request.SOI.name},</p>
+           <p>La solicitud de viaje ha finalizado la comprobación de gastos y está pendiente de tu aprobación de reembolso.</p>
+           <p><strong>Folio:</strong> ${folio}<br><strong>Título:</strong> ${request.title}</p>
+           <p>Por favor, revisa los detalles de la solicitud y procede con la aprobación de reembolso.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: request.id_company, type: NotificationType.REQUEST_STATUS },
+        );
+      } catch (e) {
+        console.error('finishedApprovingVouchers(): notification failed (final)', e);
+      }
+    })();
+
     return updated;
   }
 

@@ -103,11 +103,6 @@ export class ApprovalEngineController {
 
   // ─── ApprovalLevelActor endpoints ─────────────────────────────────────────
 
-  /**
-   * createActor — Creates an actor for an existing approval level.
-   * Input: body with CreateApprovalLevelActorDto.
-   * Output: created ApprovalLevelActor entity.
-   */
   @Post('actors')
   @HttpCode(200)
   async createActor(
@@ -117,11 +112,6 @@ export class ApprovalEngineController {
     return this.approvalEngineService.createApprovalLevelActor(dto, req.userInfo);
   }
 
-  /**
-   * findActorsByLevel — Returns all actors for a given approval level.
-   * Input: levelId path param (uuid).
-   * Output: ApprovalLevelActor array.
-   */
   @Get('levels/:levelId/actors')
   async findActorsByLevel(
     @Param('levelId', new ParseUUIDPipe()) levelId: string,
@@ -130,11 +120,6 @@ export class ApprovalEngineController {
     return this.approvalEngineService.findActorsByLevel(levelId, req.userInfo);
   }
 
-  /**
-   * findOneActor — Returns one actor by id.
-   * Input: id path param (uuid).
-   * Output: ApprovalLevelActor entity.
-   */
   @Get('actors/:id')
   async findOneActor(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -143,11 +128,6 @@ export class ApprovalEngineController {
     return this.approvalEngineService.findOneApprovalLevelActor(id, req.userInfo);
   }
 
-  /**
-   * updateActor — Updates an existing actor by id.
-   * Input: id path param (uuid), body with UpdateApprovalLevelActorDto.
-   * Output: updated ApprovalLevelActor entity.
-   */
   @Patch('actors/:id')
   async updateActor(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -157,11 +137,6 @@ export class ApprovalEngineController {
     return this.approvalEngineService.updateApprovalLevelActor(id, dto, req.userInfo);
   }
 
-  /**
-   * removeActor — Deletes an actor by id.
-   * Input: id path param (uuid).
-   * Output: deletion confirmation object.
-   */
   @Delete('actors/:id')
   async removeActor(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -170,3 +145,4 @@ export class ApprovalEngineController {
     return this.approvalEngineService.removeApprovalLevelActor(id, req.userInfo);
   }
 }
+
