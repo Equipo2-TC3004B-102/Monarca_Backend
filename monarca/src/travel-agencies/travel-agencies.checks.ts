@@ -31,6 +31,16 @@ export class TravelAgenciesChecks {
     return !!travel_agency;
   }
 
+  /**
+   * getDefaultAgencyId — Returns the id of an available travel agency, or null if none exist.
+   * Used to auto-assign an agency to requests that bypass the approver step (requester at the
+   * top of the manager chain), since no approver was there to pick one.
+   */
+  async getDefaultAgencyId(): Promise<string | null> {
+    const agency = await this.repo.findOne({ where: {}, order: { name: 'ASC' }, select: ['id'] });
+    return agency?.id ?? null;
+  }
+
   async getTravelAgencyUsers(id_travel_agency: string) {
     const travel_agency = await this.repo.findOne({
       where: { id: id_travel_agency },

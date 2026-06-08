@@ -6,7 +6,7 @@
  *              relations are loaded.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodriguez] importUsers: role flags (is_requester, is_soi, is_travelAgent, is_approver) read from JSON; defaults to is_requester when no flag is set.
+ * 01/06/2026 [Julio Rodriguez] Added getTreeDepth: walks manager_id chain for the company and returns the max depth.
  */
 
 import {
@@ -203,5 +203,38 @@ export class UsersService {
     });
 
     return { created, updated, errors };
+  }
+
+  async getTreeDepth(companyId: string | null): Promise<{ max_depth: number }> {
+    if (!companyId) return { max_depth: 0 };
+
+    const users = await this.repo.find({
+      where: { id_company: companyId },
+      select: ['id', 'manager_id'],
+    });
+
+    if (users.length === 0) return { max_depth: 0 };
+
+    const managerMap = new Map<string, string | null>(
+      users.map((u) => [u.id, u.manager_id]),
+    );
+
+    let max = 0;
+    for (const user of users) {
+      const visited = new Set<string>();
+      let cursor: string | null = user.id;
+      let steps = 0;
+      while (cursor) {
+        if (visited.has(cursor)) break;
+        visited.add(cursor);
+        const mgr = managerMap.get(cursor) ?? null;
+        if (!mgr || !managerMap.has(mgr)) break;
+        cursor = mgr;
+        steps++;
+      }
+      if (steps > max) max = steps;
+    }
+
+    return { max_depth: max };
   }
 }

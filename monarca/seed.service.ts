@@ -5,7 +5,7 @@
  *              backwards-compatible field normalization (id_ceco, user_name).
  * Authors: Original Monarca team
  * Last Modification made:
- * 13/05/2026 [Julio Rodriguez] Added request_approvals to truncate list — missing FK reference caused truncate to fail when request approvals existed.
+ * 03/06/2026 [Julio Rodriguez] Added syncing of company_request_counters after seeding requests to prevent request_num collisions with new requests.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -154,6 +154,14 @@ export class SeedService {
             this.logger.log(`Seeding ${entityName} data completed.`);
             this.logger.log('----------------------------------');
         }
+
+        // Sync per-company request counters to the highest seeded request_num so new requests continue the sequence instead of colliding with seeded numbers.
+        await this.requestRepo.manager.query(`
+            INSERT INTO company_request_counters (company_id, counter)
+            SELECT id_company, MAX(request_num) FROM requests GROUP BY id_company
+            ON CONFLICT (company_id) DO UPDATE SET counter = EXCLUDED.counter
+        `);
+        this.logger.log('Synced company_request_counters with seeded requests.');
     }
 
 

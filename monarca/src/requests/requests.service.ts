@@ -4,8 +4,7 @@
  *              role-based retrieval, updates, and status changes with auditing.
  * Authors: Original Monarca team, Diego (A01420632)
  * Last Modification made:
- * 27/05/2026 [Julio Rodriguez] Added findVouchersToApprove: lists Pending Vouchers Approval requests for the assigned approver.
- *                              added 'company' relation to expose voucher_deadline_days to the frontend.
+ * 03/06/2026 [Julio Rodriguez] Implemented approval level determination logic during request creation, including CECO and company-based rules, and integrated exchange rate fetching for advance money conversion.
  */
 
 import {
@@ -14,11 +13,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull, Not, In } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull, Not, In, Or } from 'typeorm';
 import { Request as RequestEntity } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { UserChecks } from 'src/users/user.checks.service';
+import { TravelAgenciesChecks } from 'src/travel-agencies/travel-agencies.checks';
 import { DestinationsChecks } from 'src/destinations/destinations.checks';
 import { RequestInterface } from 'src/guards/interfaces/request.interface';
 import { RequestsDestination } from './entities/requests-destination.entity';
@@ -57,6 +57,7 @@ export class RequestsService {
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     private readonly userLogsService: UserLogsService,
+    private readonly travelAgenciesChecks: TravelAgenciesChecks,
   ) { }
 
   private async fetchBanxicoRate(currency: string): Promise<number | null> {
@@ -232,23 +233,24 @@ export class RequestsService {
     const amountWhere = {
       is_active: true,
       applies_to: In(['travel', 'all']),
-      min_amount_mon: LessThanOrEqual(finalAdvanceMoney),
-      max_amount_mon: MoreThanOrEqual(finalAdvanceMoney),
+      min_amount_mon: Or(IsNull(), LessThanOrEqual(finalAdvanceMoney)),
+      max_amount_mon: Or(IsNull(), MoreThanOrEqual(finalAdvanceMoney)),
     };
     const levelOrder = { level_order: 'ASC' as const };
     const levelRelations = ['approval_level_actors'];
 
-    let level = await this.approvalLevelRepo.findOne({
-      where: { company_id: id_company, ...amountWhere },
-      order: levelOrder,
-      relations: levelRelations,
-    });
+    // Priority: company + CECO > company (no CECO) > global+CECO > global (no CECO)
+    let level = id_ceco
+      ? await this.approvalLevelRepo.findOne({ where: { company_id: id_company, ceco_id: id_ceco, ...amountWhere }, order: levelOrder, relations: levelRelations })
+      : null;
     if (!level) {
-      level = await this.approvalLevelRepo.findOne({
-        where: { company_id: IsNull(), ...amountWhere },
-        order: levelOrder,
-        relations: levelRelations,
-      });
+      level = await this.approvalLevelRepo.findOne({ where: { company_id: id_company, ceco_id: IsNull(), ...amountWhere }, order: levelOrder, relations: levelRelations });
+    }
+    if (!level && id_ceco) {
+      level = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: id_ceco, ...amountWhere }, order: levelOrder, relations: levelRelations });
+    }
+    if (!level) {
+      level = await this.approvalLevelRepo.findOne({ where: { company_id: IsNull(), ceco_id: IsNull(), ...amountWhere }, order: levelOrder, relations: levelRelations });
     }
     if (!level) {
       throw this.clientError(
@@ -258,16 +260,34 @@ export class RequestsService {
     }
 
     const actors = level.approval_level_actors ?? [];
-    const actor = actors.find((a) => a.ceco_id === id_ceco)
-      ?? actors.find((a) => a.ceco_id === null)
-      ?? actors[0]
-      ?? null;
+    const userActors = actors.filter((a) => a.target_id);
     let adminId: string | null = null;
-    if (actor?.target_id) {
-      adminId = actor.target_id;
-    } else {
-      adminId = await this.userChecks.getApproverIdFromManagerChain(userId, 2, id_company);
-      if (!adminId) adminId = await this.userChecks.getApproverIdByCompany(id_company, userId);
+    let selectedActor: (typeof actors)[number] | null = null;
+    if (userActors.length > 0) {
+      // Specific-user level: assign the first staged user who is an eligible approver
+      // (active, is_approver, not a company admin, same company, not the requester).
+      for (const a of userActors) {
+        if (a.target_id && (await this.userChecks.isEligibleApprover(a.target_id, id_company, userId))) {
+          adminId = a.target_id;
+          selectedActor = a;
+          break;
+        }
+      }
+      // If no staged user is eligible, fall through to the manager chain below.
+    }
+    if (!adminId) {
+      adminId = await this.userChecks.getApproverIdFromManagerChain(userId, level.level_order, id_company);
+      if (!adminId) adminId = await this.userChecks.getChainFallbackApprover(userId, id_company);
+    }
+    // When no approver is found in the chain (requester is at the top of the hierarchy),
+    // skip approval and go directly to Pending Accounting Approval with SOI.
+    const bypassToSoi = adminId === null;
+    let bypassAgencyId: string | null = null;
+    if (bypassToSoi) {
+      adminId = SOIId;
+      // No approver was there to pick a travel agency, so auto-assign one so the
+      // downstream SOI → reservations flow can proceed.
+      bypassAgencyId = await this.travelAgenciesChecks.getDefaultAgencyId();
     }
     if (!adminId) {
       throw this.serverError(
@@ -276,41 +296,58 @@ export class RequestsService {
       );
     }
 
-    const request = this.requestsRepo.create({
-      ...data,
-      id_user: userId,
-      id_admin: adminId,
-      id_SOI: SOIId,
-      id_company,
-      id_ceco,
-      current_approval_level_id: level.id,
-      advance_money: finalAdvanceMoney,
-      unconverted_advance_money: finalUnconvertedAdvanceMoney,
-      exchange_rate: finalExchangeRate,
-      requests_destinations: data.requests_destinations.map((destDto) => ({
-        ...destDto,
-        provider_support_status: 'pending_provider',
-        provider_support_reason: null,
-        provider_support_checked_at: null,
-      })),
-    });
+    // Increment the per-company counter and insert the request in one transaction so a
+    // failed insert rolls back the counter (no gaps in the per-company request numbering).
+    const savedRaw = await this.dataSource.transaction(async (manager) => {
+      const counterResult = await manager.query(
+        `INSERT INTO company_request_counters (company_id, counter)
+         VALUES ($1, 1)
+         ON CONFLICT (company_id) DO UPDATE SET counter = company_request_counters.counter + 1
+         RETURNING counter`,
+        [id_company],
+      );
+      const requestNum: number = counterResult[0].counter;
 
-    const savedRaw = await this.requestsRepo.save(request);
-    // Reload to get DB-generated request_num (SERIAL not populated by save())
+      const request = manager.create(RequestEntity, {
+        ...data,
+        id_user: userId,
+        id_admin: adminId,
+        id_SOI: SOIId,
+        id_company,
+        id_ceco,
+        request_num: requestNum,
+        current_approval_level_id: level.id,
+        advance_money: finalAdvanceMoney,
+        unconverted_advance_money: finalUnconvertedAdvanceMoney,
+        exchange_rate: finalExchangeRate,
+        ...(bypassToSoi && { status: 'Pending Accounting Approval' }),
+        ...(bypassAgencyId && { id_travel_agency: bypassAgencyId }),
+        requests_destinations: data.requests_destinations.map((destDto) => ({
+          ...destDto,
+          provider_support_status: 'pending_provider',
+          provider_support_reason: null,
+          provider_support_checked_at: null,
+        })),
+      });
+
+      return await manager.save(request);
+    });
     const saved = await this.requestsRepo.findOneOrFail({ where: { id: savedRaw.id }, relations: ['requests_destinations'] });
 
-    await this.requestApprovalRepo.save({
-      request_id: saved.id,
-      approval_level_id: level.id,
-      approval_actor_id: actor?.id ?? null,
-      approver_user_id: adminId,
-      decision: 'PENDING',
-      status: 'PENDING',
-      amount_snapshot: finalAdvanceMoney,
-      currency_snapshot: data.currency ?? 'MXN',
-      escalation_step: 0,
-      decided_at: null,
-    });
+    if (!bypassToSoi) {
+      await this.requestApprovalRepo.save({
+        request_id: saved.id,
+        approval_level_id: level.id,
+        approval_actor_id: selectedActor?.id ?? null,
+        approver_user_id: adminId,
+        decision: 'PENDING',
+        status: 'PENDING',
+        amount_snapshot: finalAdvanceMoney,
+        currency_snapshot: data.currency ?? 'MXN',
+        escalation_step: 0,
+        decided_at: null,
+      });
+    }
 
     // Log creación de un request
     const originCityName = await this.getCityName(saved.id_origin_city);
@@ -326,6 +363,34 @@ export class RequestsService {
       },
     );
 
+    const savedFolio = `${new Date(saved.createdAt).getFullYear()}-${String(saved.request_num).padStart(3, '0')}`;
+
+    void this.userLogsService.create({
+      id_user: saved.id_user,
+      ip: req.ip,
+      report: `REQUEST_CREATED§${savedFolio}§${saved.title}§${saved.id}`,
+    });
+
+    if (bypassToSoi) {
+      // No approver in chain — notify SOI directly.
+      const soi = await this.userChecks.getUserById(SOIId);
+      if (soi) {
+        await this.notificationsService.notify(
+          soi.email,
+          `Solicitud de viaje pendiente de aprobación de presupuesto — Folio ${savedFolio}`,
+          `La solicitud (Folio: ${savedFolio}, Título: "${saved.title}") fue enviada directamente para aprobación de presupuesto (sin aprobador en la cadena).`,
+          `<p>Hola ${soi.name},</p>
+           <p>La solicitud de viaje fue enviada directamente para tu aprobación de presupuesto porque el solicitante no tiene aprobador disponible en su cadena jerárquica.</p>
+           <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
+           <p>Por favor, revisa los detalles y procede con la aprobación.</p>
+           <p>Saludos,</p>
+           <p>Equipo de Monarca</p>`,
+          { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
+        );
+      }
+      return saved;
+    }
+
     const approver = await this.userChecks.getUserById(saved.id_admin);
 
     if (!approver) {
@@ -335,15 +400,7 @@ export class RequestsService {
       );
     }
 
-    const savedFolio = `${new Date(saved.createdAt).getFullYear()}-${String(saved.request_num).padStart(3, '0')}`;
-
-    void this.userLogsService.create({
-      id_user: saved.id_user,
-      ip: req.ip,
-      report: `REQUEST_CREATED§${savedFolio}§${saved.title}§${saved.id}`,
-    });
-
-    // Mandar mail de notificación al aprobador asignado
+    // Notify the first assigned approver
     await this.notificationsService.notify(
       approver.email,
       `Nueva solicitud asignada — Folio ${savedFolio}`,
@@ -353,11 +410,54 @@ export class RequestsService {
        <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
        <p>Por favor, revisa los detalles en el sistema.</p>
        <p>Saludos,</p>
-       <p>Equipo de Monarca</p>`
-      ,
+       <p>Equipo de Monarca</p>`,
       { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
     );
 
+    // When multiple approvals are required, notify all upcoming approvers upfront.
+    if (level.required_approvals > 1) {
+      const actorsWithTarget = actors.filter((a) => a.target_id && a.target_id !== adminId);
+      if (actorsWithTarget.length > 0) {
+        for (const a of actorsWithTarget) {
+          const fu = await this.userChecks.getUserById(a.target_id!);
+          if (!fu) continue;
+          void this.notificationsService.notify(
+            fu.email,
+            `Solicitud de viaje pendiente de tu aprobación próximamente — Folio ${savedFolio}`,
+            `La solicitud (Folio: ${savedFolio}, Título: "${saved.title}") ha sido creada y requerirá tu aprobación en los próximos pasos.`,
+            `<p>Hola ${fu.name},</p>
+             <p>Se ha creado una solicitud de viaje que requerirá tu aprobación próximamente.</p>
+             <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
+             <p>Recibirás una nueva notificación cuando llegue tu turno de aprobación.</p>
+             <p>Saludos,</p>
+             <p>Equipo de Monarca</p>`,
+            { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
+          );
+        }
+      } else {
+      let currentId: string = adminId;
+      for (let i = 1; i < level.required_approvals; i++) {
+        const nextId = await this.userChecks.getChainFallbackApprover(currentId, id_company);
+        if (!nextId) break;
+        const fu = await this.userChecks.getUserById(nextId);
+        if (fu) {
+          void this.notificationsService.notify(
+            fu.email,
+            `Solicitud de viaje pendiente de tu aprobación próximamente — Folio ${savedFolio}`,
+            `La solicitud (Folio: ${savedFolio}, Título: "${saved.title}") ha sido creada y requerirá tu aprobación en los próximos pasos.`,
+            `<p>Hola ${fu.name},</p>
+             <p>Se ha creado una solicitud de viaje que requerirá tu aprobación próximamente.</p>
+             <p><strong>Folio:</strong> ${savedFolio}<br><strong>Título:</strong> ${saved.title}</p>
+             <p>Recibirás una nueva notificación cuando llegue tu turno de aprobación.</p>
+             <p>Saludos,</p>
+             <p>Equipo de Monarca</p>`,
+            { companyId: saved.id_company, type: NotificationType.REQUEST_CREATED },
+          );
+        }
+        currentId = nextId;
+      }
+      }
+    }
 
     return saved;
   }
