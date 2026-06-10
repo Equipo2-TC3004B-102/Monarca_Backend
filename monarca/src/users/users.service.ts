@@ -6,7 +6,7 @@
  *              relations are loaded.
  * Authors: Original Monarca team
  * Last Modification made:
- * 04/05/2026 [Julio Rodriguez] importUsers: role flags (is_requester, is_soi, is_travelAgent, is_approver) read from JSON; defaults to is_requester when no flag is set.
+ * 01/06/2026 [Julio Rodriguez] Added getTreeDepth: walks manager_id chain for the company and returns the max depth.
  */
 
 import {
@@ -19,6 +19,8 @@ import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
 import { In, Repository } from 'typeorm';
 import { CreateUserDto, UpdateUserDto, UserDto } from './dto/user.dtos';
 import { ImportUserDto } from './dto/import-user.dto';
+import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -28,6 +30,7 @@ export class UsersService {
     private readonly repo: Repository<User>,
     @InjectRepository(CostCenter)
     private readonly cecoRepo: Repository<CostCenter>,
+    private readonly userLogsService: UserLogsService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -78,10 +81,13 @@ export class UsersService {
   async importUsers(
     users: ImportUserDto[],
     callerCompanyId: string | null,
+    caller: UserInfoInterface,
+    ip: string,
   ): Promise<{ created: number; updated: number; errors: string[] }> {
     const errors: string[] = [];
-    let created = 0; // Count for new users in the sistem
-    let updated = 0; // Count for existing users that were updated with new data from the batch.
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
     // Pass 0: upsert cost centers referenced in the JSON for the caller's company.
     // id_ceco in the JSON IS the primary key — create the row directly with that value.
     if (callerCompanyId) {
@@ -107,13 +113,21 @@ export class UsersService {
           ? await this.repo.findOne({ where: { employee_num: userData.employee_num, id_company: callerCompanyId } })
           : await this.repo.findOne({ where: { email: userData.email } });
 
-        if (existing) { // Update existing user with new data in the JSON
-          await this.repo.update(existing.id, {
+        if (existing) {
+          const updatePayload = {
             ...userDataRest,
             id_company: callerCompanyId ?? existing.id_company,
             user_name: userData.user_name ?? existing.user_name,
-          });
-          updated++;
+          };
+          const hasChanges = Object.entries(updatePayload).some(
+            ([key, value]) => value !== undefined && (existing as unknown as Record<string, unknown>)[key] !== value,
+          );
+          if (hasChanges) {
+            await this.repo.update(existing.id, updatePayload);
+            updated++;
+          } else {
+            unchanged++;
+          }
         } else {
           const hashedPassword = await bcrypt.hash('password', 10);
           // Default to is_requester only when no role flag is explicitly provided in the JSON.
@@ -182,6 +196,45 @@ export class UsersService {
       }
     }
 
+    void this.userLogsService.create({
+      id_user: caller.id,
+      ip,
+      report: `USERS_IMPORTED§${created}§${updated}§${unchanged}§${errors.length}`,
+    });
+
     return { created, updated, errors };
+  }
+
+  async getTreeDepth(companyId: string | null): Promise<{ max_depth: number }> {
+    if (!companyId) return { max_depth: 0 };
+
+    const users = await this.repo.find({
+      where: { id_company: companyId },
+      select: ['id', 'manager_id'],
+    });
+
+    if (users.length === 0) return { max_depth: 0 };
+
+    const managerMap = new Map<string, string | null>(
+      users.map((u) => [u.id, u.manager_id]),
+    );
+
+    let max = 0;
+    for (const user of users) {
+      const visited = new Set<string>();
+      let cursor: string | null = user.id;
+      let steps = 0;
+      while (cursor) {
+        if (visited.has(cursor)) break;
+        visited.add(cursor);
+        const mgr = managerMap.get(cursor) ?? null;
+        if (!mgr || !managerMap.has(mgr)) break;
+        cursor = mgr;
+        steps++;
+      }
+      if (steps > max) max = steps;
+    }
+
+    return { max_depth: max };
   }
 }

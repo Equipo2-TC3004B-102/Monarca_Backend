@@ -5,9 +5,10 @@
  *              System admins have full access; company admins are restricted to their own company
  *              and cannot set the is_system_admin flag on users.
  *              Passwords are always hashed with bcrypt before being persisted.
+ *              Mutations on company-scoped users are recorded in user_logs for audit purposes.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 19/05/2026 [Julio Rodriguez] Added updateCompanySettings for per-company voucher deadline configuration.
+ * 27/05/2026 [Julio Rodriguez] getAuditLogs now returns combined user_logs + request_logs for the company.
  */
 
 import {
@@ -15,15 +16,19 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
+import { Request as RequestEntity } from 'src/requests/entities/request.entity';
 import { CreateCompanyDto, UpdateCompanyDto } from 'src/companies/dto/company.dtos';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dto/user.dtos';
 import { CompanySetupDto, FindUsersQueryDto, SetCompanyAdminDto, SetUserFlagsDto, UpdateCompanySettingsDto } from './dto/admin.dto';
 import { UserInfoInterface } from 'src/guards/interfaces/userInfo.interface';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
+import { UserLogs } from 'src/user-logs/entity/user-logs.entity';
+import { RequestLog } from 'src/request-logs/entities/request-log.entity';
 
 @Injectable()
 export class AdminService {
@@ -36,7 +41,19 @@ export class AdminService {
 
     @InjectRepository(CostCenter)
     private readonly costCenterRepository: Repository<CostCenter>,
+
+    @InjectRepository(RequestEntity)
+    private readonly requestRepository: Repository<RequestEntity>,
+
+    @InjectRepository(RequestLog)
+    private readonly requestLogRepo: Repository<RequestLog>,
+
+    private readonly userLogsService: UserLogsService,
   ) {}
+
+  private async writeLog(idUser: string, ip: string, report: string): Promise<void> {
+    await this.userLogsService.create({ id_user: idUser, ip, report });
+  }
 
   private clientError(message: string, code: string) {
     return new BadRequestException({ message, code });
@@ -189,6 +206,7 @@ export class AdminService {
     companyId: string,
     dto: CreateUserDto,
     caller: UserInfoInterface,
+    ip: string,
   ): Promise<Omit<User, 'password'>> {
     await this.findOneCompany(companyId);
 
@@ -205,6 +223,13 @@ export class AdminService {
     });
 
     const saved = await this.userRepository.save(entity);
+
+    await this.writeLog(
+      saved.id,
+      ip,
+      `USER_CREATED§${saved.email}§is_requester=${data.is_requester ?? true},is_approver=${data.is_approver ?? false},is_soi=${data.is_soi ?? false},is_travelAgent=${data.is_travelAgent ?? false}`,
+    );
+
     const { password, ...userWithoutPassword } = saved;
     return userWithoutPassword;
   }
@@ -240,8 +265,9 @@ export class AdminService {
     userId: string,
     dto: UpdateUserDto,
     caller: UserInfoInterface,
+    ip: string,
   ): Promise<User> {
-    await this.findUserInCompany(companyId, userId);
+    const target = await this.findUserInCompany(companyId, userId);
 
     const data: UpdateUserDto = { ...dto };
     if (!caller.is_system_admin) {
@@ -251,7 +277,15 @@ export class AdminService {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
+    const changedFields = Object.keys(dto).filter((k) => k !== 'password');
     await this.userRepository.update(userId, data);
+
+    await this.writeLog(
+      userId,
+      ip,
+      `USER_PROFILE_UPDATED§${target.email}§${changedFields.join(',')}`,
+    );
+
     return this.findUserInCompany(companyId, userId);
   }
 
@@ -261,9 +295,25 @@ export class AdminService {
    * Input: company id, user id, SetUserFlagsDto.
    * Output: updated User entity.
    */
-  async setUserFlags(companyId: string, userId: string, dto: SetUserFlagsDto): Promise<User> {
-    await this.findUserInCompany(companyId, userId);
+  async setUserFlags(
+    companyId: string,
+    userId: string,
+    dto: SetUserFlagsDto,
+    caller: UserInfoInterface,
+    ip: string,
+  ): Promise<User> {
+    const target = await this.findUserInCompany(companyId, userId);
     await this.userRepository.update(userId, dto);
+
+    const flagStr = Object.entries(dto)
+      .map(([k, v]) => `${k}=${String(v)}`)
+      .join(',');
+    await this.writeLog(
+      userId,
+      ip,
+      `USER_FLAGS_UPDATED§${target.email}§${flagStr}`,
+    );
+
     return this.findUserInCompany(companyId, userId);
   }
 
@@ -275,8 +325,15 @@ export class AdminService {
   async removeUserFromCompany(
     companyId: string,
     userId: string,
+    caller: UserInfoInterface,
+    ip: string,
   ): Promise<{ status: boolean; message: string }> {
-    await this.findUserInCompany(companyId, userId);
+    const target = await this.findUserInCompany(companyId, userId);
+    await this.writeLog(
+      userId,
+      ip,
+      `USER_DELETED§${target.email}`,
+    );
     await this.userRepository.delete(userId);
     return { status: true, message: `User ${userId} deleted from company ${companyId}` };
   }
@@ -365,6 +422,7 @@ export class AdminService {
     companyId: string,
     dto: UpdateCompanySettingsDto,
     caller: UserInfoInterface,
+    ip: string,
   ): Promise<Company> {
     if (!caller.is_system_admin && caller.id_company !== companyId) {
       throw this.clientError(
@@ -374,6 +432,96 @@ export class AdminService {
     }
     await this.findOneCompany(companyId);
     await this.companyRepository.update(companyId, dto);
+
+    const changedFields = Object.entries(dto)
+      .map(([k, v]) => `${k}=${String(v)}`)
+      .join(',');
+    await this.writeLog(
+      caller.id,
+      ip,
+      `SETTINGS_UPDATED§${changedFields}`,
+    );
+
     return this.findOneCompany(companyId);
+  }
+
+  /**
+   * getAuditLogs — Returns all audit log entries for users belonging to the given company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId (string), caller (UserInfoInterface).
+   * Output: UserLogs array with user name and email populated.
+   */
+  /**
+   * getCompanyRequests — Returns all requests belonging to a company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId (string), caller (UserInfoInterface).
+   * Output: RequestEntity array with user (requester) populated, ordered newest first.
+   */
+  async getCompanyRequests(
+    companyId: string,
+    caller: UserInfoInterface,
+  ): Promise<RequestEntity[]> {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError('Access restricted to your own company', 'ADMIN_FORBIDDEN_COMPANY');
+    }
+    return this.requestRepository.find({
+      where: { id_company: companyId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getAuditLogs(companyId: string, caller: UserInfoInterface) {
+    if (!caller.is_system_admin && caller.id_company !== companyId) {
+      throw this.clientError('Access restricted to your own company', 'ADMIN_FORBIDDEN_COMPANY');
+    }
+
+    const [userLogs, companyRequests] = await Promise.all([
+      this.userLogsService.findByCompany(companyId),
+      this.requestRepository.find({
+        where: { id_company: companyId },
+        select: ['id'],
+      }),
+    ]);
+
+    const requestIds = companyRequests.map((r) => r.id);
+    const requestLogs: RequestLog[] = requestIds.length > 0
+      ? await this.requestLogRepo.find({
+          where: { id_request: In(requestIds) },
+          relations: ['user'],
+        })
+      : [];
+
+    const toIso = (d: Date | string): string =>
+      d instanceof Date ? d.toISOString() : String(d);
+
+    const combined = [
+      ...userLogs.map((ul) => ({
+        id: ul.id,
+        id_user: ul.id_user,
+        date: toIso(ul.date as unknown as Date | string),
+        ip: ul.ip ?? null,
+        report: ul.report ?? '',
+        new_status: undefined as string | undefined,
+        id_request: undefined as string | undefined,
+        user: ul.user
+          ? { name: ul.user.name, last_name: ul.user.last_name, email: ul.user.email }
+          : undefined,
+      })),
+      ...requestLogs.map((rl) => ({
+        id: rl.id,
+        id_user: rl.id_user,
+        date: toIso(rl.change_date as unknown as Date | string),
+        ip: null as string | null,
+        report: rl.report ?? '',
+        new_status: rl.new_status,
+        id_request: rl.id_request,
+        user: rl.user
+          ? { name: rl.user.name, last_name: rl.user.last_name, email: rl.user.email }
+          : undefined,
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return combined;
   }
 }

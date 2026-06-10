@@ -5,7 +5,7 @@
  *              update (PATCH /users/:id) and remove (DELETE /users/:id).
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 01/06/2026 [Julio Rodriguez] Added GET /users/tree-depth endpoint for dynamic level_order dropdown.
  */
 
 import {
@@ -38,6 +38,12 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get('tree-depth')
+  @UseGuards(AuthGuard, PermissionsGuard)
+  getTreeDepth(@Req() req: RequestInterface) {
+    return this.usersService.getTreeDepth(req.userInfo.id_company);
+  }
+
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.usersService.findOne(id);
@@ -60,6 +66,6 @@ export class UsersController {
   @HttpCode(200)
   @UseGuards(AuthGuard, PermissionsGuard, CompanyAdminGuard)
   importUsers(@Body() users: ImportUserDto[], @Req() req: RequestInterface) {
-    return this.usersService.importUsers(users, req.userInfo.id_company);
+    return this.usersService.importUsers(users, req.userInfo.id_company, req.userInfo, req.ip);
   }
 }

@@ -4,7 +4,7 @@
  *              against the user_logs table.
  * Authors: Original Monarca team
  * Last Modification made:
- * 25/02/2026 [Sergio Jiawei Xuan] Added detailed comments and documentation for clarity and maintainability.
+ * 21/05/2026 [Julio Rodríguez] Added service to handle user logs for auditing purposes across the application, including login/logout actions and request status changes. This service will be used by other modules like AuthModule and RequestsModule to create log entries.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -40,5 +40,20 @@ export class UserLogsService {
 
   remove(id: string) {
     return this.userLogsRepository.delete(id);
+  }
+
+  /**
+   * findByCompany — Returns all audit logs for users belonging to a company, ordered by date descending.
+   * Input: companyId (string).
+   * Output: UserLogs array with user name and email populated.
+   */
+  findByCompany(companyId: string): Promise<UserLogs[]> {
+    return this.userLogsRepository
+      .createQueryBuilder('log')
+      .leftJoin('log.user', 'user')
+      .addSelect(['user.id', 'user.name', 'user.last_name', 'user.email'])
+      .where('user.id_company = :companyId', { companyId })
+      .orderBy('log.date', 'DESC')
+      .getMany();
   }
 }

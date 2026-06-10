@@ -124,13 +124,40 @@ npm run setup
 npm run dev
 ```
 
-### G) Verify services
+### G) Enable Local HTTPS (Highly Recommended)
 
+To run the application locally under HTTPS (matching production, securing cookies, and enabling secure browser features), use the automated setup script.
+
+1. Open **PowerShell as Administrator** (required to register the Root Certificate Authority locally).
+2. Navigate to the root directory where you cloned the repositories (e.g., `D:\Escritorio\TEC\Ditta`).
+3. Allow script execution for the session and run the configurator:
+   ```powershell
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   .\setup-https.ps1
+   ```
+
+*What this script does:*
+- Checks and installs `mkcert` (the standard local SSL utility) via `winget`.
+- Installs the local Root CA in your Windows trust store so your browser marks localhost as secure.
+- Creates `certs/` folders in both the Frontend and Backend repositories.
+- Generates locally-trusted certificates (`frontend.pem`, `frontend-key.pem`, `backend.pem`, `backend-key.pem`).
+- Automatically transitions all your local `.env` variables from `http://` to `https://`.
+
+4. Restart your active development servers (`npm run dev`) so they load the new certs.
+
+### H) Verify services
+
+**If running under standard HTTP (default):**
 - Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3000`
-- Swagger: `http://localhost:3000/api`
+- Backend: `http://localhost:3002` (or `3000` depending on your `.env` config)
+- Swagger: `http://localhost:3002/api`
 
-### H) Common Windows issues
+**If running under HTTPS (after running the script):**
+- Frontend: `https://localhost:5173`
+- Backend: `https://localhost:3002` (or `3000` depending on your `.env` config)
+- Swagger: `https://localhost:3002/api`
+
+### I) Common Windows issues
 
 1. `ENOENT: Could not read package.json (D:\\package.json)`
 

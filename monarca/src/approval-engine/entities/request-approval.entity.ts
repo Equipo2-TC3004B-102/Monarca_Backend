@@ -4,7 +4,7 @@
  *              This entity defines the structure of request approvals, including their status, associated approval levels, and relationships with requests and approvers.
  * Authors: Debug Studio Team
  * Last Modification made:
- * 23/04/2026 [Julio Rodríguez] Added @ApiProperty to all fields for Swagger documentation.
+ * 03/06/2026 [Julio Rodriguez] Restored approval_actor_id and ApprovalLevelActor relation.
  */
 
 import { ApiProperty } from '@nestjs/swagger';

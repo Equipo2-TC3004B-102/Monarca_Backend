@@ -5,7 +5,7 @@
  *              and randomly selecting an approver or SOI user for request assignment.
  * Authors: Original Monarca team
  * Last Modification made:
- * 06/05/2026 [Julio Rodríguez] Removed stale role/permissions relations from logIn() after Database_v4 dropped RBAC tables.
+ * 01/06/2026 [Julio Rodriguez] getApproverIdFromManagerChain: excludes company admins. Replaced getApproverIdByCompany with getChainFallbackApprover: walks chain indefinitely excluding company admins.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -20,6 +20,24 @@ export class UserChecks {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
+
+  /**
+   * recordLogin — Updates login timestamps on every login.
+   * Sets last_login_at to now; on first login also sets first_login_at and flips is_first_login to false.
+   * Input: userId (string).
+   * Output: { isFirstLogin } — true only on the very first login.
+   */
+  async recordLogin(userId: string): Promise<{ isFirstLogin: boolean }> {
+    const user = await this.userRepository.findOne({ where: { id: userId }, select: ['id', 'is_first_login'] });
+    const isFirstLogin = user?.is_first_login === true;
+    const update: Partial<User> = { last_login_at: new Date() };
+    if (isFirstLogin) {
+      update.first_login_at = new Date();
+      update.is_first_login = false;
+    }
+    await this.userRepository.update(userId, update);
+    return { isFirstLogin };
+  }
 
   /**
    * logIn, validates credentials context by fetching user data with role and permissions.
@@ -83,7 +101,8 @@ export class UserChecks {
         .createQueryBuilder('u')
         .where('u.id = :managerId', { managerId })
         .andWhere('u.is_approver = :isApprover', { isApprover: true })
-        .andWhere('LOWER(u.status) = :status', { status: 'active' });
+        .andWhere('LOWER(u.status) = :status', { status: 'active' })
+        .andWhere('u.is_company_admin = :isCompanyAdmin', { isCompanyAdmin: false });
 
       if (id_company) {
         query.andWhere('u.id_company = :id_company', { id_company });
@@ -102,30 +121,73 @@ export class UserChecks {
   }
 
   /**
-   * getApproverIdByCompany, resolves an active approver inside the requester's company.
-   * Input: id_company (string), id_user (string).
-   * Output: Approver user id when available, otherwise null.
+   * getChainFallbackApprover — Walks the manager_id chain from the requester upward without
+   * a level cap. Returns the first active, non-company-admin approver found in the chain.
+   * Used when the configured level_order yields no qualifying approver (e.g. direct manager inactive).
+   * Input: id_user (string), id_company (string).
+   * Output: Approver user id when found, otherwise null.
    */
-  async getApproverIdByCompany(
-    id_company: string,
+  async getChainFallbackApprover(
     id_user: string,
+    id_company: string,
   ): Promise<string | null> {
-    const approvers = await this.userRepository
-      .createQueryBuilder('u')
-      .where('u.id != :id_user', { id_user })
-      .andWhere('u.id_company = :id_company', { id_company })
-      .andWhere('u.is_approver = :isApprover', { isApprover: true })
-      .andWhere('LOWER(u.status) = :status', { status: 'active' })
-      .orderBy('u.created_at', 'ASC')
-      .addOrderBy('u.id', 'ASC')
-      .select('u.id', 'id')
-      .getRawMany<{ id: string }>();
+    const visited = new Set<string>();
+    let currentUserId: string | null = id_user;
 
-    if (approvers.length === 0) {
-      return null;
+    while (currentUserId) {
+      if (visited.has(currentUserId)) break;
+      visited.add(currentUserId);
+
+      const currentUser = await this.userRepository.findOne({
+        where: { id: currentUserId },
+        select: ['id', 'manager_id'],
+      });
+
+      const managerId = currentUser?.manager_id;
+      if (!managerId) break;
+
+      const manager = await this.userRepository
+        .createQueryBuilder('u')
+        .where('u.id = :managerId', { managerId })
+        .andWhere('u.is_approver = :isApprover', { isApprover: true })
+        .andWhere('LOWER(u.status) = :status', { status: 'active' })
+        .andWhere('u.is_company_admin = :isCompanyAdmin', { isCompanyAdmin: false })
+        .andWhere('u.id_company = :id_company', { id_company })
+        .select('u.id', 'id')
+        .getRawOne<{ id: string }>();
+
+      if (manager?.id) return manager.id;
+
+      currentUserId = managerId;
     }
 
-    return approvers[0].id;
+    return null;
+  }
+
+  /**
+   * isEligibleApprover — Validates that a specific user can act as an approver for a request.
+   * Requires: not the requester, exists, is_approver, active status, not a company admin,
+   * and belongs to the given company. Used to validate USER-type approval actors.
+   * Input: id_user (string), id_company (string), requesterId (string).
+   * Output: true when the user is an eligible approver, otherwise false.
+   */
+  async isEligibleApprover(
+    id_user: string,
+    id_company: string,
+    requesterId: string,
+  ): Promise<boolean> {
+    if (!id_user || id_user === requesterId) return false;
+    const user = await this.userRepository.findOne({
+      where: { id: id_user },
+      select: ['id', 'is_approver', 'status', 'is_company_admin', 'id_company'],
+    });
+    return (
+      !!user &&
+      user.is_approver === true &&
+      user.status?.toLowerCase() === 'active' &&
+      user.is_company_admin === false &&
+      user.id_company === id_company
+    );
   }
 
   /**

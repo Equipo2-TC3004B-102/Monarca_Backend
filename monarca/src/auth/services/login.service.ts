@@ -14,11 +14,12 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { LogInDTO } from '../dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserChecks } from 'src/users/user.checks.service';
 import { FLAG_PERMISSIONS } from 'src/guards/permissions.guard';
+import { UserLogsService } from 'src/user-logs/user-logs.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -26,9 +27,10 @@ export class LoginService {
   constructor(
     private readonly userChecks: UserChecks,
     private readonly jwtService: JwtService,
+    private readonly userLogsService: UserLogsService,
   ) {}
 
-  async logIn(data: LogInDTO, res: Response) {
+  async logIn(data: LogInDTO, res: Response, ip: string) {
     try {
       const user = await this.userChecks.logIn(data);
 
@@ -59,6 +61,15 @@ export class LoginService {
         sameSite: 'lax',
         maxAge: 3600 * 1000, // 1 hour
       });
+
+      const { isFirstLogin } = await this.userChecks.recordLogin(user.id);
+      if (isFirstLogin) {
+        void this.userLogsService.create({
+          id_user: user.id,
+          ip,
+          report: `FIRST_LOGIN§${user.email}`,
+        });
+      }
 
       return { status: true, message: 'Logged in successfully' }; // More specific success message for successful login
     } catch (error) {

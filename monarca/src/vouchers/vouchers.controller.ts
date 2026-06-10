@@ -6,8 +6,8 @@
  *              All routes are protected by AuthGuard and PermissionsGuard.
  * Authors: Original Moncarca team
  * Last Modification made:
- * 17/05/2026 [Santiago Coronado Hernández, Juan Pablo Narchi and Fausto Izquierdo] Added parsedCFDI extraction to the uploadVoucher endpoint. 
- * Also changed pdf and xml field names to be accepted in both file_url_pdf/file_url_xml and pdf/xml for better flexibility. 
+ * 27/05/2026 [Julio Rodriguez] Changed approve/deny permissions from approve_vouchers/deny_vouchers to approve_request, belonging now to the approver role.
+ *                              Passed authenticated user ID to approve/deny for request_logs attribution.
  */
 
 import {
@@ -25,6 +25,7 @@ import {
 import * as fs from 'fs';
 import { VouchersService } from './vouchers.service';
 import { XmlParserService } from './services/xml-parser.service';
+import { CfdiValidationService } from './services/cfdi-validation.service';
 import { CreateVoucherDto } from './dto/create-voucher-dto';
 import { UpdateVoucherDto } from './dto/update-voucher-dto';
 import { Voucher } from './entities/vouchers.entity';
@@ -43,13 +44,14 @@ export class VouchersController {
   constructor(
     private readonly vouchersService: VouchersService,
     private readonly xmlParserService: XmlParserService,
+    private readonly cfdiValidationService: CfdiValidationService,
   ) {}
 
   /**
    * parseXml – ST-3 test endpoint. Receives an XML file, runs XmlParserService,
    *            and returns the extracted ParsedCfdi JSON without saving anything.
    * Input: files – multipart upload with field name 'file_url_xml' or 'xml'.
-   * Output: Promise<ParsedCfdi> – the raw fiscal data extracted from the CFDI.
+   * Output: Promise<any> – the raw fiscal data and SAT status extracted from the CFDI.
    * Throws BadRequestException if no XML file is provided or parsing fails.
    */
   @UseInterceptors(UploadPdfInterceptor())
@@ -61,7 +63,7 @@ export class VouchersController {
       file_url_xml?: Express.Multer.File[];
       xml?: Express.Multer.File[];
     },
-  ): Promise<ReturnType<XmlParserService['parse']>> {
+  ): Promise<any> {
     // Support both old field name (file_url_xml) and new field name (xml)
     const xmlFile = files?.file_url_xml?.[0] || files?.xml?.[0];
     if (!xmlFile) {
@@ -69,7 +71,21 @@ export class VouchersController {
     }
     // Multer uses diskStorage so the file is on disk, not in memory
     const buffer = fs.readFileSync(xmlFile.path);
-    return this.xmlParserService.parse(buffer);
+    const parsed = this.xmlParserService.parse(buffer);
+
+    let cfdi_status = 'VALID';
+    if (parsed.fiscal_uuid) {
+      try {
+        cfdi_status = await this.cfdiValidationService.validateSatStatus(parsed.fiscal_uuid);
+      } catch (err) {
+        cfdi_status = 'VALID';
+      }
+    }
+
+    return {
+      ...parsed,
+      cfdi_status,
+    };
   }
 
   /**
@@ -178,28 +194,32 @@ export class VouchersController {
 
   /**
    * approve - Marks a voucher as approved by updating its status field.
-   * Input: id (string) - UUID of the voucher to approve.
+   * Input: req (RequestInterface) - session info to identify the acting user;
+   *        id (string) - UUID of the voucher to approve.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/approve')
-  @Permissions('approve_vouchers') // Add appropriate permission for approving vouchers.
+  @Permissions('approve_request')
   async approve(
+    @Req() req: RequestInterface,
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {
-    return this.vouchersService.approve(id);
+    return this.vouchersService.approve(id, req.sessionInfo.id);
   }
 
   /**
    * deny - Marks a voucher as denied by updating its status field.
-   * Input: id (string) - UUID of the voucher to deny.
+   * Input: req (RequestInterface) - session info to identify the acting user;
+   *        id (string) - UUID of the voucher to deny.
    * Output: Promise<{ status: boolean; message: string }> - success flag and confirmation message.
    */
   @Patch(':id/deny')
-  @Permissions('deny_vouchers') // Add appropriate permission for denying vouchers.
+  @Permissions('approve_request')
   async deny(
+    @Req() req: RequestInterface,
     @Param('id') id: string,
   ): Promise<{ status: boolean; message: string }> {
-    return this.vouchersService.deny(id);
+    return this.vouchersService.deny(id, req.sessionInfo.id);
   }
 
 }

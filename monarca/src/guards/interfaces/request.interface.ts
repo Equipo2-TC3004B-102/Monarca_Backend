@@ -5,4 +5,5 @@ export type RequestInterface = Request & {
   sessionInfo: SessionInfoInterface;
   userPermissions?: string[];
   userInfo: UserInfoInterface;
+  ip: string;
 };

@@ -8,7 +8,7 @@
  *              to system admins exclusively.
  * Authors: DebugStudio Team
  * Last Modification:
- * 19/05/2026 [Julio Rodriguez] Added PATCH /admin/companies/:companyId/settings endpoint.
+ * 21/05/2026 [Julio Rodriguez] Wired caller+ip to setUserFlags and removeUserFromCompany; added GET audit-logs and cancelled-requests endpoints.
  */
 
 import {
@@ -141,7 +141,7 @@ export class AdminController {
     @Body() dto: UpdateCompanySettingsDto,
     @Req() req: RequestInterface,
   ) {
-    return this.adminService.updateCompanySettings(companyId, dto, req.userInfo);
+    return this.adminService.updateCompanySettings(companyId, dto, req.userInfo, req.ip);
   }
 
   /**
@@ -185,7 +185,7 @@ export class AdminController {
     @Body() dto: CreateUserDto,
     @Req() req: RequestInterface,
   ) {
-    return this.adminService.createUserInCompany(companyId, dto, req.userInfo);
+    return this.adminService.createUserInCompany(companyId, dto, req.userInfo, req.ip);
   }
 
   /**
@@ -214,7 +214,7 @@ export class AdminController {
     @Body() dto: UpdateUserDto,
     @Req() req: RequestInterface,
   ) {
-    return this.adminService.updateUserInCompany(companyId, userId, dto, req.userInfo);
+    return this.adminService.updateUserInCompany(companyId, userId, dto, req.userInfo, req.ip);
   }
 
   /**
@@ -227,8 +227,9 @@ export class AdminController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('userId', new ParseUUIDPipe()) userId: string,
     @Body() dto: SetUserFlagsDto,
+    @Req() req: RequestInterface,
   ) {
-    return this.adminService.setUserFlags(companyId, userId, dto);
+    return this.adminService.setUserFlags(companyId, userId, dto, req.userInfo, req.ip);
   }
 
   /**
@@ -240,8 +241,37 @@ export class AdminController {
   async removeUserFromCompany(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Req() req: RequestInterface,
   ) {
-    return this.adminService.removeUserFromCompany(companyId, userId);
+    return this.adminService.removeUserFromCompany(companyId, userId, req.userInfo, req.ip);
+  }
+
+  /**
+   * getCompanyRequests — Returns all requests for a company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId path param (uuid).
+   * Output: Request array with user (requester) populated, ordered newest first.
+   */
+  @Get('companies/:companyId/requests')
+  async getCompanyRequests(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Req() req: RequestInterface,
+  ) {
+    return this.adminService.getCompanyRequests(companyId, req.userInfo);
+  }
+
+  /**
+   * getAuditLogs — Returns all audit log entries for users in a company.
+   * Company admins can only access their own company. System admins access any.
+   * Input: companyId path param (uuid).
+   * Output: UserLogs array with user name and email populated.
+   */
+  @Get('companies/:companyId/audit-logs')
+  async getAuditLogs(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Req() req: RequestInterface,
+  ) {
+    return this.adminService.getAuditLogs(companyId, req.userInfo);
   }
 
   // Global user management (system admin)

@@ -5,8 +5,7 @@
  *              Also registers admin service and controller for company and user management.
  * Authors: DebugStudio Team
  * Last Modification made:
- * 13/05/2026 [Julio Rodriguez] Added CostCenter to forFeature for CECO listing endpoint.
- *                              Added Request entity to forFeature for request reassignment on level deletion.
+ * 27/05/2026 [Julio Rodriguez] Added RequestLogsModule so getAuditLogs can include request_logs.
  */
 
 import { Module } from '@nestjs/common';
@@ -19,6 +18,8 @@ import { ApprovalEngineController } from './approval-engine.controller';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { GuardsModule } from 'src/guards/guards.module';
+import { UserLogsModule } from 'src/user-logs/user-logs.module';
+import { RequestLogsModule } from 'src/request-logs/request-logs.module';
 import { Company } from 'src/companies/entity/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Request as RequestEntity } from 'src/requests/entities/request.entity';
@@ -36,6 +37,8 @@ import { CostCenter } from 'src/cost-centers/entity/cost-centers.entity';
       CostCenter,
     ]),
     GuardsModule,
+    UserLogsModule,
+    RequestLogsModule,
   ],
   controllers: [ApprovalEngineController, AdminController],
   providers: [ApprovalEngineService, AdminService],
